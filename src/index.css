@@ -1,0 +1,205 @@
+@import '@trimble-oss/moduswebcomponents/modus-wc-styles.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --padding-card: 1rem;
+}
+
+body {
+  background-color: var(--modus-wc-color-base-page);
+  color: var(--modus-wc-color-base-content);
+}
+
+p {
+  margin-bottom: 0;
+}
+
+.modus-wc-card {
+  margin-bottom: var(--modus-wc-spacing-xl);
+}
+
+modus-wc-icon .modus-icons.modus-wc-icon--xs,
+modus-wc-icon .modus-icons-outlined.modus-wc-icon--xs,
+modus-wc-icon .modus-icons-solid.modus-wc-icon--xs {
+  font-size: 0.875rem;
+}
+
+modus-wc-button[style*="width: 100%"] button.modus-wc-btn {
+  width: 100%;
+}
+
+button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
+  background-color: rgba(241, 241, 246, 1);
+  border-width: 0px;
+  border-color: rgba(0, 0, 0, 0);
+  border-style: none;
+  border-image: none;
+}
+
+/* ── AI Insight Marker ──────────────────────────────────────────── */
+.ai-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rainbow-orb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%);
+  box-shadow: 0 4px 12px rgba(74, 0, 255, 0.35), 0 2px 4px rgba(0, 0, 0, 0.15);
+  color: #fff;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.ai-marker:hover .rainbow-orb {
+  transform: scale(1.08);
+}
+
+.rainbow-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin-top: -18px;
+  margin-left: -18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%);
+  opacity: 0.6;
+  z-index: 1;
+  animation: rainbowPulse 1.8s ease-out infinite;
+}
+
+.rainbow-pulse-ring-delay {
+  animation-delay: 0.9s;
+}
+
+@keyframes rainbowPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* ── AI Preview Pill ────────────────────────────────────────────── */
+.ai-preview-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 10px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform-origin: bottom center;
+  transition: opacity 0.18s ease, scale 0.18s ease;
+  scale: 0.94;
+  white-space: nowrap;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.ai-preview-pill.visible {
+  opacity: 1;
+  scale: 1;
+}
+
+.ai-preview-pill::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.04);
+  z-index: -1;
+}
+
+.ai-preview-pill .pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%);
+  flex-shrink: 0;
+}
+
+.ai-preview-pill .pill-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.ai-preview-pill .pill-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101828;
+}
+
+.ai-preview-pill .pill-hint {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #6a6e79;
+  letter-spacing: 0.2px;
+}
+
+/* ── Creative 5 — Concept Studio ────────────────────────────────── */
+@keyframes conceptPulse {
+  0% {
+    transform: translateY(8px) scale(0.97);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(0) scale(1.01);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.concept-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.06) !important;
+  opacity: 1 !important;
+}
+
+.concept-card:focus-visible {
+  outline: 2px solid var(--modus-wc-color-primary, #0063a3);
+  outline-offset: 2px;
+}
