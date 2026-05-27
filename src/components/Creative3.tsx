@@ -59,7 +59,7 @@ const DIRECTIONS: Direction[] = [
     id: 'open',
     name: 'Open & Airy',
     philosophy: 'Few uppers, statement glass, room to breathe.',
-    icon: 'lightbulb',
+    icon: 'sun',
     accent: 'var(--modus-wc-color-status-success, #1e7e34)',
     accentSoft: 'var(--modus-wc-color-status-success-light, #e6f4ea)',
     moves: [
@@ -98,7 +98,7 @@ const DIRECTIONS: Direction[] = [
     id: 'sustainable',
     name: 'Sustainable',
     philosophy: 'FSC wood, low-flow fixtures, energy-star kit.',
-    icon: 'sustainability',
+    icon: 'forestry',
     accent: 'var(--modus-wc-color-secondary, #6A6E79)',
     accentSoft: 'var(--modus-wc-color-secondary-light, #f3f0ff)',
     moves: [
