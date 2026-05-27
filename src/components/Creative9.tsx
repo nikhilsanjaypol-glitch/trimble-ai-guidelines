@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
+import { ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
  * Guideline: OFFER POSSIBILITIES
@@ -126,12 +126,6 @@ const ATMOSPHERES: Atmosphere[] = [
   { id: 'hazy',  label: 'Hazy',  fog: { color: 0xc8d8ff, density: 0.045 }         },
   { id: 'foggy', label: 'Foggy', fog: { color: 0xe8eaef, density: 0.085 }         },
   { id: 'moody', label: 'Moody', fog: { color: 0x1a1c20, density: 0.13  }         },
-];
-
-const SUGGESTED_PROMPTS = [
-  'Brighter lighting',
-  'Add a rug',
-  'More natural light',
 ];
 
 /* ── 3D Interior Viewport ──────────────────────────────────────── */
@@ -507,95 +501,98 @@ function ChatBar({
   onSubmit: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-1.5 items-center">
-        <span
-          className="font-medium"
-          style={{
-            fontSize: '10px',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            letterSpacing: '0.6px',
-            textTransform: 'uppercase',
-            marginRight: '4px',
-          }}
-        >
-          Try
-        </span>
-        {SUGGESTED_PROMPTS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => onChange(p)}
-            className="px-2.5 py-1 rounded-full transition-colors"
-            style={{
-              fontSize: '11px',
-              backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-              border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-              color: 'var(--modus-wc-color-base-content, #252a2e)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor =
-                'var(--modus-wc-color-base-100, #f1f1f6)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor =
-                'var(--modus-wc-color-base-page, #fff)';
-            }}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-
+    <div className="flex flex-col">
+      {/* Prompt bar — same shell as Creative3, with a flat Trimble light-grey
+          border in place of the rainbow gradient. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (value.trim()) onSubmit();
         }}
-        className="flex items-center gap-2 rounded-full px-3 py-1.5"
+        className="flex items-center justify-between w-full overflow-hidden"
         style={{
+          height: '42px',
+          border: '1.5px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          borderRadius: '12px',
+          padding: '4px',
           backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
         }}
+        data-name="_Prompt/Base"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8L12 2z"
-            fill="var(--modus-wc-color-primary, #0063A7)"
-          />
-          <circle cx="19" cy="5" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
-          <circle cx="5" cy="19" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
-        </svg>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Ask AI for something specific…"
-          className="flex-1 bg-transparent outline-none"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            color: 'var(--modus-wc-color-base-content, #101828)',
-          }}
-        />
-        <button
-          type="submit"
-          aria-label="Send"
-          disabled={!value.trim()}
-          className="flex items-center justify-center rounded-full transition-colors"
-          style={{
-            width: '30px',
-            height: '30px',
-            backgroundColor: value.trim()
-              ? 'var(--modus-wc-color-primary, #0063A7)'
-              : 'var(--modus-wc-color-base-200, #e0e1e9)',
-            color: '#ffffff',
-            cursor: value.trim() ? 'pointer' : 'not-allowed',
-            border: 'none',
-          }}
+        <div
+          className="prompt-bar-input flex-1 min-w-0"
+          style={{ display: 'flex', background: 'transparent' }}
         >
-          <ModusWcIcon name="arrow_right" size="xs" decorative style={{ color: '#fff' }} />
-        </button>
+          <ModusWcTextInput
+            size="sm"
+            placeholder="How can I help you?"
+            bordered={false}
+            value={value}
+            onInputChange={(e: CustomEvent) => {
+              const v = e.detail?.target?.value ?? '';
+              onChange(v);
+            }}
+            style={{
+              flex: 1,
+              width: '100%',
+              display: 'block',
+              background: 'transparent',
+            }}
+          />
+        </div>
+
+        <div
+          className="flex items-center shrink-0"
+          style={{ gap: '0px' }}
+          data-name="Basic Actions"
+        >
+          <button
+            type="button"
+            aria-label="Add attachment"
+            style={{
+              width: '48px',
+              height: '48px',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src="/assets/prompt-add.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '36px', height: '34px', display: 'block' }}
+            />
+          </button>
+          <button
+            type="submit"
+            aria-label="Send prompt"
+            style={{
+              width: '48px',
+              height: '48px',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '999px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src="/assets/prompt-send.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '36px', height: '34px', display: 'block' }}
+            />
+          </button>
+        </div>
       </form>
     </div>
   );
@@ -1094,11 +1091,11 @@ export default function Creative9() {
           <ActionButton
             variant="primary"
             onClick={handleSave}
-            label="Save vision"
+            label="Apply to model"
             flash={savedFlash}
             icon={
               <ModusWcIcon
-                name="bookmark"
+                name="check_circle"
                 size="xs"
                 decorative
                 style={{ color: '#fff' }}
