@@ -38,6 +38,15 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
   border-image: none;
 }
 
+/* Creative 3 — custom-sized back button (28px, between Modus xs and sm). */
+.creative3-back-btn button.modus-wc-btn {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 1;
+}
+
 /* ── AI Insight Marker ──────────────────────────────────────────── */
 .ai-marker {
   position: relative;
@@ -202,4 +211,73 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
 .concept-card:focus-visible {
   outline: 2px solid var(--modus-wc-color-primary, #0063a3);
   outline-offset: 2px;
+}
+
+/* ── Creative 3 — Prompt Bar transparent input ──────────────────── */
+/* Modus text input renders in the light DOM (no shadow root), so we
+   target its descendants directly. The rainbow gradient on the outer
+   container is the only border we want; everything inside must be
+   transparent and stripped of default chrome.                       */
+.prompt-bar-input,
+.prompt-bar-input modus-wc-text-input,
+.prompt-bar-input modus-wc-text-input * {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.prompt-bar-input {
+  --modus-wc-color-base-100: transparent;
+  --modus-wc-color-base-page: transparent;
+}
+
+.prompt-bar-input modus-wc-text-input .modus-wc-input,
+.prompt-bar-input modus-wc-text-input label,
+.prompt-bar-input modus-wc-text-input .input,
+.prompt-bar-input modus-wc-text-input .input-sm,
+.prompt-bar-input modus-wc-text-input .input-md,
+.prompt-bar-input modus-wc-text-input .input-lg {
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  line-height: 30px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* The real text field — force 12px font-size for both typed text and
+   placeholder so it never inherits Modus's size-based defaults
+   (sm=14px, md=14px, lg=18px).                                       */
+.prompt-bar-input modus-wc-text-input input,
+.prompt-bar-input modus-wc-text-input input.input-sm,
+.prompt-bar-input modus-wc-text-input input.input-md,
+.prompt-bar-input modus-wc-text-input input.input-lg {
+  font-size: 12px !important;
+  line-height: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.prompt-bar-input modus-wc-text-input input::placeholder,
+.prompt-bar-input modus-wc-text-input input.input-sm::placeholder,
+.prompt-bar-input modus-wc-text-input input.input-md::placeholder,
+.prompt-bar-input modus-wc-text-input input.input-lg::placeholder {
+  font-size: 12px !important;
+  line-height: 30px !important;
+}
+
+.prompt-bar-input modus-wc-text-input input:focus,
+.prompt-bar-input modus-wc-text-input input:focus-visible,
+.prompt-bar-input modus-wc-text-input .modus-wc-input:focus-within {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }

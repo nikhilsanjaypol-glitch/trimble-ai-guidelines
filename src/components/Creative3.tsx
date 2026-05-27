@@ -1,24 +1,39 @@
-import { useState } from 'react';
-import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
+import {
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
+import {
+  ModusWcButton,
+  ModusWcIcon,
+  ModusWcTextInput,
+} from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
  * Guideline: PROVIDE OPTIONS
  *   Provide multiple divergent options so the professional can give
  *   creative direction and keep a sense of creative control.
  *
- * Component: ONE-OPEN-FOUR-SWITCHERS
- *   Five divergent kitchen directions are offered. ONE direction
- *   is opened in the centre — large kitchen-plan SVG with live,
- *   toggleable signature-move layers (Photoshop-style). The OTHER
- *   FOUR sit as quiet switcher chips above the panel: tap any chip
- *   to swap it into the centre. Toggle state is preserved per move
- *   so the professional's customisations survive a direction swap.
- *   That preservation is the "creative control" part of the
- *   guideline made literal.
+ * Component: GALLERY → DETAIL
+ *   Two screens, one component.
  *
- *   Three floating elements stack in the middle of the surface
- *   (switcher row, detail panel, chat-bar pill) — no containing
- *   card wraps them.
+ *   OVERVIEW screen:
+ *     Five divergent kitchen directions sit side-by-side as
+ *     thumbnails. Each thumbnail shows a mini live kitchen-plan
+ *     preview, the direction name, its philosophy, and an "Open"
+ *     affordance. Clicking a thumbnail zooms into the DETAIL view
+ *     for that direction.
+ *
+ *   DETAIL screen:
+ *     One direction is opened in full — large kitchen-plan SVG with
+ *     live, toggleable signature-move layers (Photoshop-style), an
+ *     N-of-3 status chip, and a single primary "Choose this" button
+ *     in the footer. A quiet "← Back to all 5 options" link returns
+ *     to the overview without losing any toggle or choice state.
+ *
+ *   State preservation across navigation is the "creative control"
+ *   part of the guideline made literal: every customisation the
+ *   professional makes survives every screen change.
  * ───────────────────────────────────────────────────────────────── */
 
 type PlanId = 'open' | 'storage' | 'workflow' | 'sustainable' | 'family';
@@ -429,73 +444,106 @@ function LivePlan({
   );
 }
 
-/* ── switcher chip (4 quiet + 1 active) ─────────────────────────── */
+/* ── overview thumbnail (1 of 5 on the first screen) ────────────── */
 
-function SwitcherChip({
+function ThumbnailCard({
   direction,
-  active,
   chosen,
-  onClick,
+  onOpen,
 }: {
   direction: Direction;
-  active: boolean;
   chosen: boolean;
-  onClick: () => void;
+  onOpen: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="flex items-center gap-2 px-3 py-2 rounded-xl text-left"
+      onClick={onOpen}
+      className="flex flex-col gap-3 p-3 rounded-xl text-left"
       style={{
         width: '152px',
-        backgroundColor: active
-          ? direction.accentSoft
-          : 'var(--modus-wc-color-base-page, #ffffff)',
-        border: active
+        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+        border: chosen
           ? `1.5px solid ${direction.accent}`
           : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: active
-          ? `0 0 0 3px ${direction.accentSoft}, 0 10px 22px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05)`
-          : '0 4px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
+        boxShadow: chosen
+          ? `0 0 0 2px ${direction.accentSoft}, 0 1px 3px rgba(0,0,0,0.04)`
+          : '0 1px 2px rgba(0,0,0,0.03)',
         cursor: 'pointer',
         transition:
-          'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease',
+          'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
       }}
       onMouseEnter={(e) => {
-        if (active) return;
         e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow =
-          '0 10px 20px rgba(0,0,0,0.08), 0 2px 5px rgba(0,0,0,0.05)';
+        e.currentTarget.style.boxShadow = chosen
+          ? `0 0 0 2px ${direction.accentSoft}, 0 4px 10px rgba(0,0,0,0.06)`
+          : '0 4px 10px rgba(0,0,0,0.06)';
       }}
       onMouseLeave={(e) => {
-        if (active) return;
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow =
-          '0 4px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)';
+        e.currentTarget.style.boxShadow = chosen
+          ? `0 0 0 2px ${direction.accentSoft}, 0 1px 3px rgba(0,0,0,0.04)`
+          : '0 1px 2px rgba(0,0,0,0.03)';
       }}
-      aria-pressed={active}
     >
+      {/* mini live plan preview */}
       <div
-        className="flex items-center justify-center rounded-md shrink-0"
+        className="rounded-md overflow-hidden relative"
         style={{
-          width: '30px',
-          height: '30px',
-          backgroundColor: active
-            ? direction.accent
-            : 'var(--modus-wc-color-base-100, #f5f6fa)',
+          backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
+          padding: '4px',
+          height: '88px',
         }}
       >
-        <ModusWcIcon
-          name={direction.icon}
-          size="sm"
-          decorative
-          style={{
-            color: active ? '#ffffff' : direction.accent,
-          }}
-        />
+        <LivePlan direction={direction} enabled={DEFAULT_ENABLED} />
+        {chosen && (
+          <div
+            className="absolute flex items-center gap-1 rounded-full px-1.5 py-0.5"
+            style={{
+              top: '6px',
+              right: '6px',
+              backgroundColor: direction.accent,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            }}
+          >
+            <ModusWcIcon
+              name="check"
+              size="xs"
+              decorative
+              style={{ color: '#ffffff' }}
+            />
+            <span
+              style={{
+                fontSize: '9.5px',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: '#ffffff',
+              }}
+            >
+              Chosen
+            </span>
+          </div>
+        )}
       </div>
-      <div className="flex flex-col min-w-0 flex-1">
+
+      {/* icon + name */}
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center justify-center rounded-md shrink-0"
+          style={{
+            width: '26px',
+            height: '26px',
+            backgroundColor: direction.accentSoft,
+          }}
+        >
+          <ModusWcIcon
+            name={direction.icon}
+            size="xs"
+            decorative
+            style={{ color: direction.accent }}
+          />
+        </div>
         <span
           className="truncate font-semibold"
           style={{
@@ -506,32 +554,54 @@ function SwitcherChip({
         >
           {direction.name}
         </span>
+      </div>
+
+      {/* philosophy */}
+      <span
+        style={{
+          fontSize: '11.5px',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+          lineHeight: 1.45,
+          margin: 0,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {direction.philosophy}
+      </span>
+
+      {/* open affordance */}
+      <div
+        className="mt-auto flex items-center justify-between pt-2"
+        style={{
+          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        }}
+      >
         <span
-          className="truncate flex items-center gap-1"
           style={{
-            fontSize: '10.5px',
-            color: chosen
-              ? direction.accent
-              : 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            margin: 0,
-            fontWeight: chosen ? 600 : 400,
+            fontSize: '11px',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
           }}
         >
-          {chosen ? (
-            <>
-              <ModusWcIcon
-                name="check_circle"
-                size="xs"
-                decorative
-                style={{ color: direction.accent }}
-              />
-              Chosen
-            </>
-          ) : active ? (
-            'Active'
-          ) : (
-            'Switch to'
-          )}
+          {direction.moves.length} moves
+        </span>
+        <span
+          className="flex items-center gap-1"
+          style={{
+            fontSize: '11.5px',
+            fontWeight: 600,
+            color: direction.accent,
+          }}
+        >
+          Open
+          <ModusWcIcon
+            name="arrow_right"
+            size="xs"
+            decorative
+            style={{ color: direction.accent }}
+          />
         </span>
       </div>
     </button>
@@ -620,69 +690,144 @@ function MoveToggle({
   );
 }
 
-/* ── chat-bar pill (context only) ───────────────────────────────── */
+/* ── prompt bar (Figma node 549:61090, copy-pasted) ─────────────── */
 
-function ChatBarPill() {
+function PromptBar() {
   return (
     <div
-      className="flex items-center gap-1.5 pl-2 pr-1.5 py-1.5"
+      className="flex flex-col items-center justify-end w-full"
       style={{
-        width: '100%',
-        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        borderRadius: '999px',
-        boxShadow: '0 6px 18px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)',
+        backgroundColor: 'transparent',
+        gap: '4px',
+        paddingTop: '12px',
+        paddingBottom: '0px',
       }}
+      data-name="Prompt"
     >
+      {/* _Prompt/Base — rainbow gradient border (Figma 549:61093) */}
       <div
-        className="flex items-center justify-center rounded-full shrink-0"
-        style={{ width: '32px', height: '32px' }}
-        aria-hidden="true"
-      >
-        <ModusWcIcon
-          name="link"
-          size="sm"
-          decorative
-          style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-        />
-      </div>
-      <div
-        className="flex items-center justify-center rounded-full shrink-0"
-        style={{ width: '32px', height: '32px' }}
-        aria-hidden="true"
-      >
-        <ModusWcIcon
-          name="tools"
-          size="sm"
-          decorative
-          style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-        />
-      </div>
-      <span
-        className="flex-1 truncate"
+        className="flex items-center justify-between w-full overflow-hidden"
         style={{
-          fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #9aa0a6)',
-          padding: '0 6px',
+          height: '42px',
+          border: '2px solid transparent',
+          borderRadius: '12px',
+          padding: '4px',
+          backgroundImage:
+            'linear-gradient(var(--modus-wc-color-base-page, #f5f6fa), var(--modus-wc-color-base-page, #f5f6fa)), ' +
+            'linear-gradient(90deg, #00d7c0 0%, #0094f0 35%, #b73efa 68%, #ff5a8c 100%)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
         }}
+        data-name="_Prompt/Base"
       >
-        Ask Trimble AI to refine this direction…
-      </span>
+        {/* Text input — grows to fill the bar, sized to sit inside the rainbow border */}
+        <div
+          className="prompt-bar-input flex-1 min-w-0"
+          style={{ display: 'flex', background: 'transparent' }}
+        >
+          <ModusWcTextInput
+            size="sm"
+            placeholder="How can I help you?"
+            bordered={false}
+            style={{
+              flex: 1,
+              width: '100%',
+              display: 'block',
+              background: 'transparent',
+            }}
+          />
+        </div>
+
+        {/* Basic Actions — Figma icon buttons */}
+        <div
+          className="flex items-center shrink-0"
+          style={{ gap: '0px' }}
+          data-name="Basic Actions"
+        >
+          <button
+            type="button"
+            aria-label="Add attachment"
+            style={{
+              width: '48px',
+              height: '48px',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src="/assets/prompt-add.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '36px', height: '34px', display: 'block' }}
+            />
+          </button>
+          <button
+            type="button"
+            aria-label="Send prompt"
+            style={{
+              width: '48px',
+              height: '48px',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '999px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src="/assets/prompt-send.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '36px', height: '34px', display: 'block' }}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Disclaimer */}
       <div
-        className="flex items-center justify-center rounded-full shrink-0"
-        style={{
-          width: '34px',
-          height: '34px',
-          backgroundColor: 'var(--modus-wc-color-primary, #0063A7)',
-        }}
-        aria-hidden="true"
+        className="flex flex-wrap items-center w-full"
+        style={{ paddingLeft: '4px', paddingRight: '4px', gap: '8px' }}
+        data-name="Disclaimer"
       >
-        <ModusWcIcon
-          name="arrow_right"
-          size="sm"
-          decorative
-          style={{ color: '#ffffff' }}
-        />
+        <p
+          style={{
+            fontFamily: "'Open Sans', sans-serif",
+            fontWeight: 600,
+            fontSize: '10px',
+            lineHeight: '16px',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            margin: 0,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          AI can make mistakes.
+        </p>
+        <button
+          type="button"
+          style={{
+            fontFamily: "'Open Sans', sans-serif",
+            fontWeight: 600,
+            fontSize: '10px',
+            lineHeight: '16px',
+            color: 'var(--modus-wc-color-primary, #0063A7)',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          Acceptable Use
+        </button>
       </div>
     </div>
   );
@@ -690,17 +835,37 @@ function ChatBarPill() {
 
 /* ── host component ─────────────────────────────────────────────── */
 
+type ViewMode = 'overview' | 'detail';
+
 export default function Creative3() {
-  const [activeId, setActiveId] = useState<PlanId>('open');
+  const [view, setView] = useState<ViewMode>('overview');
+  const [activeId, setActiveId] = useState<PlanId | null>(null);
   const [enabled, setEnabled] = useState<Set<string>>(DEFAULT_ENABLED);
   const [chosenId, setChosenId] = useState<PlanId | null>(null);
 
-  const active = DIRECTIONS.find((d) => d.id === activeId)!;
+  const active = activeId
+    ? DIRECTIONS.find((d) => d.id === activeId) ?? null
+    : null;
   const chosen = DIRECTIONS.find((d) => d.id === chosenId) ?? null;
-  const activeIsChosen = chosenId === active.id;
-  const activeOnCount = active.moves.filter((m) =>
-    enabled.has(moveKey(active.id, m.id))
-  ).length;
+
+  const openDetail = (id: PlanId) => {
+    setActiveId(id);
+    setView('detail');
+  };
+
+  const backToOverview = () => {
+    setView('overview');
+  };
+
+  /* Cycle through DIRECTIONS in either direction; wraps at both ends so
+     the prev/next arrows never disable, matching a carousel feel.     */
+  const stepActive = (delta: 1 | -1) => {
+    if (!activeId) return;
+    const idx = DIRECTIONS.findIndex((d) => d.id === activeId);
+    if (idx < 0) return;
+    const nextIdx = (idx + delta + DIRECTIONS.length) % DIRECTIONS.length;
+    setActiveId(DIRECTIONS[nextIdx].id);
+  };
 
   const toggleMove = (dirId: PlanId, moveId: string) => {
     setEnabled((prev) => {
@@ -713,6 +878,7 @@ export default function Creative3() {
   };
 
   const toggleChoice = () => {
+    if (!active) return;
     setChosenId((prev) => (prev === active.id ? null : active.id));
   };
 
@@ -721,68 +887,232 @@ export default function Creative3() {
       className="flex flex-col items-stretch gap-4"
       style={{ width: '820px' }}
     >
-      {/* small AI label */}
+      {/* small AI label — adapts to current view + chosen state */}
       <div className="flex items-center gap-2 self-start">
-        <div
-          className="flex items-center justify-center rounded-full"
+        <img
+          src="/assets/trimble-ai-logo.png"
+          alt=""
+          aria-hidden="true"
           style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: 'var(--modus-wc-color-primary, #0063A7)',
+            height: '36px',
+            width: 'auto',
+            flexShrink: 0,
+            objectFit: 'contain',
+            display: 'flex',
+            textAlign: 'left',
+            flexWrap: 'wrap',
+            marginLeft: '-12px',
+            marginRight: '-12px',
           }}
-        >
-          <ModusWcIcon
-            name="lightbulb"
-            size="xs"
-            decorative
-            style={{ color: '#ffffff' }}
-          />
-        </div>
+          data-name="Trimble AI Logo"
+        />
         <span
           style={{
-            fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+            fontSize: '14px',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            marginTop: 0,
+            marginBottom: 0,
+            marginLeft: '2px',
+            marginRight: '2px',
+          }}
+        >
+          {view === 'overview'
+            ? chosen
+              ? `${chosen.name} is locked in. Open another option to compare, or revisit your choice.`
+              : '5 divergent directions for your kitchen. Open any option to explore it in detail.'
+            : active
+              ? chosenId === active.id
+                ? `${active.name} is locked in. Keep refining its moves or go back to compare.`
+                : `Exploring ${active.name}. Toggle moves below, then commit — or head back to all options.`
+              : ''}
+        </span>
+      </div>
+
+      {view === 'overview' && (
+        <OverviewScreen chosenId={chosenId} onOpen={openDetail} />
+      )}
+
+      {view === 'detail' && active && (
+        <DetailScreen
+          active={active}
+          enabled={enabled}
+          chosenId={chosenId}
+          onToggleMove={toggleMove}
+          onToggleChoice={toggleChoice}
+          onSetEnabled={setEnabled}
+          onBack={backToOverview}
+          onPrev={() => stepActive(-1)}
+          onNext={() => stepActive(1)}
+          prevName={
+            DIRECTIONS[
+              (DIRECTIONS.findIndex((d) => d.id === active.id) -
+                1 +
+                DIRECTIONS.length) %
+                DIRECTIONS.length
+            ].name
+          }
+          nextName={
+            DIRECTIONS[
+              (DIRECTIONS.findIndex((d) => d.id === active.id) + 1) %
+                DIRECTIONS.length
+            ].name
+          }
+          position={DIRECTIONS.findIndex((d) => d.id === active.id) + 1}
+          total={DIRECTIONS.length}
+        />
+      )}
+
+      {/* prompt bar — sits directly below the cards */}
+      <PromptBar />
+    </div>
+  );
+}
+
+/* ── overview screen ────────────────────────────────────────────── */
+
+function OverviewScreen({
+  chosenId,
+  onOpen,
+}: {
+  chosenId: PlanId | null;
+  onOpen: (id: PlanId) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span
+          className="font-semibold"
+          style={{
+            fontSize: 'var(--modus-wc-font-size-xs, 11.5px)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
             color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             margin: 0,
           }}
         >
-          <span
-            style={{
-              fontWeight: 600,
-              color: 'var(--modus-wc-color-base-content, #364153)',
-            }}
-          >
-            Trimble AI
-          </span>
-          {' · '}
-          {chosen
-            ? `Locked in: ${chosen.name}. Keep refining its moves, or pick a different direction.`
-            : '5 divergent directions — open one and toggle its signature moves. Switch any time.'}
+          Suggested directions
+        </span>
+        <span
+          style={{
+            fontSize: '11px',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #9aa0a6)',
+          }}
+        >
+          5 of 5 shown
         </span>
       </div>
-
-      {/* SWITCHER ROW — 5 chips, 1 active, other 4 quiet switchers */}
-      <div className="flex gap-2 justify-between">
+      <div className="flex gap-3 justify-between">
         {DIRECTIONS.map((d) => (
-          <SwitcherChip
+          <ThumbnailCard
             key={d.id}
             direction={d}
-            active={d.id === activeId}
             chosen={d.id === chosenId}
-            onClick={() => setActiveId(d.id)}
+            onOpen={() => onOpen(d.id)}
           />
         ))}
       </div>
+    </div>
+  );
+}
 
-      {/* CENTRAL DETAIL PANEL — only the active direction lives here */}
-      <div
-        className="flex flex-col gap-4 p-5 rounded-2xl"
-        style={{
-          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          boxShadow:
-            '0 18px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05)',
-        }}
-      >
+/* ── detail screen (zoom-in target) ─────────────────────────────── */
+
+function DetailScreen({
+  active,
+  enabled,
+  chosenId,
+  onToggleMove,
+  onToggleChoice,
+  onSetEnabled,
+  onBack,
+  onPrev,
+  onNext,
+  prevName,
+  nextName,
+  position,
+  total,
+}: {
+  active: Direction;
+  enabled: Set<string>;
+  chosenId: PlanId | null;
+  onToggleMove: (dirId: PlanId, moveId: string) => void;
+  onToggleChoice: () => void;
+  onSetEnabled: Dispatch<SetStateAction<Set<string>>>;
+  onBack: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  prevName: string;
+  nextName: string;
+  position: number;
+  total: number;
+}) {
+  const activeIsChosen = chosenId === active.id;
+  const activeOnCount = active.moves.filter((m) =>
+    enabled.has(moveKey(active.id, m.id))
+  ).length;
+
+  return (
+    <div className="flex flex-col gap-3" style={{ animation: 'creative3-zoom 0.22s ease-out' }}>
+      <style>{`
+        @keyframes creative3-zoom {
+          from { opacity: 0; transform: scale(0.97); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+
+      {/* back to overview + current position */}
+      <div className="flex items-center justify-between">
+        <div className="creative3-back-btn">
+          <ModusWcButton
+            variant="outlined"
+            color="tertiary"
+            size="xs"
+            onButtonClick={onBack}
+            aria-label={`Back to all ${total} options`}
+          >
+            <ModusWcIcon
+              name="chevron_left"
+              size="xs"
+              decorative
+              style={{ marginRight: '2px' }}
+            />
+            Back to all {total} options
+          </ModusWcButton>
+        </div>
+        <span
+          style={{
+            fontSize: '11.5px',
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          }}
+        >
+          Option {position} of {total}
+        </span>
+      </div>
+
+      {/* the detail panel, flanked by absolute prev/next nav arrows */}
+      <div className="relative">
+        <CarouselArrow
+          direction="prev"
+          label={`Previous option: ${prevName}`}
+          onClick={onPrev}
+        />
+        <CarouselArrow
+          direction="next"
+          label={`Next option: ${nextName}`}
+          onClick={onNext}
+        />
+
+        <div
+          className="flex flex-col gap-4 p-5 rounded-2xl"
+          style={{
+            backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+          }}
+        >
         {/* header */}
         <div className="flex items-center gap-3">
           <div
@@ -837,7 +1167,6 @@ export default function Creative3() {
 
         {/* body: SVG (left) + toggle stack (right) */}
         <div className="flex gap-4">
-          {/* live kitchen plan */}
           <div
             className="rounded-xl overflow-hidden shrink-0"
             style={{
@@ -851,7 +1180,6 @@ export default function Creative3() {
             <LivePlan direction={active} enabled={enabled} />
           </div>
 
-          {/* move toggles */}
           <div className="flex flex-col gap-2 flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span
@@ -869,7 +1197,7 @@ export default function Creative3() {
               <button
                 type="button"
                 onClick={() => {
-                  setEnabled((prev) => {
+                  onSetEnabled((prev) => {
                     const next = new Set(prev);
                     const allOn = active.moves.every((m) =>
                       next.has(moveKey(active.id, m.id))
@@ -902,7 +1230,7 @@ export default function Creative3() {
                 enabled={enabled.has(moveKey(active.id, m.id))}
                 accent={active.accent}
                 accentSoft={active.accentSoft}
-                onToggle={() => toggleMove(active.id, m.id)}
+                onToggle={() => onToggleMove(active.id, m.id)}
               />
             ))}
           </div>
@@ -951,7 +1279,7 @@ export default function Creative3() {
             color="primary"
             variant={activeIsChosen ? 'outlined' : 'filled'}
             size="md"
-            onButtonClick={toggleChoice}
+            onButtonClick={onToggleChoice}
           >
             {activeIsChosen ? (
               <span className="flex items-center gap-1.5">
@@ -966,10 +1294,72 @@ export default function Creative3() {
             )}
           </ModusWcButton>
         </div>
+        </div>
       </div>
-
-      {/* chat-bar pill */}
-      <ChatBarPill />
     </div>
+  );
+}
+
+/* ── prev/next nav arrow used on either side of the detail panel ── */
+
+function CarouselArrow({
+  direction,
+  label,
+  onClick,
+}: {
+  direction: 'prev' | 'next';
+  label: string;
+  onClick: () => void;
+}) {
+  const isPrev = direction === 'prev';
+  const baseColor =
+    'var(--modus-wc-color-base-content-low-contrast, #9aa0a6)';
+  const restOpacity = 0.4;
+  const hoverOpacity = 0.75;
+
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      style={{
+        position: 'absolute',
+        top: '50%',
+        [isPrev ? 'left' : 'right']: '-44px',
+        transform: 'translateY(-50%)',
+        padding: '8px',
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: baseColor,
+        opacity: restOpacity,
+        zIndex: 3,
+        transition: 'opacity 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.opacity = String(hoverOpacity);
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.opacity = String(restOpacity);
+      }}
+    >
+      <svg
+        width="40"
+        height="40"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points={isPrev ? '15 6 9 12 15 18' : '9 6 15 12 9 18'} />
+      </svg>
+    </button>
   );
 }
