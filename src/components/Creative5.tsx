@@ -7,15 +7,12 @@ import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-reac
  *   (not tiny variations) — so the professional feels in a position
  *   to steer the creative direction of the work.
  *
- * Component: MARKER → AI-SUGGESTION POPUP → DETAIL
- *   A small rainbow-ringed AI marker sits in context. Clicking it
- *   opens a popup card anchored to the marker by a notch. The card
- *   contains:
- *     · Header with view-toggle / regenerate / close tools
- *     · Filter-chip toolbar + compare-mode toggle
- *     · A 3×2 grid of six divergent site-layout options, each
+ * Component: AI-SUGGESTION POPUP → DETAIL
+ *   The popup card contains:
+ *     · Header with view-toggle / regenerate / save / close tools
+ *     · A 2×2 grid of four divergent site-layout options, each
  *       rendered as a CAD plan
- *     · Footer with "Send back to AI" + "Develop direction" CTAs
+ *     · Footer with a "Recreate" CTA and a tap-to-develop hint
  *
  *   Clicking any option opens a detail modal with a larger CAD
  *   plan, key metrics, pros / trade-offs, and "Use this direction"
@@ -46,7 +43,6 @@ interface SiteOption {
   id: OptionId;
   num: number;
   title: string;
-  tag: string;
   family: Family;
   accent: string;
   accentSoft: string;
@@ -60,7 +56,6 @@ const OPTIONS: SiteOption[] = [
     id: 'tower',
     num: 1,
     title: 'Compact tower',
-    tag: 'Maximises open space',
     family: 'vertical',
     accent: 'var(--modus-wc-color-primary, #0063A7)',
     accentSoft: 'var(--modus-wc-color-primary-light, #e8f4fd)',
@@ -71,7 +66,7 @@ const OPTIONS: SiteOption[] = [
       { label: 'Open space', value: '62%' },
     ],
     pros: [
-      'Smallest footprint of the six',
+      'Smallest footprint of the four',
       'Most visibility from the boulevard',
       'Frees the rest of the site for landscape',
     ],
@@ -81,7 +76,6 @@ const OPTIONS: SiteOption[] = [
     id: 'courtyard',
     num: 2,
     title: 'Courtyard cluster',
-    tag: 'Most human-scale',
     family: 'low-rise',
     accent: 'var(--modus-wc-color-status-success, #1e7e34)',
     accentSoft: 'var(--modus-wc-color-status-success-light, #e6f4ea)',
@@ -102,7 +96,6 @@ const OPTIONS: SiteOption[] = [
     id: 'linear',
     num: 3,
     title: 'Linear bar',
-    tag: 'Best site frontage',
     family: 'low-rise',
     accent: 'var(--modus-wc-color-status-info, #004f83)',
     accentSoft: 'var(--modus-wc-color-status-info-light, #e8f4fd)',
@@ -123,7 +116,6 @@ const OPTIONS: SiteOption[] = [
     id: 'reuse',
     num: 4,
     title: 'Reuse + new wing',
-    tag: 'Strongest identity',
     family: 'adaptive',
     accent: 'var(--modus-wc-color-status-warning, #856404)',
     accentSoft: 'var(--modus-wc-color-status-warning-light, #fff8e1)',
@@ -140,55 +132,6 @@ const OPTIONS: SiteOption[] = [
     ],
     tradeoff: 'Hidden structural condition risk; more coordination.',
   },
-  {
-    id: 'radial',
-    num: 5,
-    title: 'Radial hub',
-    tag: 'Best for collaboration',
-    family: 'low-rise',
-    accent: 'var(--modus-wc-color-secondary, #6A6E79)',
-    accentSoft: 'var(--modus-wc-color-secondary-light, #f3f0ff)',
-    metrics: [
-      { label: 'GFA', value: '11,200 m²' },
-      { label: 'Buildings', value: '1 hub + 4 wings' },
-      { label: 'Height', value: '2 storeys' },
-      { label: 'Walk time', value: '< 90s any-to-any' },
-    ],
-    pros: [
-      'Central hub becomes the social heart of the campus',
-      'All wings within 90 seconds walking time',
-      'Easy to add or replace a wing later',
-    ],
-    tradeoff: 'Awkward geometry on rectangular sites; harder to phase.',
-  },
-  {
-    id: 'mat',
-    num: 6,
-    title: 'Mat building',
-    tag: 'Best for ground-floor flow',
-    family: 'low-rise',
-    accent: 'var(--modus-wc-color-status-error, #b3261e)',
-    accentSoft: 'var(--modus-wc-color-status-error-light, #fce8e6)',
-    metrics: [
-      { label: 'GFA', value: '12,800 m²' },
-      { label: 'Footprint', value: '85% of site' },
-      { label: 'Height', value: '1 storey' },
-      { label: 'Light courts', value: '3 internal' },
-    ],
-    pros: [
-      'No corridors — every room opens onto a light court',
-      'Single storey eliminates elevators and stairs',
-      'Easy to subdivide for multi-tenant use',
-    ],
-    tradeoff: 'Eats the site — almost no exterior landscape.',
-  },
-];
-
-const FILTERS: { id: 'all' | Family; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'vertical', label: 'Vertical' },
-  { id: 'low-rise', label: 'Low-rise' },
-  { id: 'adaptive', label: 'Adaptive' },
 ];
 
 /* ── CAD-style site plan SVGs ───────────────────────────────────── */
@@ -530,16 +473,6 @@ function DetailModal({
               >
                 {option.title}
               </span>
-              <span
-                className="truncate"
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  margin: 0,
-                }}
-              >
-                {option.tag}
-              </span>
             </div>
           </div>
           <button
@@ -726,47 +659,34 @@ function DetailModal({
 
 function OptionCard({
   option,
-  selected,
-  compareMode,
-  onSelect,
   onOpen,
 }: {
   option: SiteOption;
-  selected: boolean;
-  compareMode: boolean;
-  onSelect: () => void;
   onOpen: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={compareMode ? onSelect : onOpen}
+      onClick={onOpen}
       className="flex flex-col text-left rounded-xl overflow-hidden"
       style={{
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        border: selected
-          ? `2px solid ${option.accent}`
-          : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: selected
-          ? `0 0 0 3px ${option.accentSoft}, 0 6px 18px rgba(0,0,0,0.08)`
-          : '0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
         cursor: 'pointer',
         transition:
           'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
       }}
       onMouseEnter={(e) => {
-        if (selected) return;
         e.currentTarget.style.transform = 'translateY(-2px)';
         e.currentTarget.style.boxShadow =
           '0 8px 20px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05)';
       }}
       onMouseLeave={(e) => {
-        if (selected) return;
         e.currentTarget.style.transform = 'translateY(0)';
         e.currentTarget.style.boxShadow =
           '0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)';
       }}
-      aria-pressed={selected}
       aria-label={`Option ${option.num}: ${option.title}`}
     >
       <div
@@ -813,24 +733,9 @@ function OptionCard({
           {option.num}
         </span>
 
-        {/* Selected check (when compare-mode on) */}
-        {selected && (
-          <span
-            className="absolute top-2 right-2 flex items-center justify-center rounded-full"
-            style={{
-              width: '20px',
-              height: '20px',
-              backgroundColor: option.accent,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
-            }}
-            aria-hidden="true"
-          >
-            <ModusWcIcon name="check" size="xs" decorative style={{ color: '#ffffff' }} />
-          </span>
-        )}
       </div>
 
-      <div className="flex flex-col gap-0.5 px-3 py-2">
+      <div className="flex flex-col px-3 py-2">
         <span
           className="font-semibold truncate"
           style={{
@@ -840,17 +745,6 @@ function OptionCard({
           }}
         >
           {option.num}. {option.title}
-        </span>
-        <span
-          className="truncate"
-          style={{
-            fontSize: '11.5px',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            lineHeight: 1.3,
-            margin: 0,
-          }}
-        >
-          {option.tag}
         </span>
       </div>
     </button>
@@ -922,31 +816,13 @@ function SuggestionPopup({
   onClose: () => void;
   onOpenDetail: (id: OptionId) => void;
 }) {
-  const [filter, setFilter] = useState<'all' | Family>('all');
-  const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [compareMode, setCompareMode] = useState(false);
-  const [comparedIds, setComparedIds] = useState<Set<OptionId>>(new Set());
-
-  const filtered = OPTIONS.filter((o) =>
-    filter === 'all' ? true : o.family === filter,
-  );
-
-  function toggleCompared(id: OptionId) {
-    setComparedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else if (next.size < 3) next.add(id);
-      return next;
-    });
-  }
-
   return (
     <div
       className="rounded-2xl p-[2px] relative"
       style={{
         background: TRIMBLE_RAINBOW,
         boxShadow: '0 20px 50px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.10)',
-        width: '920px',
+        width: '820px',
       }}
     >
       <div
@@ -976,19 +852,20 @@ function SuggestionPopup({
               <span
                 className="font-semibold truncate"
                 style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                  fontSize: 'var(--modus-wc-font-size-lg, 18px)',
                   color: 'var(--modus-wc-color-base-content, #101828)',
-                  lineHeight: 1.2,
+                  lineHeight: 1.25,
                 }}
               >
-                Six divergent site layouts
+                Four divergent site layouts
               </span>
               <span
                 className="truncate"
                 style={{
-                  fontSize: '11px',
+                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
                   color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
                   margin: 0,
+                  lineHeight: 1.35,
                 }}
               >
                 Pick the direction you want to develop — I&apos;ll detail it.
@@ -998,11 +875,6 @@ function SuggestionPopup({
 
           {/* Tool cluster */}
           <div className="flex items-center gap-1 shrink-0">
-            <ToolButton
-              icon={view === 'grid' ? 'list_view' : 'apps'}
-              label={view === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-              onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
-            />
             <ToolButton icon="refresh" label="Regenerate options" onClick={() => undefined} />
             <ToolButton icon="bookmark" label="Save this set" onClick={() => undefined} />
             <span
@@ -1018,137 +890,22 @@ function SuggestionPopup({
           </div>
         </div>
 
-        {/* Toolbar: filter chips + compare toggle */}
-        <div
-          className="flex items-center justify-between gap-2 px-4 py-2"
-          style={{
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          }}
-        >
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {FILTERS.map((f) => {
-              const active = filter === f.id;
-              const count =
-                f.id === 'all' ? OPTIONS.length : OPTIONS.filter((o) => o.family === f.id).length;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setFilter(f.id)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                  style={{
-                    backgroundColor: active
-                      ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
-                      : 'var(--modus-wc-color-base-page, #ffffff)',
-                    border: `1px solid ${
-                      active
-                        ? 'var(--modus-wc-color-primary, #0063A7)'
-                        : 'var(--modus-wc-color-base-200, #e0e1e9)'
-                    }`,
-                    cursor: 'pointer',
-                  }}
-                  aria-pressed={active}
-                >
-                  <span
-                    className="font-medium"
-                    style={{
-                      fontSize: '11.5px',
-                      color: active
-                        ? 'var(--modus-wc-color-primary, #0063A7)'
-                        : 'var(--modus-wc-color-base-content, #252a2e)',
-                    }}
-                  >
-                    {f.label}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      color: active
-                        ? 'var(--modus-wc-color-primary, #0063A7)'
-                        : 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                      fontFamily: 'ui-monospace, monospace',
-                    }}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCompareMode((m) => !m);
-              if (compareMode) setComparedIds(new Set());
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors"
-            style={{
-              backgroundColor: compareMode
-                ? 'var(--modus-wc-color-primary, #0063A7)'
-                : 'var(--modus-wc-color-base-page, #ffffff)',
-              border: `1px solid ${
-                compareMode
-                  ? 'var(--modus-wc-color-primary, #0063A7)'
-                  : 'var(--modus-wc-color-base-200, #e0e1e9)'
-              }`,
-              cursor: 'pointer',
-            }}
-            aria-pressed={compareMode}
-          >
-            <ModusWcIcon
-              name="compare_arrows"
-              size="xs"
-              decorative
-              style={{
-                color: compareMode
-                  ? '#ffffff'
-                  : 'var(--modus-wc-color-base-content, #252a2e)',
-              }}
-            />
-            <span
-              className="font-medium"
-              style={{
-                fontSize: '11.5px',
-                color: compareMode
-                  ? '#ffffff'
-                  : 'var(--modus-wc-color-base-content, #252a2e)',
-              }}
-            >
-              Compare {compareMode ? `(${comparedIds.size})` : ''}
-            </span>
-          </button>
-        </div>
-
         {/* Body — option grid (or list) */}
         <div
-          className={
-            view === 'grid'
-              ? 'grid grid-cols-3 gap-3 px-4 py-4'
-              : 'flex flex-col gap-2.5 px-4 py-4'
-          }
-          style={{ maxHeight: '600px', overflowY: 'auto' }}
+          className="grid grid-cols-2 gap-3 px-4 py-4"
+          style={{
+            maxHeight: '620px',
+            overflowY: 'auto',
+            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          }}
         >
-          {filtered.map((opt) => (
+          {OPTIONS.map((opt) => (
             <OptionCard
               key={opt.id}
               option={opt}
-              selected={comparedIds.has(opt.id)}
-              compareMode={compareMode}
-              onSelect={() => toggleCompared(opt.id)}
               onOpen={() => onOpenDetail(opt.id)}
             />
           ))}
-          {filtered.length === 0 && (
-            <div
-              className="col-span-3 flex flex-col items-center justify-center gap-1 py-8"
-              style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-            >
-              <ModusWcIcon name="alert_outline" size="md" decorative />
-              <span style={{ fontSize: '12px' }}>No options in this family.</span>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
@@ -1158,38 +915,15 @@ function SuggestionPopup({
         >
           <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={onClose}>
             <span className="flex items-center gap-1">
-              <ModusWcIcon name="reply" size="xs" decorative />
-              Send back to AI
+              <ModusWcIcon name="refresh" size="xs" decorative />
+              Recreate
             </span>
           </ModusWcButton>
           <div className="flex-1" />
-          <span
-            style={{
-              fontSize: '11px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              fontFamily: 'ui-monospace, monospace',
-            }}
-          >
-            {filtered.length} of {OPTIONS.length} shown
-          </span>
-          <ModusWcButton
-            size="sm"
-            color="primary"
-            disabled={compareMode && comparedIds.size < 2 ? true : undefined}
-            onButtonClick={() => {
-              if (compareMode && comparedIds.size >= 2) {
-                onClose();
-                return;
-              }
-              if (comparedIds.size === 1) {
-                onOpenDetail(Array.from(comparedIds)[0]);
-                return;
-              }
-            }}
-          >
+          <ModusWcButton size="sm" color="primary" onButtonClick={() => undefined}>
             <span className="flex items-center gap-1">
               <ModusWcIcon name="arrow_right" size="xs" decorative />
-              {compareMode ? 'Compare selected' : 'Pick a direction'}
+              Pick a direction
             </span>
           </ModusWcButton>
         </div>
