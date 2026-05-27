@@ -459,12 +459,13 @@ export default function Creative7() {
         </div>
       </div>
 
-      {/* Composer — prompt bar copy-pasted from Creative 3 */}
-      <div
-        className="px-3 pb-3"
-        style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
-      >
-        <PromptBar />
+        {/* Composer — prompt bar copy-pasted from Creative 3 */}
+        <div
+          className="px-3 pb-3"
+          style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
+        >
+          <PromptBar />
+        </div>
       </div>
     </div>
   );

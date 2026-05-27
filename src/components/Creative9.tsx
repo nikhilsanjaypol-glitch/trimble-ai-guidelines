@@ -114,21 +114,6 @@ const DECOR: DecorElement[] = [
   { id: 'shelf', label: 'Bookshelf',   icon: 'book'          },
 ];
 
-interface CameraView {
-  id: string;
-  label: string;
-  icon: string;
-  pos: [number, number, number];
-  target: [number, number, number];
-}
-
-const CAMERA_VIEWS: CameraView[] = [
-  { id: 'corner', label: 'Corner', icon: 'crop',         pos: [5.5,  3.6, 6.5], target: [0, 1.2, 0]   },
-  { id: 'front',  label: 'Front',  icon: 'view_grid',    pos: [0,    2.6, 7.0], target: [0, 1.4, -1]  },
-  { id: 'top',    label: 'Top',    icon: 'expand_more',  pos: [0,    11,  0.1], target: [0, 0,   -1]  },
-  { id: 'close',  label: 'Detail', icon: 'zoom_in',      pos: [2.5,  1.8, 1.0], target: [0, 1.0, -2.5]},
-];
-
 interface Atmosphere {
   id: string;
   label: string;
@@ -175,13 +160,11 @@ function InteriorViewport({
   selectedSwatches,
   lighting,
   activeDecor,
-  view,
   atmosphere,
 }: {
   selectedSwatches: string[];
   lighting: string;
   activeDecor: DecorElement['id'][];
-  view: string;
   atmosphere: string;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -502,38 +485,6 @@ function InteriorViewport({
     }
   }, [atmosphere]);
 
-  /* ── Camera view → 3D (smooth tween) ──────────────────────── */
-  useEffect(() => {
-    const r = refs.current;
-    if (!r.camera || !r.controls) return;
-    const v = CAMERA_VIEWS.find((c) => c.id === view);
-    if (!v) return;
-
-    const startPos = r.camera.position.clone();
-    const endPos = new THREE.Vector3(...v.pos);
-    const startTarget = r.controls.target.clone();
-    const endTarget = new THREE.Vector3(...v.target);
-
-    const duration = 550;
-    const startTime = performance.now();
-    let raf = 0;
-
-    function step() {
-      if (!r.camera || !r.controls) return;
-      const t = Math.min(1, (performance.now() - startTime) / duration);
-      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      r.camera.position.lerpVectors(startPos, endPos, eased);
-      r.controls.target.lerpVectors(startTarget, endTarget, eased);
-      r.controls.update();
-      if (t < 1) raf = requestAnimationFrame(step);
-    }
-    step();
-
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [view]);
-
   return (
     <div
       ref={mountRef}
@@ -815,54 +766,6 @@ function DecorToggles({
   );
 }
 
-/* ── Camera view selector ──────────────────────────────────────── */
-
-function CameraViewPicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-4 gap-2">
-      {CAMERA_VIEWS.map((v) => {
-        const sel = v.id === value;
-        return (
-          <button
-            key={v.id}
-            type="button"
-            onClick={() => onChange(v.id)}
-            aria-pressed={sel}
-            className="flex flex-col items-center gap-1 py-2 rounded-lg transition-colors"
-            style={{
-              backgroundColor: sel
-                ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
-                : 'var(--modus-wc-color-base-page, #fff)',
-              border: `1px solid ${
-                sel
-                  ? 'var(--modus-wc-color-primary, #0063A7)'
-                  : 'var(--modus-wc-color-base-200, #e0e1e9)'
-              }`,
-              color: sel
-                ? 'var(--modus-wc-color-primary, #0063A7)'
-                : 'var(--modus-wc-color-base-content, #364153)',
-            }}
-          >
-            <ModusWcIcon name={v.icon} size="sm" decorative style={{ color: 'inherit' }} />
-            <span
-              className="font-medium"
-              style={{ fontSize: '11px' }}
-            >
-              {v.label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /* ── Atmosphere picker (2×2 chip grid) ─────────────────────────── */
 
 function AtmospherePicker({
@@ -974,7 +877,7 @@ function ActionButton({
       ) : (
         icon
       )}
-      <span className="whitespace-nowrap">{flash ? 'Saved' : label}</span>
+      <span className="whitespace-nowrap">{flash ? 'Applied' : label}</span>
     </button>
   );
 }
@@ -984,7 +887,6 @@ const INITIAL = {
   swatches: ['charcoal', 'brick', 'walnut', 'cream', 'mustard'],
   lighting: 'daylight',
   decor: ['rug', 'lamp', 'shelf'] as DecorElement['id'][],
-  view: 'corner',
   atmosphere: 'crisp',
 };
 
@@ -994,7 +896,6 @@ export default function Creative9() {
   const [selectedSwatches, setSelectedSwatches] = useState<string[]>(INITIAL.swatches);
   const [lighting, setLighting] = useState<string>(INITIAL.lighting);
   const [activeDecor, setActiveDecor] = useState<DecorElement['id'][]>(INITIAL.decor);
-  const [view, setView] = useState<string>(INITIAL.view);
   const [atmosphere, setAtmosphere] = useState<string>(INITIAL.atmosphere);
   const [chat, setChat] = useState('');
   const [savedFlash, setSavedFlash] = useState(false);
@@ -1025,15 +926,12 @@ export default function Creative9() {
       .sort(() => Math.random() - 0.5)
       .slice(0, numDecor)
       .map((d) => d.id);
-    const randomView =
-      CAMERA_VIEWS[Math.floor(Math.random() * CAMERA_VIEWS.length)].id;
     const randomAtmosphere =
       ATMOSPHERES[Math.floor(Math.random() * ATMOSPHERES.length)].id;
 
     setLighting(randomLighting);
     setSelectedSwatches(shuffledSwatches);
     setActiveDecor(shuffledDecor);
-    setView(randomView);
     setAtmosphere(randomAtmosphere);
   }
 
@@ -1041,7 +939,6 @@ export default function Creative9() {
     setSelectedSwatches(INITIAL.swatches);
     setLighting(INITIAL.lighting);
     setActiveDecor(INITIAL.decor);
-    setView(INITIAL.view);
     setAtmosphere(INITIAL.atmosphere);
   }
 
@@ -1075,7 +972,6 @@ export default function Creative9() {
             selectedSwatches={selectedSwatches}
             lighting={lighting}
             activeDecor={activeDecor}
-            view={view}
             atmosphere={atmosphere}
           />
 
@@ -1157,13 +1053,7 @@ export default function Creative9() {
             <DecorToggles active={activeDecor} onToggle={toggleDecor} />
           </div>
 
-          {/* Camera view */}
-          <div className="flex flex-col gap-1.5">
-            <SectionLabel icon="visibility_on" label="Camera view" />
-            <CameraViewPicker value={view} onChange={setView} />
-          </div>
-
-          {/* Atmosphere (NEW) — wires into scene.fog in the 3D viewport */}
+          {/* Atmosphere — wires into scene.fog in the 3D viewport */}
           <div className="flex flex-col gap-1.5">
             <SectionLabel icon="moon" label="Atmosphere" />
             <AtmospherePicker value={atmosphere} onChange={setAtmosphere} />
