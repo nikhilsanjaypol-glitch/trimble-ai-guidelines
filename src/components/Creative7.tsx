@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ModusWcButton, ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
@@ -36,18 +36,6 @@ const PLAN_STEPS: PlanStep[] = [
   { id: 'compare', label: 'Compare wall · re-grade · segmental block' },
   { id: 'cost', label: 'Run cost & schedule delta (Denver unit rates)' },
   { id: 'recommend', label: 'Recommend the best fit with trade-offs called out' },
-];
-
-interface AssumptionOption {
-  value: string;
-  hint: string;
-}
-
-const ASSUMPTION_LABEL = 'Cost vs. schedule priority';
-const ASSUMPTION_OPTIONS: AssumptionOption[] = [
-  { value: 'Cost-first', hint: 'Allow up to a 2-week slip to save money' },
-  { value: 'Schedule-first', hint: 'Hold the date, accept higher cost' },
-  { value: 'Balanced', hint: 'Weight cost and schedule equally' },
 ];
 
 /* ── Trimble AI logo (mini, used in chat avatar) ───────────────── */
@@ -91,28 +79,138 @@ function TrimbleAiLogo({ size = 22 }: { size?: number }) {
 
 /* ── The plan card (AI's structured response inside the chat) ──── */
 
+interface PlanSnapshot {
+  paraphrase: string;
+  steps: PlanStep[];
+}
+
+/* Solid-input shared style — clearly visible chrome so edit mode is obvious. */
+const EDIT_INPUT_BASE = {
+  width: '100%',
+  backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+  border: '1px solid var(--modus-wc-color-base-200, #cbd2d9)',
+  borderRadius: '6px',
+  padding: '8px 10px',
+  color: 'var(--modus-wc-color-base-content, #171c1e)',
+  fontFamily: 'inherit',
+  outline: 'none',
+  transition: 'border-color 120ms ease, box-shadow 120ms ease',
+} as const;
+
 function PlanCard() {
+  const [editing, setEditing] = useState(false);
   const [paraphrase, setParaphrase] = useState(PARAPHRASE_DEFAULT);
-  const [editingParaphrase, setEditingParaphrase] = useState(false);
-  const [paraphraseDraft, setParaphraseDraft] = useState(PARAPHRASE_DEFAULT);
+  const [steps, setSteps] = useState<PlanStep[]>(PLAN_STEPS);
 
-  const [assumption] = useState<string>(ASSUMPTION_OPTIONS[0].value);
+  const snapshotRef = useRef<PlanSnapshot | null>(null);
+  const paraRef = useRef<HTMLTextAreaElement>(null);
+  const stepRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const planReady = useMemo(
-    () => paraphrase.trim().length > 0 && !editingParaphrase,
-    [paraphrase, editingParaphrase],
-  );
+  const planReady = useMemo(() => !editing, [editing]);
 
-  function saveParaphrase() {
-    const next = paraphraseDraft.trim();
-    if (next.length > 0) setParaphrase(next);
-    setEditingParaphrase(false);
+  function startEdit(focusTarget?: 'paraphrase' | 'first-step' | string) {
+    snapshotRef.current = {
+      paraphrase,
+      steps: steps.map((s) => ({ ...s })),
+    };
+    setEditing(true);
+    requestAnimationFrame(() => {
+      if (focusTarget === 'paraphrase' || !focusTarget) {
+        paraRef.current?.focus();
+        const len = paraRef.current?.value.length ?? 0;
+        paraRef.current?.setSelectionRange(len, len);
+      } else if (focusTarget === 'first-step' && steps[0]) {
+        stepRefs.current[steps[0].id]?.focus();
+      } else {
+        /* Treat as a step id */
+        stepRefs.current[focusTarget]?.focus();
+      }
+    });
   }
 
-  function cancelParaphrase() {
-    setParaphraseDraft(paraphrase);
-    setEditingParaphrase(false);
+  function saveEdit() {
+    const cleanedSteps = steps
+      .map((s) => ({ ...s, label: s.label.trim() }))
+      .filter((s) => s.label.length > 0);
+    setSteps(cleanedSteps.length > 0 ? cleanedSteps : PLAN_STEPS);
+    setParaphrase(paraphrase.trim().length > 0 ? paraphrase.trim() : PARAPHRASE_DEFAULT);
+    snapshotRef.current = null;
+    setEditing(false);
   }
+
+  function cancelEdit() {
+    if (snapshotRef.current) {
+      setParaphrase(snapshotRef.current.paraphrase);
+      setSteps(snapshotRef.current.steps);
+    }
+    setEditing(false);
+  }
+
+  function updateStep(id: string, label: string) {
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, label } : s)));
+  }
+
+  function addStepAfter(id: string | null) {
+    let newId = '';
+    setSteps((prev) => {
+      newId = `step-${Date.now()}`;
+      const idx = id ? prev.findIndex((s) => s.id === id) : prev.length - 1;
+      const insertAt = idx >= 0 ? idx + 1 : prev.length;
+      const next = [...prev];
+      next.splice(insertAt, 0, { id: newId, label: '' });
+      return next;
+    });
+    requestAnimationFrame(() => {
+      if (newId) stepRefs.current[newId]?.focus();
+    });
+  }
+
+  function removeStep(id: string) {
+    setSteps((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  function handleStepKeyDown(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    step: PlanStep,
+    idx: number,
+  ) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addStepAfter(step.id);
+    } else if (e.key === 'Backspace' && step.label === '' && steps.length > 1) {
+      e.preventDefault();
+      const prevStep = steps[idx - 1];
+      removeStep(step.id);
+      if (prevStep) {
+        requestAnimationFrame(() => {
+          const el = stepRefs.current[prevStep.id];
+          el?.focus();
+          const len = el?.value.length ?? 0;
+          el?.setSelectionRange(len, len);
+        });
+      }
+    } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  function handleGlobalEditKey(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!editing) return;
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  /* Auto-grow the paraphrase textarea to fit content. */
+  const paraRows = Math.max(2, paraphrase.split('\n').length, Math.ceil(paraphrase.length / 60));
 
   return (
     <div
@@ -125,7 +223,13 @@ function PlanCard() {
     >
       <div
         className="rounded-[14px] flex flex-col"
-        style={{ backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)' }}
+        style={{
+          backgroundColor: editing
+            ? 'var(--modus-wc-color-base-100, #f6f8fa)'
+            : 'var(--modus-wc-color-base-page, #ffffff)',
+          transition: 'background-color 200ms ease',
+        }}
+        onKeyDown={handleGlobalEditKey}
       >
         {/* Header strip */}
         <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
@@ -159,10 +263,25 @@ function PlanCard() {
               Here&apos;s my plan
             </span>
           </div>
+
+          {editing && (
+            <span
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold"
+              style={{
+                fontSize: '10px',
+                backgroundColor: 'var(--modus-wc-color-primary-light, #e8f4fd)',
+                color: 'var(--modus-wc-color-primary, #0063A7)',
+                letterSpacing: '0.3px',
+              }}
+            >
+              <ModusWcIcon name="pencil" size="xs" decorative />
+              EDITING
+            </span>
+          )}
         </div>
 
         {/* Paraphrase */}
-        <div className="flex flex-col gap-1 px-4 pb-3">
+        <div className="flex flex-col gap-1 px-4 pb-3 w-full">
           <span
             className="font-semibold"
             style={{
@@ -173,137 +292,355 @@ function PlanCard() {
           >
             HERE&apos;S WHAT I&apos;LL DO
           </span>
-
-          {editingParaphrase ? (
-            <div className="flex flex-col gap-2">
-              <ModusWcTextInput
-                value={paraphraseDraft}
-                bordered={false}
-                onInputChange={(e: CustomEvent) =>
-                  setParaphraseDraft(e.detail?.target?.value || '')
-                }
-              />
-              <div className="flex justify-end gap-2">
-                <ModusWcButton
-                  size="sm"
-                  color="tertiary"
-                  variant="outlined"
-                  onButtonClick={cancelParaphrase}
-                >
-                  Cancel
-                </ModusWcButton>
-                <ModusWcButton size="sm" color="primary" onButtonClick={saveParaphrase}>
-                  Save
-                </ModusWcButton>
-              </div>
-            </div>
-          ) : (
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-                lineHeight: 1.5,
+          {editing ? (
+            <textarea
+              ref={paraRef}
+              value={paraphrase}
+              rows={paraRows}
+              spellCheck
+              onChange={(e) => setParaphrase(e.target.value)}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor =
+                  'var(--modus-wc-color-primary, #0063A7)';
+                e.currentTarget.style.boxShadow =
+                  '0 0 0 3px var(--modus-wc-color-primary-light, #e8f4fd)';
               }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor =
+                  'var(--modus-wc-color-base-200, #cbd2d9)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              style={{
+                ...EDIT_INPUT_BASE,
+                resize: 'vertical',
+                minWidth: 0,
+                maxWidth: '100%',
+                minHeight: '60px',
+                maxHeight: '160px',
+                overflowY: 'auto',
+                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                lineHeight: 1.5,
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => startEdit('paraphrase')}
+              className="text-left transition-colors hover:bg-[var(--modus-wc-color-base-100)]"
+              style={{
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderRadius: '6px',
+                padding: '2px 6px',
+                margin: '-2px -6px',
+                cursor: 'text',
+                width: 'calc(100% + 12px)',
+                minWidth: 0,
+              }}
+              aria-label="Edit paraphrase"
             >
-              {paraphrase}
-            </span>
+              <span
+                title={paraphrase}
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                  lineHeight: 1.5,
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {paraphrase}
+              </span>
+            </button>
           )}
         </div>
 
-        {/* Plan checklist */}
-        <div className="flex flex-col gap-1.5 px-4 pb-3">
-          <span
-            className="font-semibold"
+        {/* Plan checklist — visually distinct panel, with inline step editing */}
+        <div className="px-4 pb-3 w-full">
+          <div
+            className="flex flex-col gap-2 rounded-lg"
             style={{
-              fontSize: '11px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              letterSpacing: '0.4px',
+              backgroundColor: editing
+                ? 'var(--modus-wc-color-base-page, #ffffff)'
+                : 'var(--modus-wc-color-base-100, #f1f1f6)',
+              border: editing
+                ? '1px solid var(--modus-wc-color-base-200, #cbd2d9)'
+                : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+              padding: '12px 14px',
+              transition: 'background-color 150ms ease, border-color 150ms ease',
             }}
           >
-            PLAN · {PLAN_STEPS.length} STEPS
-          </span>
-          <ol className="flex flex-col gap-1 m-0 p-0 list-none">
-            {PLAN_STEPS.map((step, i) => (
-              <li key={step.id} className="flex items-start gap-2.5">
-                <span
-                  className="flex items-center justify-center rounded-full shrink-0 font-semibold"
+            <div className="flex items-center justify-between">
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  letterSpacing: '0.4px',
+                }}
+              >
+                PLAN · {steps.length} STEPS
+              </span>
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={() => startEdit('first-step')}
+                  title="Edit plan"
+                  aria-label="Edit plan"
+                  className="flex items-center justify-center transition-colors hover:bg-[var(--modus-wc-color-base-page)]"
                   style={{
-                    width: '18px',
-                    height: '18px',
-                    fontSize: '10px',
-                    border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-                    backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-                    marginTop: '2px',
+                    width: '26px',
+                    height: '26px',
+                    background: 'var(--modus-wc-color-base-page, #ffffff)',
+                    border: '1px solid var(--modus-wc-color-base-200, #cbd2d9)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    padding: 0,
                   }}
                 >
-                  {i + 1}
-                </span>
-                <span
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                    color: 'var(--modus-wc-color-base-content, #171c1e)',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {step.label}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
+                  <ModusWcIcon
+                    name="pencil"
+                    size="xs"
+                    decorative
+                    style={{
+                      color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                    }}
+                  />
+                </button>
+              )}
+            </div>
 
-        {/* Inline assumption — plain text */}
-        <div className="px-4 pb-3">
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-sm, 13.5px)',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-              lineHeight: 1.5,
-            }}
-          >
-            <span
-              className="font-semibold"
-              style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}
-            >
-              One assumption:
-            </span>{' '}
-            {ASSUMPTION_LABEL} · <span className="font-semibold">{assumption}</span>
-          </span>
+            <ol className="flex flex-col gap-1.5 m-0 p-0 list-none w-full">
+              {steps.map((step, i) => (
+                <li
+                  key={step.id}
+                  className="group flex items-start gap-2.5 min-w-0 w-full"
+                  style={{ position: 'relative' }}
+                >
+                  <span
+                    className="flex items-center justify-center rounded-full shrink-0 font-semibold"
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      fontSize: '11px',
+                      backgroundColor: 'var(--modus-wc-color-primary, #0063A7)',
+                      color: 'var(--modus-wc-color-primary-content, #ffffff)',
+                      marginTop: '1px',
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+
+                  {editing ? (
+                    <input
+                      ref={(el) => {
+                        stepRefs.current[step.id] = el;
+                      }}
+                      type="text"
+                      value={step.label}
+                      placeholder="Describe this step…"
+                      onChange={(e) => updateStep(step.id, e.target.value)}
+                      onKeyDown={(e) => handleStepKeyDown(e, step, i)}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor =
+                          'var(--modus-wc-color-primary, #0063A7)';
+                        e.currentTarget.style.boxShadow =
+                          '0 0 0 3px var(--modus-wc-color-primary-light, #e8f4fd)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor =
+                          'var(--modus-wc-color-base-200, #cbd2d9)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      style={{
+                        ...EDIT_INPUT_BASE,
+                        padding: '6px 10px',
+                        fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                        lineHeight: 1.4,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(step.id)}
+                      className="text-left transition-colors hover:bg-[var(--modus-wc-color-base-page)] min-w-0"
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        borderRadius: '6px',
+                        padding: '2px 6px',
+                        margin: '-2px -6px',
+                        cursor: 'text',
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                      aria-label={`Edit step ${i + 1}`}
+                    >
+                      <span
+                        title={step.label}
+                        style={{
+                          fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                          color: 'var(--modus-wc-color-base-content, #171c1e)',
+                          lineHeight: 1.45,
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          wordBreak: 'break-word',
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {step.label}
+                      </span>
+                    </button>
+                  )}
+
+                  {editing && steps.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeStep(step.id)}
+                      title="Remove step"
+                      aria-label={`Remove step ${i + 1}`}
+                      className="flex items-center justify-center rounded shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        cursor: 'pointer',
+                        marginTop: '0px',
+                      }}
+                    >
+                      <ModusWcIcon
+                        name="close"
+                        size="xs"
+                        decorative
+                        style={{
+                          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                        }}
+                      />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            {editing && (
+              <button
+                type="button"
+                onClick={() => addStepAfter(steps[steps.length - 1]?.id ?? null)}
+                className="flex items-center gap-1.5 self-start rounded transition-colors hover:bg-[var(--modus-wc-color-base-page)]"
+                style={{
+                  background: 'transparent',
+                  border: '1px dashed var(--modus-wc-color-primary, #0063A7)',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  color: 'var(--modus-wc-color-primary, #0063A7)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  marginTop: '4px',
+                }}
+              >
+                <ModusWcIcon name="add" size="xs" decorative />
+                Add step
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Footer actions */}
         <div
-          className="flex items-center justify-end gap-2 px-4 py-2.5"
+          className="flex items-center justify-between gap-2 px-4 py-2.5"
           style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
         >
-          <ModusWcButton
-            size="sm"
-            color="tertiary"
-            variant="outlined"
-            onButtonClick={() => {
-              setParaphraseDraft(paraphrase);
-              setEditingParaphrase(true);
-            }}
-          >
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="pencil" size="xs" decorative />
-              Edit plan
-            </span>
-          </ModusWcButton>
-          <ModusWcButton
-            size="sm"
-            color="primary"
-            disabled={!planReady || undefined}
-            onButtonClick={() => {
-              /* Hand-off to the run state would happen here. */
-            }}
-          >
-            <span className="flex items-center gap-1">
-              Run
-              <ModusWcIcon name="arrow_right" size="xs" decorative />
-            </span>
-          </ModusWcButton>
+          {editing ? (
+            <>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                }}
+              >
+                <kbd
+                  style={{
+                    fontFamily: 'inherit',
+                    fontSize: '10px',
+                    padding: '1px 5px',
+                    borderRadius: '3px',
+                    border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                    backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+                  }}
+                >
+                  ⌘ + Enter
+                </kbd>{' '}
+                to save ·{' '}
+                <kbd
+                  style={{
+                    fontFamily: 'inherit',
+                    fontSize: '10px',
+                    padding: '1px 5px',
+                    borderRadius: '3px',
+                    border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                    backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+                  }}
+                >
+                  Esc
+                </kbd>{' '}
+                to cancel
+              </span>
+              <div className="flex items-center gap-2">
+                <ModusWcButton
+                  size="sm"
+                  color="tertiary"
+                  variant="outlined"
+                  onButtonClick={cancelEdit}
+                >
+                  Cancel
+                </ModusWcButton>
+                <ModusWcButton size="sm" color="primary" onButtonClick={saveEdit}>
+                  <span className="flex items-center gap-1">
+                    <ModusWcIcon name="check" size="xs" decorative />
+                    Save plan
+                  </span>
+                </ModusWcButton>
+              </div>
+            </>
+          ) : (
+            <>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                }}
+              >
+                Click any line to edit the plan
+              </span>
+              <ModusWcButton
+                size="sm"
+                color="primary"
+                disabled={!planReady || undefined}
+                onButtonClick={() => {
+                  /* Hand-off to the run state would happen here. */
+                }}
+              >
+                <span className="flex items-center gap-1">
+                  Run
+                  <ModusWcIcon name="arrow_right" size="xs" decorative />
+                </span>
+              </ModusWcButton>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -415,7 +752,7 @@ export default function Creative7() {
 
         {/* Chat thread — centered horizontally + vertically */}
         <div
-          className="flex-1 flex flex-col justify-center items-center min-h-0 overflow-y-auto"
+          className="creative7-chat-scroll flex-1 flex flex-col justify-center items-center min-h-0 overflow-y-auto"
           style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '64px', paddingBottom: '24px' }}
         >
           <div className="flex flex-col gap-6" style={{ width: '100%', maxWidth: '464px' }}>
