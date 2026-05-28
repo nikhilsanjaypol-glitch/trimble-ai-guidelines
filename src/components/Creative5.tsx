@@ -10,16 +10,19 @@ import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-reac
  * Component: AI-SUGGESTION POPUP → DETAIL
  *   The popup card contains:
  *     · Header with logo / instructional strip / close
- *     · A 2×2 grid of four divergent material/finish directions
- *       for the same hospitality interior, each rendered as a
- *       moodboard of 6 swatches with material textures
- *       (wood grain, stone veining, velvet weave, brass gradient,
- *       terrazzo chips, cork dots, glass highlights)
+ *     · A 2×2 grid of four divergent bridge concepts spanning the
+ *       same river — each rendered as a side ELEVATION (not a
+ *       plan) so the structural form reads at a glance:
+ *         01 · Steel box girder       — low, multi-span
+ *         02 · Steel tied arch        — single-span landmark
+ *         03 · Cable-stayed (1 pylon) — long-span, asymmetric
+ *         04 · Steel Warren truss     — triangulated, robust
  *     · Footer with Previous-iteration / Recreate / Pick CTAs
  *
- *   Clicking any board opens a detail modal with a larger plan,
- *   key metrics, pros / trade-offs, and "Use this direction" —
- *   i.e. clicking a card opens something relevant.
+ *   Clicking any concept opens a detail modal with a larger
+ *   elevation, key metrics, pros / trade-offs, and a "Use this
+ *   direction" CTA — i.e. clicking a card opens something
+ *   relevant.
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
@@ -27,29 +30,11 @@ const TRIMBLE_RAINBOW =
 
 /* ── Data model ─────────────────────────────────────────────────── */
 
-type OptionId = 'coastal' | 'heritage' | 'industrial' | 'biophilic';
-
-type TextureKind =
-  | 'plain'
-  | 'wood'
-  | 'stone'
-  | 'concrete'
-  | 'velvet'
-  | 'weave'
-  | 'terrazzo'
-  | 'cork'
-  | 'metal'
-  | 'glass';
+type OptionId = 'beam' | 'arch' | 'cableStay' | 'truss';
 
 interface Metric {
   label: string;
   value: string;
-}
-
-interface MaterialSwatch {
-  name: string;
-  hex: string;
-  texture: TextureKind;
 }
 
 interface SiteOption {
@@ -59,8 +44,6 @@ interface SiteOption {
   subtitle: string;
   accent: string;
   accentSoft: string;
-  // Exactly 6 swatches: [hero, side-top, side-bottom, bottom-1, bottom-2, bottom-3]
-  swatches: MaterialSwatch[];
   metrics: Metric[];
   pros: string[];
   tradeoff: string;
@@ -68,238 +51,117 @@ interface SiteOption {
 
 const OPTIONS: SiteOption[] = [
   {
-    id: 'coastal',
+    id: 'beam',
     num: 1,
-    title: 'Coastal calm',
-    subtitle: 'Soft sand · sea glass · weathered oak',
-    accent: '#5D8CAF',
-    accentSoft: 'rgba(93, 140, 175, 0.12)',
-    swatches: [
-      { name: 'Linen sand',     hex: '#E7DCC9', texture: 'concrete' },
-      { name: 'Sea glass',      hex: '#A8C0CC', texture: 'glass' },
-      { name: 'Driftwood oak',  hex: '#C2A57B', texture: 'wood' },
-      { name: 'Deep navy',      hex: '#2D4A5E', texture: 'plain' },
-      { name: 'Salt white',     hex: '#FBFAF5', texture: 'plain' },
-      { name: 'Limestone',      hex: '#D9D5CB', texture: 'stone' },
-    ],
+    title: 'Steel box girder',
+    subtitle: '3-span continuous · low profile',
+    accent: 'var(--modus-wc-color-primary, #0063A7)',
+    accentSoft: 'rgba(0, 99, 167, 0.14)',
     metrics: [
-      { label: 'Warmth', value: 'Cool' },
-      { label: 'Mood',   value: 'Calm' },
-      { label: 'Maint.', value: 'Low' },
-      { label: 'Budget', value: '$$' },
+      { label: 'Main span', value: '120 m' },
+      { label: 'Spans',     value: '3' },
+      { label: 'Deck H',    value: '8 m' },
+      { label: 'Est. cost', value: '$48M' },
     ],
     pros: [
-      'Maximises perceived light and openness',
-      'Soft, natural materials feel restorative',
-      'Forgiving palette — easy to retouch over time',
+      'Lowest unit cost of the four concepts',
+      'Standard fabrication — no specialist contractor needed',
+      'Shortest construction timeline (~18 months)',
     ],
-    tradeoff: 'Risks reading as bland in winter light or under heavy shade.',
+    tradeoff: 'Two in-river piers — most aquatic disruption.',
   },
   {
-    id: 'heritage',
+    id: 'arch',
     num: 2,
-    title: 'Heritage warmth',
-    subtitle: 'Burgundy velvet · brass · walnut',
-    accent: '#6A1F2F',
-    accentSoft: 'rgba(106, 31, 47, 0.12)',
-    swatches: [
-      { name: 'Burgundy velvet', hex: '#6A1F2F', texture: 'velvet' },
-      { name: 'Brushed brass',   hex: '#B89763', texture: 'metal' },
-      { name: 'Walnut',          hex: '#4A2F1F', texture: 'wood' },
-      { name: 'Ivory marble',    hex: '#F4EDDC', texture: 'stone' },
-      { name: 'Emerald',         hex: '#1F4A3A', texture: 'velvet' },
-      { name: 'Cognac leather',  hex: '#8B3A26', texture: 'weave' },
-    ],
+    title: 'Steel tied arch',
+    subtitle: 'Single span · landmark profile',
+    accent: 'var(--modus-wc-color-status-success, #1e7e34)',
+    accentSoft: 'rgba(30, 126, 52, 0.14)',
     metrics: [
-      { label: 'Warmth', value: 'Warm' },
-      { label: 'Mood',   value: 'Intimate' },
-      { label: 'Maint.', value: 'High' },
-      { label: 'Budget', value: '$$$' },
+      { label: 'Main span', value: '300 m' },
+      { label: 'Arch rise', value: '60 m' },
+      { label: 'Hangers',   value: '14' },
+      { label: 'Est. cost', value: '$72M' },
     ],
     pros: [
-      'Strongest sense of occasion of the four',
-      'Pairs beautifully with low, warm lighting',
-      'Distinctive — hard to confuse with a competitor',
+      'No in-river piers — protects fish passage',
+      'Iconic single-span profile — a regional landmark',
+      'Lighter steel use than an equivalent truss',
     ],
-    tradeoff: 'Darker overall; needs careful lighting and feels heavy in raw daylight.',
+    tradeoff: 'Highest upfront cost; sensitive to wind loads.',
   },
   {
-    id: 'industrial',
+    id: 'cableStay',
     num: 3,
-    title: 'Industrial edge',
-    subtitle: 'Concrete · blackened steel · copper',
-    accent: '#383838',
-    accentSoft: 'rgba(56, 56, 56, 0.10)',
-    swatches: [
-      { name: 'Polished concrete', hex: '#6E6E6E', texture: 'concrete' },
-      { name: 'Blackened steel',   hex: '#1A1A1C', texture: 'metal' },
-      { name: 'Weathered oak',     hex: '#6B5340', texture: 'wood' },
-      { name: 'Burnt copper',      hex: '#B26B3F', texture: 'metal' },
-      { name: 'Frosted glass',     hex: '#C8CCCF', texture: 'glass' },
-      { name: 'Charcoal felt',     hex: '#3A3A3D', texture: 'velvet' },
-    ],
+    title: 'Cable-stayed (single pylon)',
+    subtitle: 'Asymmetric · 130 m pylon',
+    accent: 'var(--modus-wc-color-status-info, #004f83)',
+    accentSoft: 'rgba(0, 79, 131, 0.14)',
     metrics: [
-      { label: 'Warmth', value: 'Cool' },
-      { label: 'Mood',   value: 'Bold' },
-      { label: 'Maint.', value: 'Low' },
-      { label: 'Budget', value: '$$' },
+      { label: 'Main span', value: '380 m' },
+      { label: 'Pylon H',   value: '130 m' },
+      { label: 'Cables',    value: '20 stays' },
+      { label: 'Est. cost', value: '$96M' },
     ],
     pros: [
-      'Most contemporary read — photographs well',
-      'Hides wear; very forgiving in high-traffic zones',
-      'Lets art and product imagery dominate the room',
+      'Longest clear span of the four concepts',
+      'Strong visual identity from kilometres away',
+      'Most efficient deck weight per metre',
     ],
-    tradeoff: 'Can feel cold or generic in large volumes without warm accents.',
+    tradeoff: 'Most expensive; longest design + construction lead time.',
   },
   {
-    id: 'biophilic',
+    id: 'truss',
     num: 4,
-    title: 'Biophilic lush',
-    subtitle: 'Forest green · terracotta · cork',
-    accent: '#2E5840',
-    accentSoft: 'rgba(46, 88, 64, 0.12)',
-    swatches: [
-      { name: 'Forest velvet', hex: '#2E5840', texture: 'velvet' },
-      { name: 'Terracotta',    hex: '#C2613B', texture: 'stone' },
-      { name: 'Cork',          hex: '#B89D7A', texture: 'cork' },
-      { name: 'Blush plaster', hex: '#E8C2A5', texture: 'plain' },
-      { name: 'Terrazzo',      hex: '#D4C5A8', texture: 'terrazzo' },
-      { name: 'Brushed brass', hex: '#B89B5F', texture: 'metal' },
-    ],
+    title: 'Steel Warren truss',
+    subtitle: 'Through-truss · two in-river piers',
+    accent: 'var(--modus-wc-color-status-warning, #856404)',
+    accentSoft: 'rgba(133, 100, 4, 0.14)',
     metrics: [
-      { label: 'Warmth', value: 'Warm' },
-      { label: 'Mood',   value: 'Vital' },
-      { label: 'Maint.', value: 'Med.' },
-      { label: 'Budget', value: '$$' },
+      { label: 'Main span', value: '140 m' },
+      { label: 'Spans',     value: '3' },
+      { label: 'Truss H',   value: '32 m' },
+      { label: 'Est. cost', value: '$58M' },
     ],
     pros: [
-      'Most energising of the four',
-      'Strong sustainability + biophilia story',
-      'Palette photographs differently in every light',
+      'Highest stiffness — best for rail or mixed loads',
+      'All-bolted shop fabrication — fast erection',
+      'Material-honest, industrial visual character',
     ],
-    tradeoff: 'High chroma — small spaces can feel busy if mis-edited.',
+    tradeoff: 'Bulky superstructure obstructs upstream sightlines.',
   },
 ];
 
-/* ── Material-board SVGs (colour swatches with textures) ────────── */
+/* ── CAD-style bridge elevation SVGs ────────────────────────────── */
 
 const PAPER = '#ffffff';
 const GRID_MAJOR = '#dfe2e8';
 const INK = '#1d232b';
 const INK_LIGHT = '#5a6270';
-const BOARD_BG = '#F6F2E9';
+const DIM = '#0063a7';
+const HATCH = '#2f3a47';
+const BANK = '#d8d2c0';
 
-function MaterialDefs({ uid }: { uid: string }) {
+function ScaleBar({ x, y, label = '100 m' }: { x: number; y: number; label?: string }) {
   return (
-    <defs>
-      <pattern id={`tex-wood-${uid}`} width={3} height={9} patternUnits="userSpaceOnUse">
-        <line x1={0} y1={3} x2={3} y2={3.3} stroke="rgba(0,0,0,0.24)" strokeWidth={0.45} />
-        <line x1={0} y1={6} x2={3} y2={5.8} stroke="rgba(0,0,0,0.16)" strokeWidth={0.32} />
-        <line x1={0} y1={8.5} x2={3} y2={8.7} stroke="rgba(255,255,255,0.08)" strokeWidth={0.3} />
-      </pattern>
-      <pattern id={`tex-stone-${uid}`} width={22} height={22} patternUnits="userSpaceOnUse">
-        <path d="M 0 7 Q 11 4 22 8" fill="none" stroke="rgba(255,255,255,0.26)" strokeWidth={0.45} />
-        <path d="M 0 15 Q 11 17 22 13" fill="none" stroke="rgba(0,0,0,0.16)" strokeWidth={0.45} />
-        <path d="M 5 0 Q 7 11 4 22" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={0.3} />
-      </pattern>
-      <pattern id={`tex-concrete-${uid}`} width={5} height={5} patternUnits="userSpaceOnUse">
-        <circle cx={0.6} cy={0.6} r={0.28} fill="rgba(0,0,0,0.20)" />
-        <circle cx={3.2} cy={3.4} r={0.24} fill="rgba(0,0,0,0.14)" />
-        <circle cx={1.6} cy={3.8} r={0.22} fill="rgba(255,255,255,0.18)" />
-        <circle cx={4.2} cy={1.2} r={0.2}  fill="rgba(0,0,0,0.10)" />
-      </pattern>
-      <pattern id={`tex-velvet-${uid}`} width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(22)">
-        <line x1={0} y1={0} x2={0} y2={4} stroke="rgba(255,255,255,0.07)" strokeWidth={0.55} />
-        <line x1={2} y1={0} x2={2} y2={4} stroke="rgba(0,0,0,0.22)" strokeWidth={0.4} />
-      </pattern>
-      <pattern id={`tex-weave-${uid}`} width={3} height={3} patternUnits="userSpaceOnUse">
-        <line x1={0} y1={0} x2={3} y2={3} stroke="rgba(0,0,0,0.18)" strokeWidth={0.4} />
-        <line x1={0} y1={3} x2={3} y2={0} stroke="rgba(255,255,255,0.12)" strokeWidth={0.35} />
-      </pattern>
-      <pattern id={`tex-terrazzo-${uid}`} width={16} height={16} patternUnits="userSpaceOnUse">
-        <polygon points="2,2 5,1 6,4 3,5" fill="rgba(0,0,0,0.24)" />
-        <polygon points="9,5 12,4 13,7 10,8" fill="rgba(255,255,255,0.45)" />
-        <polygon points="3,9 6,8 7,11 4,12" fill="rgba(40,80,160,0.32)" />
-        <polygon points="11,11 14,10 14,14 11,14" fill="rgba(180,100,40,0.32)" />
-        <polygon points="1,12 3,11 3,14 1,14" fill="rgba(255,255,255,0.3)" />
-      </pattern>
-      <pattern id={`tex-cork-${uid}`} width={7} height={7} patternUnits="userSpaceOnUse">
-        <circle cx={2} cy={2} r={0.75} fill="rgba(0,0,0,0.30)" />
-        <circle cx={5} cy={4.5} r={0.55} fill="rgba(0,0,0,0.20)" />
-        <circle cx={1.2} cy={5.5} r={0.45} fill="rgba(0,0,0,0.24)" />
-        <circle cx={6} cy={1.5} r={0.32} fill="rgba(0,0,0,0.18)" />
-        <circle cx={3.5} cy={3.5} r={0.25} fill="rgba(255,255,255,0.14)" />
-      </pattern>
-      <linearGradient id={`tex-metal-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%"   stopColor="rgba(255,255,255,0.48)" />
-        <stop offset="35%"  stopColor="rgba(255,255,255,0)" />
-        <stop offset="70%"  stopColor="rgba(0,0,0,0.05)" />
-        <stop offset="100%" stopColor="rgba(0,0,0,0.34)" />
-      </linearGradient>
-      <linearGradient id={`tex-glass-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%"   stopColor="rgba(255,255,255,0.55)" />
-        <stop offset="45%"  stopColor="rgba(255,255,255,0.08)" />
-        <stop offset="100%" stopColor="rgba(0,0,0,0.18)" />
-      </linearGradient>
-      <linearGradient id={`bezel-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%"   stopColor="rgba(255,255,255,0.18)" />
-        <stop offset="30%"  stopColor="rgba(255,255,255,0)" />
-        <stop offset="100%" stopColor="rgba(0,0,0,0.16)" />
-      </linearGradient>
-    </defs>
+    <g>
+      <rect x={x} y={y} width={12} height={3} fill={INK} />
+      <rect x={x + 12} y={y} width={12} height={3} fill={PAPER} stroke={INK} strokeWidth={0.6} />
+      <rect x={x + 24} y={y} width={12} height={3} fill={INK} />
+      <text x={x} y={y - 1.5} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace">0</text>
+      <text x={x + 36} y={y - 1.5} fontSize={4} fill={INK_LIGHT} textAnchor="end" fontFamily="ui-monospace, monospace">{label}</text>
+    </g>
   );
 }
 
-function Swatch({
-  x, y, w, h, swatch, uid,
-}: {
-  x: number; y: number; w: number; h: number;
-  swatch: MaterialSwatch;
-  uid: string;
-}) {
-  const labelH = h >= 80 ? 13 : 11;
-  const swH = h - labelH;
-  const nameSize = h >= 80 ? 5 : 4.1;
-  const hexSize = h >= 80 ? 4 : 3.5;
-  const textured = swatch.texture !== 'plain';
-
+function CarScale({ x, y }: { x: number; y: number }) {
+  // Tiny side-on car silhouette for scale (sits on top of the deck)
   return (
-    <g>
-      <rect x={x} y={y} width={w} height={swH} fill={swatch.hex} />
-      {textured && (
-        <rect x={x} y={y} width={w} height={swH} fill={`url(#tex-${swatch.texture}-${uid})`} />
-      )}
-      <rect x={x} y={y} width={w} height={swH} fill={`url(#bezel-${uid})`} />
-
-      <rect x={x} y={y + swH} width={w} height={labelH} fill="rgba(0,0,0,0.86)" />
-      <text
-        x={x + 4}
-        y={y + swH + labelH - 3.5}
-        fontSize={nameSize}
-        fill="#ffffff"
-        fontFamily="ui-monospace, monospace"
-        fontWeight={600}
-        letterSpacing={0.3}
-      >
-        {swatch.name.toUpperCase()}
-      </text>
-      <text
-        x={x + w - 4}
-        y={y + swH + labelH - 3.5}
-        fontSize={hexSize}
-        fill="rgba(255,255,255,0.6)"
-        fontFamily="ui-monospace, monospace"
-        textAnchor="end"
-      >
-        {swatch.hex}
-      </text>
-
-      <rect
-        x={x} y={y} width={w} height={h}
-        fill="none"
-        stroke="rgba(0,0,0,0.20)"
-        strokeWidth={0.45}
-      />
+    <g transform={`translate(${x} ${y})`}>
+      <rect x={-3.5} y={-2.4} width={7} height={2.2} rx={0.4} fill={INK} />
+      <rect x={-2.6} y={-3.6} width={3.4} height={1.4} rx={0.3} fill={INK} />
+      <circle cx={-2.2} cy={0.1} r={0.7} fill={INK} />
+      <circle cx={2.2}  cy={0.1} r={0.7} fill={INK} />
     </g>
   );
 }
@@ -307,8 +169,19 @@ function Swatch({
 function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: boolean }) {
   const W = 320;
   const H = 180;
-  const uid = `${option.id}-${large ? 'lg' : 'sm'}`;
-  const s = option.swatches;
+  const id = option.id;
+  const uid = `${id}-${large ? 'lg' : 'sm'}`;
+  const hatchId = `hatch-${uid}`;
+  const waterId = `water-${uid}`;
+
+  // Shared elevation geometry
+  const DECK_Y = 80;           // top of deck
+  const DECK_T = 4;            // deck thickness
+  const DECK_BOT = DECK_Y + DECK_T;
+  const GROUND_Y = 144;        // water level / ground line
+  const BANK_L = 38;           // left abutment edge
+  const BANK_R = 282;          // right abutment edge
+  const SPAN = BANK_R - BANK_L;
 
   return (
     <svg
@@ -317,57 +190,205 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
       height="100%"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
-      style={{ display: 'block', backgroundColor: BOARD_BG }}
+      style={{ display: 'block', backgroundColor: PAPER }}
     >
-      <MaterialDefs uid={uid} />
+      <defs>
+        <pattern id={hatchId} width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width={4} height={4} fill={PAPER} />
+          <line x1={0} y1={0} x2={0} y2={4} stroke={HATCH} strokeWidth={0.8} />
+        </pattern>
+        <pattern id={waterId} width={20} height={8} patternUnits="userSpaceOnUse">
+          <rect width={20} height={8} fill="rgba(0,99,167,0.10)" />
+          <path d="M 0 4 Q 5 2 10 4 T 20 4" fill="none" stroke="rgba(0,99,167,0.45)" strokeWidth={0.5} />
+        </pattern>
+      </defs>
 
-      {/* Board (warm paper) */}
-      <rect x={0} y={0} width={W} height={H} fill={BOARD_BG} />
+      {/* Sky / paper */}
+      <rect x={0} y={0} width={W} height={H} fill={PAPER} />
 
-      {/* Header strip — mood name + sheet id */}
-      <text
-        x={6}
-        y={10}
-        fontSize={5.4}
-        fontWeight={700}
-        fill={INK}
-        fontFamily="ui-monospace, monospace"
-        letterSpacing={0.7}
-      >
-        {option.title.toUpperCase()} · MATERIAL BOARD
+      {/* Water */}
+      <rect x={0} y={GROUND_Y} width={W} height={H - GROUND_Y} fill={`url(#${waterId})`} />
+      <line x1={0} y1={GROUND_Y} x2={W} y2={GROUND_Y} stroke="rgba(0,99,167,0.65)" strokeWidth={0.7} />
+
+      {/* Banks */}
+      <path
+        d={`M 0 ${GROUND_Y} L ${BANK_L} ${GROUND_Y} L ${BANK_L} ${DECK_BOT + 2} L 0 ${DECK_BOT + 6} Z`}
+        fill={BANK}
+        stroke={INK}
+        strokeWidth={0.6}
+      />
+      <path
+        d={`M ${W} ${GROUND_Y} L ${BANK_R} ${GROUND_Y} L ${BANK_R} ${DECK_BOT + 2} L ${W} ${DECK_BOT + 6} Z`}
+        fill={BANK}
+        stroke={INK}
+        strokeWidth={0.6}
+      />
+      <text x={18} y={GROUND_Y - 2} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace" letterSpacing={0.3}>
+        WEST BANK
       </text>
-      <text
-        x={W - 6}
-        y={10}
-        fontSize={4.5}
-        fill={INK_LIGHT}
-        fontFamily="ui-monospace, monospace"
-        textAnchor="end"
-        letterSpacing={0.3}
-      >
-        MB-0{option.num}
+      <text x={W - 18} y={GROUND_Y - 2} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace" letterSpacing={0.3} textAnchor="end">
+        EAST BANK
       </text>
 
-      {/* Swatch grid — hero left, two stacked right, three across bottom */}
-      <Swatch x={6}   y={16}  w={150} h={100} swatch={s[0]} uid={uid} />
-      <Swatch x={160} y={16}  w={154} h={48}  swatch={s[1]} uid={uid} />
-      <Swatch x={160} y={68}  w={154} h={48}  swatch={s[2]} uid={uid} />
-      <Swatch x={6}   y={120} w={72}  h={50}  swatch={s[3]} uid={uid} />
-      <Swatch x={82}  y={120} w={72}  h={50}  swatch={s[4]} uid={uid} />
-      <Swatch x={158} y={120} w={156} h={50}  swatch={s[5]} uid={uid} />
+      {/* Existing approach roads (dashed) */}
+      <line x1={0} y1={DECK_Y + DECK_T / 2} x2={BANK_L} y2={DECK_Y + DECK_T / 2} stroke={INK_LIGHT} strokeWidth={0.6} strokeDasharray="3 2" />
+      <line x1={BANK_R} y1={DECK_Y + DECK_T / 2} x2={W} y2={DECK_Y + DECK_T / 2} stroke={INK_LIGHT} strokeWidth={0.6} strokeDasharray="3 2" />
 
-      {/* Accent stripe + subtitle */}
-      <rect x={6} y={173} width={W - 12} height={1.8} fill={option.accent} />
-      <text
-        x={6}
-        y={178.5}
-        fontSize={3.6}
-        fill={INK_LIGHT}
-        fontFamily="ui-monospace, monospace"
-        letterSpacing={0.4}
-      >
-        {option.subtitle.toUpperCase()}
+      {/* OPTION 1 — Steel box girder (3-span, low-profile) */}
+      {id === 'beam' && (
+        <g>
+          {/* Deck */}
+          <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.1} />
+          {/* Box girder below deck */}
+          <rect x={BANK_L} y={DECK_BOT} width={SPAN} height={9} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
+          {[BANK_L + 20, BANK_L + 60, BANK_L + 100, BANK_L + 140, BANK_L + 180, BANK_L + 220].map((x) => (
+            <line key={x} x1={x} y1={DECK_BOT + 0.5} x2={x} y2={DECK_BOT + 8.5} stroke={option.accent} strokeWidth={0.5} />
+          ))}
+          {/* Two in-river piers (1/3 and 2/3) */}
+          {[BANK_L + SPAN / 3, BANK_L + (2 * SPAN) / 3].map((x, i) => (
+            <g key={i}>
+              <rect x={x - 3.5} y={DECK_BOT + 9} width={7} height={GROUND_Y - DECK_BOT - 9} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.8} />
+              {/* Pier cap */}
+              <rect x={x - 5} y={DECK_BOT + 9} width={10} height={2.5} fill={INK} />
+              {/* Submerged footing */}
+              <rect x={x - 7} y={GROUND_Y - 1} width={14} height={3.5} fill={INK} />
+            </g>
+          ))}
+          {/* Bridge type caption */}
+          <text x={W / 2} y={DECK_Y - 5} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+            STEEL BOX GIRDER · 3-SPAN CONTINUOUS
+          </text>
+        </g>
+      )}
+
+      {/* OPTION 2 — Steel tied arch (single span, arch above deck) */}
+      {id === 'arch' && (
+        <g>
+          {/* Abutments */}
+          {[BANK_L - 6, BANK_R].map((x, i) => (
+            <rect key={i} x={x} y={DECK_Y - 4} width={6} height={GROUND_Y - DECK_Y + 6} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.8} />
+          ))}
+          {/* Arch — parabolic curve above deck */}
+          <path
+            d={`M ${BANK_L} ${DECK_Y} Q ${BANK_L + SPAN / 2} 14 ${BANK_R} ${DECK_Y}`}
+            fill="none"
+            stroke={option.accent}
+            strokeWidth={3.2}
+            strokeLinecap="round"
+          />
+          {/* Hangers from arch down to deck */}
+          {Array.from({ length: 11 }, (_, i) => BANK_L + ((i + 1) * SPAN) / 12).map((x, i) => {
+            const t = (x - BANK_L) / SPAN;
+            const archY = DECK_Y - (DECK_Y - 14) * 4 * t * (1 - t);
+            return <line key={i} x1={x} y1={archY + 0.5} x2={x} y2={DECK_Y} stroke={option.accent} strokeWidth={0.7} />;
+          })}
+          {/* Deck */}
+          <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
+          {/* Caption */}
+          <text x={W / 2} y={20} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+            STEEL TIED ARCH · SINGLE SPAN
+          </text>
+          {/* Arch-rise dimension */}
+          <line x1={BANK_L + SPAN / 2 - 2} y1={14} x2={BANK_L + SPAN / 2 - 2} y2={DECK_Y} stroke={DIM} strokeWidth={0.5} strokeDasharray="2 1.5" />
+          <text x={BANK_L + SPAN / 2 + 2} y={(14 + DECK_Y) / 2} fontSize={4} fill={DIM} fontFamily="ui-monospace, monospace">RISE 60 m</text>
+        </g>
+      )}
+
+      {/* OPTION 3 — Cable-stayed, single pylon (asymmetric, tall pylon) */}
+      {id === 'cableStay' && (
+        <g>
+          {/* Abutments */}
+          {[BANK_L - 6, BANK_R].map((x, i) => (
+            <rect key={i} x={x} y={DECK_Y - 4} width={6} height={GROUND_Y - DECK_Y + 6} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.8} />
+          ))}
+          {/* Single pylon at ~1/3 of span (off-centre = asymmetric) */}
+          {(() => {
+            const px = BANK_L + SPAN * 0.36;
+            const pTop = 12;
+            return (
+              <g>
+                {/* Pylon (slight A-frame in elevation: tapered) */}
+                <path d={`M ${px - 2.5} ${GROUND_Y} L ${px - 1} ${pTop} L ${px + 1} ${pTop} L ${px + 2.5} ${GROUND_Y} Z`} fill={INK} />
+                {/* Pylon foundation in water */}
+                <rect x={px - 8} y={GROUND_Y - 1} width={16} height={3.5} fill={INK} />
+                {/* Back-stay cables (shorter, behind pylon) */}
+                {Array.from({ length: 5 }, (_, i) => BANK_L + 12 + i * 12).map((x, i) => (
+                  <line key={`b-${i}`} x1={px} y1={pTop + 1} x2={x} y2={DECK_Y - 1} stroke={option.accent} strokeWidth={0.7} />
+                ))}
+                {/* Forward-stay cables (longer, fanning across main span) */}
+                {Array.from({ length: 12 }, (_, i) => px + 16 + i * 18).filter((x) => x < BANK_R - 4).map((x, i) => (
+                  <line key={`f-${i}`} x1={px} y1={pTop + 1} x2={x} y2={DECK_Y - 1} stroke={option.accent} strokeWidth={0.7} />
+                ))}
+              </g>
+            );
+          })()}
+          {/* Deck */}
+          <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
+          {/* Caption */}
+          <text x={W / 2} y={20} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+            SINGLE-PYLON CABLE-STAY · ASYMMETRIC
+          </text>
+          {/* Pylon-height dimension */}
+          <text x={BANK_L + SPAN * 0.36 + 5} y={28} fontSize={4} fill={DIM} fontFamily="ui-monospace, monospace">PYLON 130 m</text>
+        </g>
+      )}
+
+      {/* OPTION 4 — Steel Warren through-truss */}
+      {id === 'truss' && (
+        <g>
+          {/* Abutments */}
+          {[BANK_L - 6, BANK_R].map((x, i) => (
+            <rect key={i} x={x} y={42} width={6} height={GROUND_Y - 42 + 6} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.8} />
+          ))}
+          {/* Two in-river piers (smaller than girder version) */}
+          {[BANK_L + SPAN / 3, BANK_L + (2 * SPAN) / 3].map((x, i) => (
+            <g key={i}>
+              <rect x={x - 3} y={DECK_BOT} width={6} height={GROUND_Y - DECK_BOT} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.7} />
+              <rect x={x - 6} y={GROUND_Y - 1} width={12} height={3.5} fill={INK} />
+            </g>
+          ))}
+          {/* Top chord */}
+          <line x1={BANK_L} y1={42} x2={BANK_R} y2={42} stroke={option.accent} strokeWidth={1.6} />
+          {/* Bottom chord (above deck level) */}
+          <line x1={BANK_L} y1={DECK_Y} x2={BANK_R} y2={DECK_Y} stroke={option.accent} strokeWidth={1.6} />
+          {/* Vertical posts every 30 units */}
+          {Array.from({ length: 9 }, (_, i) => BANK_L + i * 30).map((x) => (
+            <line key={`v-${x}`} x1={x} y1={42} x2={x} y2={DECK_Y} stroke={option.accent} strokeWidth={1} />
+          ))}
+          {/* Diagonal bracing — Warren pattern (alternating triangles) */}
+          {Array.from({ length: 8 }, (_, i) => BANK_L + i * 30).map((x, i) => (
+            i % 2 === 0
+              ? <line key={`d-${i}`} x1={x} y1={42} x2={x + 30} y2={DECK_Y} stroke={option.accent} strokeWidth={1} />
+              : <line key={`d-${i}`} x1={x} y1={DECK_Y} x2={x + 30} y2={42} stroke={option.accent} strokeWidth={1} />
+          ))}
+          {/* Deck */}
+          <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
+          {/* Caption */}
+          <text x={W / 2} y={36} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+            STEEL WARREN THROUGH-TRUSS
+          </text>
+        </g>
+      )}
+
+      {/* Tiny vehicle on the deck for scale */}
+      <CarScale x={id === 'cableStay' ? BANK_L + 60 : id === 'truss' ? BANK_L + 90 : 160} y={DECK_Y} />
+
+      {/* Main span dimension below the structure */}
+      <g>
+        <line x1={BANK_L} y1={GROUND_Y + 16} x2={BANK_R} y2={GROUND_Y + 16} stroke={DIM} strokeWidth={0.55} />
+        <line x1={BANK_L} y1={GROUND_Y + 14} x2={BANK_L} y2={GROUND_Y + 18} stroke={DIM} strokeWidth={0.55} />
+        <line x1={BANK_R} y1={GROUND_Y + 14} x2={BANK_R} y2={GROUND_Y + 18} stroke={DIM} strokeWidth={0.55} />
+        <text x={W / 2} y={GROUND_Y + 14} fontSize={4.5} fill={DIM} textAnchor="middle" fontFamily="ui-monospace, monospace" fontWeight={600}>
+          {option.metrics[0].value} · MAIN SPAN
+        </text>
+      </g>
+
+      {/* Flow direction */}
+      <text x={W - 8} y={GROUND_Y + 8} fontSize={4} fill="rgba(0,99,167,0.85)" textAnchor="end" fontStyle="italic" fontFamily="ui-monospace, monospace">
+        FLOW →
       </text>
+
+      <ScaleBar x={18} y={H - 6} label="100 m" />
     </svg>
   );
 }
@@ -465,11 +486,11 @@ function DetailModal({
               color: INK_LIGHT,
             }}
           >
-            <span style={{ fontWeight: 700, color: INK }}>MB-0{option.num}</span>
+            <span style={{ fontWeight: 700, color: INK }}>BR-0{option.num}</span>
             <span>·</span>
-            <span>MATERIAL BOARD</span>
+            <span>BRIDGE ELEVATION</span>
             <span>·</span>
-            <span>LOBBY · L01</span>
+            <span>1:1500</span>
           </div>
         </div>
 
@@ -667,9 +688,9 @@ function OptionCard({
             color: INK_LIGHT,
           }}
         >
-          <span style={{ fontWeight: 700, color: INK }}>MB-0{option.num}</span>
+          <span style={{ fontWeight: 700, color: INK }}>BR-0{option.num}</span>
           <span>·</span>
-          <span>LOBBY · L01</span>
+          <span>1:1500</span>
         </div>
 
         {/* Number badge */}
@@ -811,7 +832,7 @@ function SuggestionPopup({
                   lineHeight: 1.25,
                 }}
               >
-                Four divergent material directions
+                Four divergent bridge concepts
               </span>
             </div>
           </div>
@@ -887,7 +908,7 @@ function SuggestionPopup({
           <ModusWcButton size="sm" color="primary" onButtonClick={() => undefined}>
             <span className="flex items-center gap-1">
               <ModusWcIcon name="arrow_right" size="xs" decorative />
-              Pick a direction
+              Use this direction
             </span>
           </ModusWcButton>
         </div>
