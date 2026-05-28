@@ -550,7 +550,7 @@ function ChatBar({
             type="button"
             aria-label="Add attachment"
             style={{
-              width: '48px',
+              width: '38px',
               height: '48px',
               padding: 0,
               background: 'transparent',
@@ -573,7 +573,7 @@ function ChatBar({
             type="submit"
             aria-label="Send prompt"
             style={{
-              width: '48px',
+              width: '38px',
               height: '48px',
               padding: 0,
               background: 'transparent',
