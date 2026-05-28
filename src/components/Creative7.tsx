@@ -119,7 +119,7 @@ function PlanCard() {
       className="rounded-2xl p-[2px]"
       style={{
         background: TRIMBLE_RAINBOW,
-        boxShadow: '0 10px 28px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)',
+        boxShadow: '0 8px 22px rgba(0,0,0,0.08), 0 2px 5px rgba(0,0,0,0.05)',
         width: '100%',
       }}
     >
@@ -128,22 +128,35 @@ function PlanCard() {
         style={{ backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)' }}
       >
         {/* Header strip */}
-        <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2">
-            <ModusWcIcon
-              name="list_view"
-              size="sm"
-              decorative
-              style={{ color: 'var(--modus-wc-color-primary, #0063A7)' }}
-            />
+        <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex items-center justify-center rounded-lg shrink-0"
+              style={{
+                width: '28px',
+                height: '28px',
+                background:
+                  'linear-gradient(135deg, var(--modus-wc-color-primary-light, #e8f4fd) 0%, var(--modus-wc-color-secondary-light, #f3f0ff) 100%)',
+                border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+              }}
+              aria-hidden="true"
+            >
+              <ModusWcIcon
+                name="compass"
+                size="sm"
+                decorative
+                style={{ color: 'var(--modus-wc-color-primary, #0063A7)' }}
+              />
+            </span>
             <span
               className="font-semibold"
               style={{
                 fontSize: 'var(--modus-wc-font-size-sm, 14px)',
                 color: 'var(--modus-wc-color-base-content, #101828)',
+                lineHeight: 1.2,
               }}
             >
-              Plan to confirm
+              Here&apos;s my plan
             </span>
           </div>
         </div>
@@ -274,7 +287,7 @@ function PlanCard() {
             }}
           >
             <span className="flex items-center gap-1">
-              <ModusWcIcon name="edit_combination" size="xs" decorative />
+              <ModusWcIcon name="pencil" size="xs" decorative />
               Edit plan
             </span>
           </ModusWcButton>
@@ -287,7 +300,7 @@ function PlanCard() {
             }}
           >
             <span className="flex items-center gap-1">
-              Looks good — run
+              Run
               <ModusWcIcon name="arrow_right" size="xs" decorative />
             </span>
           </ModusWcButton>
@@ -363,108 +376,115 @@ function SideNav() {
 export default function Creative7() {
   return (
     <div
-      className="rounded-2xl overflow-hidden flex flex-row"
+      className="rounded-2xl overflow-hidden flex flex-row relative"
       style={{
-        width: '624px',
-        height: '720px',
+        width: '768px',
+        height: '700px',
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
         border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
         boxShadow: '0 18px 40px rgba(0,0,0,0.10), 0 4px 10px rgba(0,0,0,0.06)',
       }}
     >
+      {/* Side nav — full height */}
       <SideNav />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Chat header */}
+      {/* Right canvas */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* Avatar — top-right corner */}
         <div
-          className="flex items-center justify-between gap-3 px-4 py-3"
-          style={{ borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
+          className="absolute flex items-center justify-center rounded-full overflow-hidden"
+          style={{
+            top: '16px',
+            right: '16px',
+            width: '32px',
+            height: '32px',
+            backgroundColor: 'var(--modus-wc-color-primary-light, #e8f4fd)',
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            zIndex: 2,
+          }}
+          aria-label="Profile"
+          role="img"
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <TrimbleAiLogo size={22} />
-            <div className="flex flex-col min-w-0">
-              <span
-                className="font-semibold truncate"
+          <ModusWcIcon
+            name="person"
+            size="sm"
+            decorative
+            style={{ color: 'var(--modus-wc-color-primary, #0063A7)' }}
+          />
+        </div>
+
+        {/* Chat thread — centered horizontally + vertically */}
+        <div
+          className="flex-1 flex flex-col justify-center items-center min-h-0 overflow-y-auto"
+          style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '64px', paddingBottom: '24px' }}
+        >
+          <div className="flex flex-col gap-6" style={{ width: '100%', maxWidth: '464px' }}>
+            {/* User turn */}
+            <div className="flex flex-col items-end gap-1">
+              <div
+                className="rounded-2xl rounded-tr-md px-3 py-2"
                 style={{
+                  maxWidth: '78%',
+                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
                   fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content, #101828)',
-                  lineHeight: 1.2,
+                  lineHeight: 1.5,
                 }}
               >
-                Trimble AI
+                {USER_REQUEST}
+              </div>
+              <span
+                style={{
+                  fontSize: '10px',
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                }}
+              >
+                You · just now
               </span>
+            </div>
+
+            {/* AI turn */}
+            <div className="flex items-start gap-3">
+              <div className="shrink-0" style={{ marginTop: '-2px' }}>
+                <TrimbleAiLogo size={28} />
+              </div>
+              <div className="flex flex-col gap-2 min-w-0 flex-1">
+                <span
+                  style={{
+                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                    color: 'var(--modus-wc-color-base-content, #171c1e)',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  Before I dig in, here&apos;s how I&apos;m planning to approach it — confirm
+                  or reshape it and I&apos;ll get started.
+                </span>
+
+                {/* The plan card sits inline as the AI's structured response */}
+                <PlanCard />
+
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  I&apos;ll only start once you confirm.
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Conversation */}
-      <div
-        className="flex-1 flex flex-col gap-4 px-4 py-4 overflow-y-auto"
-        style={{ backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)' }}
-      >
-        {/* User turn */}
-        <div className="flex flex-col items-end gap-1">
-          <div
-            className="rounded-2xl rounded-tr-md px-3 py-2"
-            style={{
-              maxWidth: '78%',
-              backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-              color: 'var(--modus-wc-color-base-content, #171c1e)',
-              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-              lineHeight: 1.5,
-            }}
-          >
-            {USER_REQUEST}
-          </div>
-          <span
-            style={{
-              fontSize: '10px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          >
-            You · just now
-          </span>
-        </div>
-
-        {/* AI turn */}
-        <div className="flex items-start gap-2">
-          <div className="pt-0.5">
-            <TrimbleAiLogo size={22} />
-          </div>
-          <div className="flex flex-col gap-2 min-w-0 flex-1">
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-                lineHeight: 1.55,
-              }}
-            >
-              Before I dig in, here&apos;s how I&apos;m planning to approach it — confirm
-              or reshape it and I&apos;ll get started.
-            </span>
-
-            {/* The plan card sits inline as the AI's structured response */}
-            <PlanCard />
-
-            <span
-              style={{
-                fontSize: '11px',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                lineHeight: 1.5,
-              }}
-            >
-              I&apos;ll only start once you confirm.
-            </span>
-          </div>
-        </div>
-      </div>
-
-        {/* Composer — prompt bar copy-pasted from Creative 3 */}
+        {/* Composer — centered, sits at the bottom of the right canvas */}
         <div
-          className="px-3 pb-3"
-          style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
+          className="flex justify-center"
+          style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '16px' }}
         >
-          <PromptBar />
+          <div style={{ width: '100%', maxWidth: '464px' }}>
+            <PromptBar />
+          </div>
         </div>
       </div>
     </div>
@@ -518,15 +538,15 @@ function PromptBar() {
         {/* Basic Actions — Figma icon buttons */}
         <div
           className="flex items-center shrink-0"
-          style={{ gap: '0px' }}
+          style={{ gap: '0px', marginRight: '-4px' }}
           data-name="Basic Actions"
         >
           <button
             type="button"
             aria-label="Add attachment"
             style={{
-              width: '48px',
-              height: '48px',
+              width: '38px',
+              height: '38px',
               padding: 0,
               background: 'transparent',
               border: 'none',
@@ -548,8 +568,8 @@ function PromptBar() {
             type="button"
             aria-label="Send prompt"
             style={{
-              width: '48px',
-              height: '48px',
+              width: '38px',
+              height: '38px',
               padding: 0,
               background: 'transparent',
               border: 'none',
