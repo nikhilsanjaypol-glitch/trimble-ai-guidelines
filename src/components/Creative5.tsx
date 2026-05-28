@@ -9,14 +9,17 @@ import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-reac
  *
  * Component: AI-SUGGESTION POPUP → DETAIL
  *   The popup card contains:
- *     · Header with view-toggle / regenerate / save / close tools
- *     · A 2×2 grid of four divergent site-layout options, each
- *       rendered as a CAD plan
- *     · Footer with a "Recreate" CTA and a tap-to-develop hint
+ *     · Header with logo / instructional strip / close
+ *     · A 2×2 grid of four divergent material/finish directions
+ *       for the same hospitality interior, each rendered as a
+ *       moodboard of 6 swatches with material textures
+ *       (wood grain, stone veining, velvet weave, brass gradient,
+ *       terrazzo chips, cork dots, glass highlights)
+ *     · Footer with Previous-iteration / Recreate / Pick CTAs
  *
- *   Clicking any option opens a detail modal with a larger CAD
- *   plan, key metrics, pros / trade-offs, and "Use this direction"
- *   action — i.e. clicking a card opens something relevant.
+ *   Clicking any board opens a detail modal with a larger plan,
+ *   key metrics, pros / trade-offs, and "Use this direction" —
+ *   i.e. clicking a card opens something relevant.
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
@@ -24,28 +27,40 @@ const TRIMBLE_RAINBOW =
 
 /* ── Data model ─────────────────────────────────────────────────── */
 
-type OptionId =
-  | 'tower'
-  | 'courtyard'
-  | 'linear'
-  | 'reuse'
-  | 'radial'
-  | 'mat';
+type OptionId = 'coastal' | 'heritage' | 'industrial' | 'biophilic';
 
-type Family = 'vertical' | 'low-rise' | 'adaptive';
+type TextureKind =
+  | 'plain'
+  | 'wood'
+  | 'stone'
+  | 'concrete'
+  | 'velvet'
+  | 'weave'
+  | 'terrazzo'
+  | 'cork'
+  | 'metal'
+  | 'glass';
 
 interface Metric {
   label: string;
   value: string;
 }
 
+interface MaterialSwatch {
+  name: string;
+  hex: string;
+  texture: TextureKind;
+}
+
 interface SiteOption {
   id: OptionId;
   num: number;
   title: string;
-  family: Family;
+  subtitle: string;
   accent: string;
   accentSoft: string;
+  // Exactly 6 swatches: [hero, side-top, side-bottom, bottom-1, bottom-2, bottom-3]
+  swatches: MaterialSwatch[];
   metrics: Metric[];
   pros: string[];
   tradeoff: string;
@@ -53,153 +68,238 @@ interface SiteOption {
 
 const OPTIONS: SiteOption[] = [
   {
-    id: 'tower',
+    id: 'coastal',
     num: 1,
-    title: 'Compact tower',
-    family: 'vertical',
-    accent: 'var(--modus-wc-color-primary, #0063A7)',
-    accentSoft: 'var(--modus-wc-color-primary-light, #e8f4fd)',
+    title: 'Coastal calm',
+    subtitle: 'Soft sand · sea glass · weathered oak',
+    accent: '#5D8CAF',
+    accentSoft: 'rgba(93, 140, 175, 0.12)',
+    swatches: [
+      { name: 'Linen sand',     hex: '#E7DCC9', texture: 'concrete' },
+      { name: 'Sea glass',      hex: '#A8C0CC', texture: 'glass' },
+      { name: 'Driftwood oak',  hex: '#C2A57B', texture: 'wood' },
+      { name: 'Deep navy',      hex: '#2D4A5E', texture: 'plain' },
+      { name: 'Salt white',     hex: '#FBFAF5', texture: 'plain' },
+      { name: 'Limestone',      hex: '#D9D5CB', texture: 'stone' },
+    ],
     metrics: [
-      { label: 'GFA', value: '12,400 m²' },
-      { label: 'Footprint', value: '8% of site' },
-      { label: 'Height', value: '6 storeys' },
-      { label: 'Open space', value: '62%' },
+      { label: 'Warmth', value: 'Cool' },
+      { label: 'Mood',   value: 'Calm' },
+      { label: 'Maint.', value: 'Low' },
+      { label: 'Budget', value: '$$' },
     ],
     pros: [
-      'Smallest footprint of the four',
-      'Most visibility from the boulevard',
-      'Frees the rest of the site for landscape',
+      'Maximises perceived light and openness',
+      'Soft, natural materials feel restorative',
+      'Forgiving palette — easy to retouch over time',
     ],
-    tradeoff: 'Higher per-floor cost; less daylight to interior floors.',
+    tradeoff: 'Risks reading as bland in winter light or under heavy shade.',
   },
   {
-    id: 'courtyard',
+    id: 'heritage',
     num: 2,
-    title: 'Courtyard cluster',
-    family: 'low-rise',
-    accent: 'var(--modus-wc-color-status-success, #1e7e34)',
-    accentSoft: 'var(--modus-wc-color-status-success-light, #e6f4ea)',
+    title: 'Heritage warmth',
+    subtitle: 'Burgundy velvet · brass · walnut',
+    accent: '#6A1F2F',
+    accentSoft: 'rgba(106, 31, 47, 0.12)',
+    swatches: [
+      { name: 'Burgundy velvet', hex: '#6A1F2F', texture: 'velvet' },
+      { name: 'Brushed brass',   hex: '#B89763', texture: 'metal' },
+      { name: 'Walnut',          hex: '#4A2F1F', texture: 'wood' },
+      { name: 'Ivory marble',    hex: '#F4EDDC', texture: 'stone' },
+      { name: 'Emerald',         hex: '#1F4A3A', texture: 'velvet' },
+      { name: 'Cognac leather',  hex: '#8B3A26', texture: 'weave' },
+    ],
     metrics: [
-      { label: 'GFA', value: '11,800 m²' },
-      { label: 'Buildings', value: '4 pavilions' },
-      { label: 'Height', value: '2 storeys' },
-      { label: 'Open space', value: '38%' },
+      { label: 'Warmth', value: 'Warm' },
+      { label: 'Mood',   value: 'Intimate' },
+      { label: 'Maint.', value: 'High' },
+      { label: 'Budget', value: '$$$' },
     ],
     pros: [
-      'Phaseable — build one pavilion at a time',
-      'Natural daylight to every workspace',
-      'Strong indoor–outdoor connection',
+      'Strongest sense of occasion of the four',
+      'Pairs beautifully with low, warm lighting',
+      'Distinctive — hard to confuse with a competitor',
     ],
-    tradeoff: 'Largest site coverage; longest construction timeline.',
+    tradeoff: 'Darker overall; needs careful lighting and feels heavy in raw daylight.',
   },
   {
-    id: 'linear',
+    id: 'industrial',
     num: 3,
-    title: 'Linear bar',
-    family: 'low-rise',
-    accent: 'var(--modus-wc-color-status-info, #004f83)',
-    accentSoft: 'var(--modus-wc-color-status-info-light, #e8f4fd)',
+    title: 'Industrial edge',
+    subtitle: 'Concrete · blackened steel · copper',
+    accent: '#383838',
+    accentSoft: 'rgba(56, 56, 56, 0.10)',
+    swatches: [
+      { name: 'Polished concrete', hex: '#6E6E6E', texture: 'concrete' },
+      { name: 'Blackened steel',   hex: '#1A1A1C', texture: 'metal' },
+      { name: 'Weathered oak',     hex: '#6B5340', texture: 'wood' },
+      { name: 'Burnt copper',      hex: '#B26B3F', texture: 'metal' },
+      { name: 'Frosted glass',     hex: '#C8CCCF', texture: 'glass' },
+      { name: 'Charcoal felt',     hex: '#3A3A3D', texture: 'velvet' },
+    ],
     metrics: [
-      { label: 'GFA', value: '12,100 m²' },
-      { label: 'Length', value: '264 m' },
-      { label: 'Height', value: '3 storeys' },
-      { label: 'Parking', value: '18 stalls' },
+      { label: 'Warmth', value: 'Cool' },
+      { label: 'Mood',   value: 'Bold' },
+      { label: 'Maint.', value: 'Low' },
+      { label: 'Budget', value: '$$' },
     ],
     pros: [
-      'Strongest street presence along Main St',
-      'Simple structural grid lowers build cost',
-      'Generous entrance plaza',
+      'Most contemporary read — photographs well',
+      'Hides wear; very forgiving in high-traffic zones',
+      'Lets art and product imagery dominate the room',
     ],
-    tradeoff: 'Long internal corridors; weak rear-yard activation.',
+    tradeoff: 'Can feel cold or generic in large volumes without warm accents.',
   },
   {
-    id: 'reuse',
+    id: 'biophilic',
     num: 4,
-    title: 'Reuse + new wing',
-    family: 'adaptive',
-    accent: 'var(--modus-wc-color-status-warning, #856404)',
-    accentSoft: 'var(--modus-wc-color-status-warning-light, #fff8e1)',
+    title: 'Biophilic lush',
+    subtitle: 'Forest green · terracotta · cork',
+    accent: '#2E5840',
+    accentSoft: 'rgba(46, 88, 64, 0.12)',
+    swatches: [
+      { name: 'Forest velvet', hex: '#2E5840', texture: 'velvet' },
+      { name: 'Terracotta',    hex: '#C2613B', texture: 'stone' },
+      { name: 'Cork',          hex: '#B89D7A', texture: 'cork' },
+      { name: 'Blush plaster', hex: '#E8C2A5', texture: 'plain' },
+      { name: 'Terrazzo',      hex: '#D4C5A8', texture: 'terrazzo' },
+      { name: 'Brushed brass', hex: '#B89B5F', texture: 'metal' },
+    ],
     metrics: [
-      { label: 'GFA', value: '13,600 m²' },
-      { label: 'Existing', value: '1947 warehouse' },
-      { label: 'New', value: 'CLT frame' },
-      { label: 'Carbon', value: '−38% vs new build' },
+      { label: 'Warmth', value: 'Warm' },
+      { label: 'Mood',   value: 'Vital' },
+      { label: 'Maint.', value: 'Med.' },
+      { label: 'Budget', value: '$$' },
     ],
     pros: [
-      'Preserves embodied carbon in the existing shell',
-      'Eligible for heritage tax credits',
-      'Distinctive brand identity from day one',
+      'Most energising of the four',
+      'Strong sustainability + biophilia story',
+      'Palette photographs differently in every light',
     ],
-    tradeoff: 'Hidden structural condition risk; more coordination.',
+    tradeoff: 'High chroma — small spaces can feel busy if mis-edited.',
   },
 ];
 
-/* ── CAD-style site plan SVGs ───────────────────────────────────── */
+/* ── Material-board SVGs (colour swatches with textures) ────────── */
 
 const PAPER = '#ffffff';
-const GRID_MINOR = '#eef0f4';
 const GRID_MAJOR = '#dfe2e8';
 const INK = '#1d232b';
 const INK_LIGHT = '#5a6270';
-const DIM = '#0063a7';
-const HATCH = '#2f3a47';
-const ROAD = '#cdd1d8';
+const BOARD_BG = '#F6F2E9';
 
-function HatchedRect({
-  x, y, w, h, hatchId, stroke = INK, strokeWidth = 1.2,
+function MaterialDefs({ uid }: { uid: string }) {
+  return (
+    <defs>
+      <pattern id={`tex-wood-${uid}`} width={3} height={9} patternUnits="userSpaceOnUse">
+        <line x1={0} y1={3} x2={3} y2={3.3} stroke="rgba(0,0,0,0.24)" strokeWidth={0.45} />
+        <line x1={0} y1={6} x2={3} y2={5.8} stroke="rgba(0,0,0,0.16)" strokeWidth={0.32} />
+        <line x1={0} y1={8.5} x2={3} y2={8.7} stroke="rgba(255,255,255,0.08)" strokeWidth={0.3} />
+      </pattern>
+      <pattern id={`tex-stone-${uid}`} width={22} height={22} patternUnits="userSpaceOnUse">
+        <path d="M 0 7 Q 11 4 22 8" fill="none" stroke="rgba(255,255,255,0.26)" strokeWidth={0.45} />
+        <path d="M 0 15 Q 11 17 22 13" fill="none" stroke="rgba(0,0,0,0.16)" strokeWidth={0.45} />
+        <path d="M 5 0 Q 7 11 4 22" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={0.3} />
+      </pattern>
+      <pattern id={`tex-concrete-${uid}`} width={5} height={5} patternUnits="userSpaceOnUse">
+        <circle cx={0.6} cy={0.6} r={0.28} fill="rgba(0,0,0,0.20)" />
+        <circle cx={3.2} cy={3.4} r={0.24} fill="rgba(0,0,0,0.14)" />
+        <circle cx={1.6} cy={3.8} r={0.22} fill="rgba(255,255,255,0.18)" />
+        <circle cx={4.2} cy={1.2} r={0.2}  fill="rgba(0,0,0,0.10)" />
+      </pattern>
+      <pattern id={`tex-velvet-${uid}`} width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(22)">
+        <line x1={0} y1={0} x2={0} y2={4} stroke="rgba(255,255,255,0.07)" strokeWidth={0.55} />
+        <line x1={2} y1={0} x2={2} y2={4} stroke="rgba(0,0,0,0.22)" strokeWidth={0.4} />
+      </pattern>
+      <pattern id={`tex-weave-${uid}`} width={3} height={3} patternUnits="userSpaceOnUse">
+        <line x1={0} y1={0} x2={3} y2={3} stroke="rgba(0,0,0,0.18)" strokeWidth={0.4} />
+        <line x1={0} y1={3} x2={3} y2={0} stroke="rgba(255,255,255,0.12)" strokeWidth={0.35} />
+      </pattern>
+      <pattern id={`tex-terrazzo-${uid}`} width={16} height={16} patternUnits="userSpaceOnUse">
+        <polygon points="2,2 5,1 6,4 3,5" fill="rgba(0,0,0,0.24)" />
+        <polygon points="9,5 12,4 13,7 10,8" fill="rgba(255,255,255,0.45)" />
+        <polygon points="3,9 6,8 7,11 4,12" fill="rgba(40,80,160,0.32)" />
+        <polygon points="11,11 14,10 14,14 11,14" fill="rgba(180,100,40,0.32)" />
+        <polygon points="1,12 3,11 3,14 1,14" fill="rgba(255,255,255,0.3)" />
+      </pattern>
+      <pattern id={`tex-cork-${uid}`} width={7} height={7} patternUnits="userSpaceOnUse">
+        <circle cx={2} cy={2} r={0.75} fill="rgba(0,0,0,0.30)" />
+        <circle cx={5} cy={4.5} r={0.55} fill="rgba(0,0,0,0.20)" />
+        <circle cx={1.2} cy={5.5} r={0.45} fill="rgba(0,0,0,0.24)" />
+        <circle cx={6} cy={1.5} r={0.32} fill="rgba(0,0,0,0.18)" />
+        <circle cx={3.5} cy={3.5} r={0.25} fill="rgba(255,255,255,0.14)" />
+      </pattern>
+      <linearGradient id={`tex-metal-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%"   stopColor="rgba(255,255,255,0.48)" />
+        <stop offset="35%"  stopColor="rgba(255,255,255,0)" />
+        <stop offset="70%"  stopColor="rgba(0,0,0,0.05)" />
+        <stop offset="100%" stopColor="rgba(0,0,0,0.34)" />
+      </linearGradient>
+      <linearGradient id={`tex-glass-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%"   stopColor="rgba(255,255,255,0.55)" />
+        <stop offset="45%"  stopColor="rgba(255,255,255,0.08)" />
+        <stop offset="100%" stopColor="rgba(0,0,0,0.18)" />
+      </linearGradient>
+      <linearGradient id={`bezel-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%"   stopColor="rgba(255,255,255,0.18)" />
+        <stop offset="30%"  stopColor="rgba(255,255,255,0)" />
+        <stop offset="100%" stopColor="rgba(0,0,0,0.16)" />
+      </linearGradient>
+    </defs>
+  );
+}
+
+function Swatch({
+  x, y, w, h, swatch, uid,
 }: {
   x: number; y: number; w: number; h: number;
-  hatchId: string; stroke?: string; strokeWidth?: number;
+  swatch: MaterialSwatch;
+  uid: string;
 }) {
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} fill={`url(#${hatchId})`} />
-      <rect x={x} y={y} width={w} height={h} fill="none" stroke={stroke} strokeWidth={strokeWidth} />
-    </g>
-  );
-}
+  const labelH = h >= 80 ? 13 : 11;
+  const swH = h - labelH;
+  const nameSize = h >= 80 ? 5 : 4.1;
+  const hexSize = h >= 80 ? 4 : 3.5;
+  const textured = swatch.texture !== 'plain';
 
-function NorthArrow({ cx, cy }: { cx: number; cy: number }) {
   return (
     <g>
-      <circle cx={cx} cy={cy} r={9} fill={PAPER} stroke={INK} strokeWidth={0.9} />
-      <polygon points={`${cx},${cy - 6} ${cx - 3},${cy + 2} ${cx + 3},${cy + 2}`} fill={INK} />
-      <text x={cx} y={cy + 7.5} fontSize={5} fontWeight={700} textAnchor="middle" fill={INK}>N</text>
-    </g>
-  );
-}
+      <rect x={x} y={y} width={w} height={swH} fill={swatch.hex} />
+      {textured && (
+        <rect x={x} y={y} width={w} height={swH} fill={`url(#tex-${swatch.texture}-${uid})`} />
+      )}
+      <rect x={x} y={y} width={w} height={swH} fill={`url(#bezel-${uid})`} />
 
-function ScaleBar({ x, y }: { x: number; y: number }) {
-  return (
-    <g>
-      <rect x={x} y={y} width={12} height={3} fill={INK} />
-      <rect x={x + 12} y={y} width={12} height={3} fill={PAPER} stroke={INK} strokeWidth={0.6} />
-      <rect x={x + 24} y={y} width={12} height={3} fill={INK} />
-      <text x={x} y={y - 1.5} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace">0</text>
-      <text x={x + 36} y={y - 1.5} fontSize={4} fill={INK_LIGHT} textAnchor="end" fontFamily="ui-monospace, monospace">30m</text>
-    </g>
-  );
-}
-
-function Tree({ cx, cy }: { cx: number; cy: number }) {
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={2.4} fill="none" stroke={INK_LIGHT} strokeWidth={0.5} />
-      <line x1={cx - 1.7} y1={cy - 1.7} x2={cx + 1.7} y2={cy + 1.7} stroke={INK_LIGHT} strokeWidth={0.4} />
-      <line x1={cx - 1.7} y1={cy + 1.7} x2={cx + 1.7} y2={cy - 1.7} stroke={INK_LIGHT} strokeWidth={0.4} />
-    </g>
-  );
-}
-
-function DimH({ x1, x2, y, text }: { x1: number; x2: number; y: number; text: string }) {
-  return (
-    <g>
-      <line x1={x1} y1={y} x2={x2} y2={y} stroke={DIM} strokeWidth={0.5} />
-      <line x1={x1} y1={y - 1.5} x2={x1} y2={y + 1.5} stroke={DIM} strokeWidth={0.5} />
-      <line x1={x2} y1={y - 1.5} x2={x2} y2={y + 1.5} stroke={DIM} strokeWidth={0.5} />
-      <text x={(x1 + x2) / 2} y={y - 1.8} fontSize={4.5} fill={DIM} textAnchor="middle" fontFamily="ui-monospace, monospace">
-        {text}
+      <rect x={x} y={y + swH} width={w} height={labelH} fill="rgba(0,0,0,0.86)" />
+      <text
+        x={x + 4}
+        y={y + swH + labelH - 3.5}
+        fontSize={nameSize}
+        fill="#ffffff"
+        fontFamily="ui-monospace, monospace"
+        fontWeight={600}
+        letterSpacing={0.3}
+      >
+        {swatch.name.toUpperCase()}
       </text>
+      <text
+        x={x + w - 4}
+        y={y + swH + labelH - 3.5}
+        fontSize={hexSize}
+        fill="rgba(255,255,255,0.6)"
+        fontFamily="ui-monospace, monospace"
+        textAnchor="end"
+      >
+        {swatch.hex}
+      </text>
+
+      <rect
+        x={x} y={y} width={w} height={h}
+        fill="none"
+        stroke="rgba(0,0,0,0.20)"
+        strokeWidth={0.45}
+      />
     </g>
   );
 }
@@ -207,11 +307,8 @@ function DimH({ x1, x2, y, text }: { x1: number; x2: number; y: number; text: st
 function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: boolean }) {
   const W = 320;
   const H = 180;
-  const id = option.id;
-  const uid = `${id}-${large ? 'lg' : 'sm'}`;
-  const hatchId = `hatch-${uid}`;
-  const hatchAltId = `hatchAlt-${uid}`;
-  const gridId = `grid-${uid}`;
+  const uid = `${option.id}-${large ? 'lg' : 'sm'}`;
+  const s = option.swatches;
 
   return (
     <svg
@@ -220,200 +317,57 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
       height="100%"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
-      style={{ display: 'block', backgroundColor: PAPER }}
+      style={{ display: 'block', backgroundColor: BOARD_BG }}
     >
-      <defs>
-        <pattern id={gridId} width={10} height={10} patternUnits="userSpaceOnUse">
-          <path d="M 10 0 L 0 0 0 10" fill="none" stroke={GRID_MINOR} strokeWidth={0.5} />
-        </pattern>
-        <pattern id={hatchId} width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width={4} height={4} fill={PAPER} />
-          <line x1={0} y1={0} x2={0} y2={4} stroke={HATCH} strokeWidth={0.8} />
-        </pattern>
-        <pattern id={hatchAltId} width={5} height={5} patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
-          <rect width={5} height={5} fill={PAPER} />
-          <line x1={0} y1={0} x2={0} y2={5} stroke={option.accent} strokeWidth={0.6} />
-        </pattern>
-      </defs>
+      <MaterialDefs uid={uid} />
 
-      {/* Paper + grid */}
-      <rect x={0} y={0} width={W} height={H} fill={PAPER} />
-      <rect x={0} y={0} width={W} height={H} fill={`url(#${gridId})`} />
-      {Array.from({ length: Math.floor(W / 50) }, (_, i) => (i + 1) * 50).map((x) => (
-        <line key={`gx-${x}`} x1={x} y1={0} x2={x} y2={H} stroke={GRID_MAJOR} strokeWidth={0.6} />
-      ))}
-      {Array.from({ length: Math.floor(H / 50) }, (_, i) => (i + 1) * 50).map((y) => (
-        <line key={`gy-${y}`} x1={0} y1={y} x2={W} y2={y} stroke={GRID_MAJOR} strokeWidth={0.6} />
-      ))}
+      {/* Board (warm paper) */}
+      <rect x={0} y={0} width={W} height={H} fill={BOARD_BG} />
 
-      {/* Property line */}
-      <rect x={16} y={16} width={W - 32} height={H - 50} fill="none" stroke={INK} strokeWidth={1.1} strokeDasharray="6 2 1 2" />
-
-      {/* Road */}
-      <rect x={0} y={H - 18} width={W} height={18} fill={ROAD} />
-      <line x1={0} y1={H - 9} x2={W} y2={H - 9} stroke={PAPER} strokeWidth={0.8} strokeDasharray="8 8" />
-      <text x={W - 8} y={H - 4} fontSize={5} fill={INK_LIGHT} textAnchor="end" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
-        MAIN ST
+      {/* Header strip — mood name + sheet id */}
+      <text
+        x={6}
+        y={10}
+        fontSize={5.4}
+        fontWeight={700}
+        fill={INK}
+        fontFamily="ui-monospace, monospace"
+        letterSpacing={0.7}
+      >
+        {option.title.toUpperCase()} · MATERIAL BOARD
+      </text>
+      <text
+        x={W - 6}
+        y={10}
+        fontSize={4.5}
+        fill={INK_LIGHT}
+        fontFamily="ui-monospace, monospace"
+        textAnchor="end"
+        letterSpacing={0.3}
+      >
+        MB-0{option.num}
       </text>
 
-      {/* OPTION 1 — Tower */}
-      {id === 'tower' && (
-        <g>
-          <HatchedRect x={132} y={56} w={42} h={42} hatchId={hatchId} />
-          <text x={153} y={80} fontSize={5.5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.4}>TOWER</text>
-          <text x={153} y={88} fontSize={4.2} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">6 STOREYS</text>
-          <rect x={146} y={98} width={14} height={44} fill={ROAD} />
-          <rect x={196} y={102} width={88} height={40} fill="none" stroke={INK} strokeWidth={0.9} />
-          {[210, 224, 238, 252, 266, 280].map((x) => (
-            <line key={x} x1={x} y1={102} x2={x} y2={142} stroke={INK} strokeWidth={0.5} />
-          ))}
-          <text x={240} y={117} fontSize={4.2} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">PARKING (6)</text>
-          <DimH x1={16} x2={132} y={50} text="42.0" />
-          <DimH x1={174} x2={304} y={50} text="46.0" />
-          {[28, 44, 60, 76, 92, 108, 212, 228, 244, 260, 276, 292].map((x) => (
-            <Tree key={`t-${x}`} cx={x} cy={28} />
-          ))}
-          {[28, 44, 60, 76, 92, 108].map((x) => <Tree key={`b-${x}`} cx={x} cy={120} />)}
-        </g>
-      )}
+      {/* Swatch grid — hero left, two stacked right, three across bottom */}
+      <Swatch x={6}   y={16}  w={150} h={100} swatch={s[0]} uid={uid} />
+      <Swatch x={160} y={16}  w={154} h={48}  swatch={s[1]} uid={uid} />
+      <Swatch x={160} y={68}  w={154} h={48}  swatch={s[2]} uid={uid} />
+      <Swatch x={6}   y={120} w={72}  h={50}  swatch={s[3]} uid={uid} />
+      <Swatch x={82}  y={120} w={72}  h={50}  swatch={s[4]} uid={uid} />
+      <Swatch x={158} y={120} w={156} h={50}  swatch={s[5]} uid={uid} />
 
-      {/* OPTION 2 — Courtyard */}
-      {id === 'courtyard' && (
-        <g>
-          <HatchedRect x={86} y={36} w={48} h={32} hatchId={hatchId} />
-          <HatchedRect x={186} y={36} w={48} h={32} hatchId={hatchId} />
-          <HatchedRect x={86} y={92} w={48} h={32} hatchId={hatchId} />
-          <HatchedRect x={186} y={92} w={48} h={32} hatchId={hatchId} />
-          <text x={110} y={56} fontSize={5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">A</text>
-          <text x={210} y={56} fontSize={5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">B</text>
-          <text x={110} y={112} fontSize={5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">C</text>
-          <text x={210} y={112} fontSize={5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">D</text>
-          <rect x={138} y={70} width={44} height={50} fill="none" stroke={INK} strokeWidth={0.9} strokeDasharray="2 2" />
-          {[78, 88, 98, 108, 118].map((y) => (
-            <line key={`ch-${y}`} x1={138} y1={y} x2={182} y2={y} stroke={INK_LIGHT} strokeWidth={0.3} />
-          ))}
-          <text x={160} y={98} fontSize={4} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">COURT</text>
-          {[52, 56, 108, 112].map((y) => (
-            <line key={`hp-${y}`} x1={134} y1={y} x2={186} y2={y} stroke={INK} strokeWidth={0.5} />
-          ))}
-          {[158, 162].map((x) => (
-            <line key={`vp-${x}`} x1={x} y1={68} x2={x} y2={124} stroke={INK} strokeWidth={0.5} />
-          ))}
-          <rect x={154} y={124} width={12} height={20} fill={ROAD} />
-          <DimH x1={86} x2={234} y={30} text="148.0" />
-          {[28, 44, 60, 260, 276, 292].map((x) => <Tree key={`tt-${x}`} cx={x} cy={28} />)}
-          {[28, 44, 260, 276, 292].map((x) => <Tree key={`bt-${x}`} cx={x} cy={132} />)}
-        </g>
-      )}
-
-      {/* OPTION 3 — Linear */}
-      {id === 'linear' && (
-        <g>
-          <HatchedRect x={28} y={48} w={264} h={28} hatchId={hatchId} />
-          {[48, 78, 108, 138, 168, 198, 228, 258, 288].map((x) => (
-            <g key={`c-${x}`}>
-              <circle cx={x} cy={54} r={1.2} fill={INK} />
-              <circle cx={x} cy={70} r={1.2} fill={INK} />
-            </g>
-          ))}
-          <text x={160} y={66} fontSize={5.5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.4}>LINEAR BAR · 3 STOREYS</text>
-          <rect x={28} y={80} width={264} height={14} fill="none" stroke={INK_LIGHT} strokeWidth={0.6} strokeDasharray="3 2" />
-          {[58, 88, 118, 148, 178, 208, 238, 268].map((x) => (
-            <line key={`pv-${x}`} x1={x} y1={80} x2={x} y2={94} stroke={INK_LIGHT} strokeWidth={0.3} />
-          ))}
-          <text x={160} y={90} fontSize={4} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">ENTRANCE PLAZA</text>
-          <rect x={28} y={104} width={264} height={28} fill="none" stroke={INK} strokeWidth={0.9} />
-          {Array.from({ length: 18 }, (_, i) => 42 + i * 14).map((x) => (
-            <line key={`pk-${x}`} x1={x} y1={104} x2={x} y2={132} stroke={INK} strokeWidth={0.5} />
-          ))}
-          <text x={160} y={120} fontSize={4.2} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">PARKING (18)</text>
-          <DimH x1={28} x2={292} y={42} text="264.0" />
-        </g>
-      )}
-
-      {/* OPTION 4 — Reuse */}
-      {id === 'reuse' && (
-        <g>
-          <HatchedRect x={28} y={40} w={120} h={82} hatchId={hatchId} stroke={INK} strokeWidth={1.6} />
-          <text x={88} y={70} fontSize={5.2} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>EXISTING</text>
-          <text x={88} y={78} fontSize={4.2} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">WAREHOUSE · 1947</text>
-          <rect x={148} y={64} width={26} height={34} fill={PAPER} stroke={INK} strokeWidth={0.8} strokeDasharray="3 2" />
-          <text x={161} y={84} fontSize={3.6} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">LINK</text>
-          <polygon points="174,46 296,58 296,108 174,118" fill={`url(#${hatchAltId})`} stroke={option.accent} strokeWidth={1.4} />
-          <text x={235} y={78} fontSize={5.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>NEW WING</text>
-          <text x={235} y={86} fontSize={4.2} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace">2026 · CLT FRAME</text>
-          <DimH x1={28} x2={148} y={34} text="120.0" />
-          <DimH x1={174} x2={296} y={34} text="122.0" />
-          {[36, 52, 248, 268, 288].map((x) => <Tree key={`tt-${x}`} cx={x} cy={132} />)}
-        </g>
-      )}
-
-      {/* OPTION 5 — Radial Hub */}
-      {id === 'radial' && (
-        <g>
-          {/* Central hub (hexagon) */}
-          <polygon
-            points="160,62 180,72 180,92 160,102 140,92 140,72"
-            fill={`url(#${hatchId})`}
-            stroke={INK}
-            strokeWidth={1.4}
-          />
-          <text x={160} y={85} fontSize={5} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.4}>HUB</text>
-
-          {/* 4 wings radiating */}
-          <HatchedRect x={80} y={42} w={48} h={18} hatchId={hatchId} />
-          <HatchedRect x={192} y={42} w={48} h={18} hatchId={hatchId} />
-          <HatchedRect x={80} y={104} w={48} h={18} hatchId={hatchId} />
-          <HatchedRect x={192} y={104} w={48} h={18} hatchId={hatchId} />
-          <text x={104} y={54} fontSize={4.2} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">A</text>
-          <text x={216} y={54} fontSize={4.2} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">B</text>
-          <text x={104} y={116} fontSize={4.2} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">C</text>
-          <text x={216} y={116} fontSize={4.2} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace">D</text>
-
-          {/* Spokes — dashed walkways */}
-          <line x1={128} y1={51} x2={150} y2={70} stroke={INK} strokeWidth={0.7} strokeDasharray="2 1.5" />
-          <line x1={192} y1={51} x2={170} y2={70} stroke={INK} strokeWidth={0.7} strokeDasharray="2 1.5" />
-          <line x1={128} y1={113} x2={150} y2={94} stroke={INK} strokeWidth={0.7} strokeDasharray="2 1.5" />
-          <line x1={192} y1={113} x2={170} y2={94} stroke={INK} strokeWidth={0.7} strokeDasharray="2 1.5" />
-
-          {/* Driveway */}
-          <rect x={154} y={102} width={12} height={42} fill={ROAD} />
-          <DimH x1={80} x2={240} y={32} text="160.0" />
-          {[28, 44, 280, 296].map((x) => <Tree key={`tr-${x}`} cx={x} cy={28} />)}
-          {[28, 44, 280, 296].map((x) => <Tree key={`br-${x}`} cx={x} cy={132} />)}
-        </g>
-      )}
-
-      {/* OPTION 6 — Mat building */}
-      {id === 'mat' && (
-        <g>
-          {/* Big mat footprint */}
-          <HatchedRect x={28} y={32} w={264} h={104} hatchId={hatchId} stroke={INK} strokeWidth={1.4} />
-          {/* 3 internal light courts (cut-outs shown as PAPER fill) */}
-          <rect x={62} y={56} width={48} height={28} fill={PAPER} stroke={INK} strokeWidth={0.9} strokeDasharray="2 2" />
-          <text x={86} y={73} fontSize={3.8} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">COURT 1</text>
-          <rect x={134} y={84} width={52} height={32} fill={PAPER} stroke={INK} strokeWidth={0.9} strokeDasharray="2 2" />
-          <text x={160} y={103} fontSize={3.8} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">COURT 2</text>
-          <rect x={210} y={56} width={48} height={28} fill={PAPER} stroke={INK} strokeWidth={0.9} strokeDasharray="2 2" />
-          <text x={234} y={73} fontSize={3.8} fill={INK_LIGHT} textAnchor="middle" fontFamily="ui-monospace, monospace">COURT 3</text>
-
-          {/* Structural grid columns */}
-          {[48, 70, 92, 114, 136, 158, 180, 202, 224, 246, 268].flatMap((x) =>
-            [42, 70, 98, 126].map((y) => <circle key={`col-${x}-${y}`} cx={x} cy={y} r={0.8} fill={INK} />)
-          )}
-
-          {/* Label */}
-          <text x={160} y={48} fontSize={5.2} fontWeight={700} fill={INK} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.4}>
-            MAT BUILDING · 1 STOREY
-          </text>
-
-          {/* Tiny entry */}
-          <rect x={154} y={136} width={12} height={8} fill={ROAD} />
-        </g>
-      )}
-
-      <NorthArrow cx={W - 22} cy={26} />
-      <ScaleBar x={20} y={148} />
+      {/* Accent stripe + subtitle */}
+      <rect x={6} y={173} width={W - 12} height={1.8} fill={option.accent} />
+      <text
+        x={6}
+        y={178.5}
+        fontSize={3.6}
+        fill={INK_LIGHT}
+        fontFamily="ui-monospace, monospace"
+        letterSpacing={0.4}
+      >
+        {option.subtitle.toUpperCase()}
+      </text>
     </svg>
   );
 }
@@ -511,11 +465,11 @@ function DetailModal({
               color: INK_LIGHT,
             }}
           >
-            <span style={{ fontWeight: 700, color: INK }}>SK-0{option.num}</span>
+            <span style={{ fontWeight: 700, color: INK }}>MB-0{option.num}</span>
             <span>·</span>
-            <span>SITE PLAN</span>
+            <span>MATERIAL BOARD</span>
             <span>·</span>
-            <span>1:500</span>
+            <span>LOBBY · L01</span>
           </div>
         </div>
 
@@ -713,9 +667,9 @@ function OptionCard({
             color: INK_LIGHT,
           }}
         >
-          <span style={{ fontWeight: 700, color: INK }}>SK-0{option.num}</span>
+          <span style={{ fontWeight: 700, color: INK }}>MB-0{option.num}</span>
           <span>·</span>
-          <span>1:500</span>
+          <span>LOBBY · L01</span>
         </div>
 
         {/* Number badge */}
@@ -735,13 +689,13 @@ function OptionCard({
 
       </div>
 
-      <div className="flex flex-col px-3 py-2">
+      <div className="flex flex-col px-3 py-2.5">
         <span
           className="font-semibold truncate"
           style={{
-            fontSize: 'var(--modus-wc-font-size-sm, 13.5px)',
+            fontSize: 'var(--modus-wc-font-size-md, 16px)',
             color: 'var(--modus-wc-color-base-content, #101828)',
-            lineHeight: 1.2,
+            lineHeight: 1.25,
           }}
         >
           {option.num}. {option.title}
@@ -832,8 +786,8 @@ function SuggestionPopup({
         {/* Header */}
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2 min-w-0">
-            {/* Mini Trimble AI logo */}
-            <span className="flex items-center justify-center shrink-0" style={{ width: '22px', height: '22px' }}>
+            {/* Trimble AI logo */}
+            <span className="flex items-center justify-center shrink-0" style={{ width: '34px', height: '34px' }}>
               <svg viewBox="0 0 30.002 32.6797" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="tlogo-5popup" x1="3.7558" y1="10.5251" x2="20.4332" y2="30.2565" gradientUnits="userSpaceOnUse">
@@ -857,46 +811,50 @@ function SuggestionPopup({
                   lineHeight: 1.25,
                 }}
               >
-                Four divergent site layouts
-              </span>
-              <span
-                className="truncate"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  margin: 0,
-                  lineHeight: 1.35,
-                }}
-              >
-                Pick the direction you want to develop — I&apos;ll detail it.
+                Four divergent material directions
               </span>
             </div>
           </div>
 
           {/* Tool cluster */}
           <div className="flex items-center gap-1 shrink-0">
-            <ToolButton icon="refresh" label="Regenerate options" onClick={() => undefined} />
-            <ToolButton icon="bookmark" label="Save this set" onClick={() => undefined} />
-            <span
-              aria-hidden="true"
-              style={{
-                width: '1px',
-                height: '18px',
-                backgroundColor: 'var(--modus-wc-color-base-200, #e0e1e9)',
-                margin: '0 4px',
-              }}
-            />
             <ToolButton icon="close" label="Close" onClick={onClose} />
           </div>
         </div>
 
-        {/* Body — option grid (or list) */}
+        {/* Instruction strip — sits between header and grid */}
+        <div
+          className="flex items-center gap-2 px-4 py-2"
+          style={{
+            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+          }}
+        >
+          <ModusWcIcon
+            name="lightbulb"
+            size="xs"
+            decorative
+            style={{
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          />
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+              lineHeight: 1.4,
+            }}
+          >
+            Pick the direction you want to develop — I&apos;ll detail it.
+          </span>
+        </div>
+
+        {/* Body — option grid */}
         <div
           className="grid grid-cols-2 gap-3 px-4 py-4"
           style={{
             maxHeight: '620px',
             overflowY: 'auto',
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
           }}
         >
           {OPTIONS.map((opt) => (
@@ -913,13 +871,19 @@ function SuggestionPopup({
           className="flex items-center gap-2 px-4 py-3"
           style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
         >
+          <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={() => undefined}>
+            <span className="flex items-center gap-1">
+              <ModusWcIcon name="history" size="xs" decorative />
+              Previous iteration
+            </span>
+          </ModusWcButton>
+          <div className="flex-1" />
           <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={onClose}>
             <span className="flex items-center gap-1">
               <ModusWcIcon name="refresh" size="xs" decorative />
               Recreate
             </span>
           </ModusWcButton>
-          <div className="flex-1" />
           <ModusWcButton size="sm" color="primary" onButtonClick={() => undefined}>
             <span className="flex items-center gap-1">
               <ModusWcIcon name="arrow_right" size="xs" decorative />
