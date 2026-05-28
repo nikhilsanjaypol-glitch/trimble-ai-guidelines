@@ -518,7 +518,7 @@ function AnalysedRow({
         <div
           className="flex flex-col"
           style={{
-            padding: '4px 12px 12px 36px',
+            padding: '4px 12px 8px 36px',
             gap: '8px',
           }}
         >
