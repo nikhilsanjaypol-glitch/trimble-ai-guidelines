@@ -748,8 +748,8 @@ function PromptBar() {
             type="button"
             aria-label="Add attachment"
             style={{
-              width: '48px',
-              height: '48px',
+              width: '40px',
+              height: '40px',
               padding: 0,
               background: 'transparent',
               border: 'none',
@@ -757,22 +757,22 @@ function PromptBar() {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'flex-end',
             }}
           >
             <img
               src="/assets/prompt-add.png"
               alt=""
               aria-hidden="true"
-              style={{ width: '36px', height: '34px', display: 'block' }}
+              style={{ width: '32px', height: '30px', display: 'block' }}
             />
           </button>
           <button
             type="button"
             aria-label="Send prompt"
             style={{
-              width: '48px',
-              height: '48px',
+              width: '40px',
+              height: '40px',
               padding: 0,
               background: 'transparent',
               border: 'none',
@@ -780,14 +780,14 @@ function PromptBar() {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
             }}
           >
             <img
               src="/assets/prompt-send.png"
               alt=""
               aria-hidden="true"
-              style={{ width: '36px', height: '34px', display: 'block' }}
+              style={{ width: '32px', height: '30px', display: 'block' }}
             />
           </button>
         </div>
