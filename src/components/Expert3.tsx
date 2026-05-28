@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 /* ─────────────────────────────────────────────────────────────────
  * Expert 3 — PRIORITIZE CLARITY OVER COMPLEXITY
@@ -11,80 +11,28 @@ import { ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-r
  * casual, conversational, human tone and avoiding technical jargon
  * or acronyms unless clearly defined.
  *
- * Interactions in this canvas:
- *   1. Three-level tone toggle — Quick / Friendly / Technical — so
- *      the user can dial complexity up or down.
- *   2. A reading-time chip that updates with the chosen tone so the
- *      cost of the response is visible before reading.
- *   3. Inline glossary popovers in Technical mode — every acronym or
- *      jargon term has a dotted underline and a tap-to-define popup.
- *   4. "Show me where" reveals a tiny site sketch that highlights
- *      the soft north-east corner the answer references.
- *   5. Source chips below the answer surface the inputs the AI used
- *      so trust is concrete, not abstract.
- *   6. Follow-up suggestion chips, phrased in casual user voice,
- *      expand to a friendly plain-language answer when tapped.
+ * Layout (mirrors the guideline page's Avoid → Instead pattern, but
+ * with full chat components side-by-side rather than abstract pulls):
+ *
+ *   ┌─────────────────────┐   ┌─────────────────────┐
+ *   │ [Avoid]             │   │ [Instead]           │
+ *   │  same chat shell    │   │  same chat shell    │
+ *   │  jargon response    │   │  plain response     │
+ *   └─────────────────────┘   └─────────────────────┘
+ *
+ * Both cards ask the same question; only the AI's voice differs.
  * ───────────────────────────────────────────────────────────────── */
 
-const TRIMBLE_RAINBOW =
+const AVOID_ACCENT = 'var(--modus-wc-color-error, #d50057)';
+const INSTEAD_ACCENT =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
-
-type Tone = 'quick' | 'friendly' | 'technical';
-
-interface Glossary {
-  [term: string]: string;
-}
-
-const GLOSSARY: Glossary = {
-  subgrade: 'The natural soil layer underneath where you build.',
-  'bearing capacity': 'How much weight the ground can safely hold up.',
-  SPT: 'Standard Penetration Test — a quick on-site test that counts hammer blows to measure soil strength.',
-  CBR: 'California Bearing Ratio — a number that says how stiff the soil is compared to a known reference.',
-  'differential settlement':
-    'When one part of a building sinks more than another, causing it to tilt or crack.',
-};
-
-interface SourceChip {
-  id: string;
-  label: string;
-  icon: string;
-}
-
-const SOURCES: SourceChip[] = [
-  { id: 'soil', label: 'Soil report', icon: 'document' },
-  { id: 'survey', label: 'Site survey', icon: 'map_marker' },
-  { id: 'topo', label: 'Topo map', icon: 'layers' },
-];
-
-interface FollowUp {
-  id: string;
-  question: string;
-  answer: string;
-}
-
-const FOLLOWUPS: FollowUp[] = [
-  {
-    id: 'footing',
-    question: "What's a footing?",
-    answer:
-      "It's the wider base under a foundation that spreads the building's weight over more ground — kind of like snowshoes for a house. The wider it is, the softer ground it can handle.",
-  },
-  {
-    id: 'north',
-    question: 'Why is the north edge softer?',
-    answer:
-      "That spot used to be a low area where rain collected, so the soil there is finer and looser than the rest of your site. It's not a deal-breaker, just something to design around.",
-  },
-  {
-    id: 'ignore',
-    question: 'What if I ignore it?',
-    answer:
-      'Over time, that corner could settle a little more than the rest, which can crack walls or tilt floors. A wider footing in that spot prevents it — pretty cheap fix now, expensive to repair later.',
-  },
-];
+/** Solid colour used for the Instead pill so it reads cleanly at small
+ *  sizes — the rainbow stays reserved for the card's border. */
+const INSTEAD_PILL_COLOR = 'var(--modus-wc-color-success, #00b388)';
+const PROMPT_TEXT = 'Is my site safe to build on?';
 
 /* ── Mini Trimble AI logo ───────────────────────────────────────── */
-function TrimbleAiLogo({ size = 24 }: { size?: number }) {
+function TrimbleAiLogo({ size = 32 }: { size?: number }) {
   return (
     <span
       className="flex items-center justify-center shrink-0"
@@ -147,244 +95,454 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-/* ── Action icon button (thumbs / refresh / share / copy) ───────── */
-function ActionIconButton({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex items-center justify-center rounded-md transition-colors"
-      style={{
-        width: '24px',
-        height: '24px',
-        backgroundColor: active
-          ? 'var(--modus-wc-color-base-200, #e0e1e9)'
-          : 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-      }}
-      onMouseEnter={(e) => {
-        if (active) return;
-        e.currentTarget.style.backgroundColor =
-          'var(--modus-wc-color-base-100, #f1f1f6)';
-      }}
-      onMouseLeave={(e) => {
-        if (active) return;
-        e.currentTarget.style.backgroundColor = 'transparent';
-      }}
-    >
-      <ModusWcIcon
-        name={icon}
-        size="xs"
-        decorative
+/* ── Coloured pill label — "Avoid" / "Instead" ──────────────────────
+   `color` accepts a solid colour token OR a CSS gradient string.
+   • Solid colour → opaque pill, white wordmark.
+   • Gradient → white pill with a gradient border (padding-wrap) and the
+     wordmark rendered in the same gradient via `background-clip: text`. */
+function LabelPill({ label, color }: { label: string; color: string }) {
+  const isGradient = color.includes('gradient');
+
+  if (!isGradient) {
+    return (
+      <span
+        className="inline-flex items-center justify-center"
         style={{
-          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-        }}
-      />
-    </button>
-  );
-}
-
-/* ── Three-way tone toggle: Quick | Friendly | Technical ────────── */
-function ToneToggle({
-  tone,
-  onChange,
-}: {
-  tone: Tone;
-  onChange: (next: Tone) => void;
-}) {
-  const options: { id: Tone; label: string }[] = [
-    { id: 'quick', label: 'Quick' },
-    { id: 'friendly', label: 'Friendly' },
-    { id: 'technical', label: 'Technical' },
-  ];
-  return (
-    <div
-      role="tablist"
-      aria-label="Response tone"
-      className="inline-flex items-center"
-      style={{
-        backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-        borderRadius: '1000px',
-        padding: '2px',
-        gap: '2px',
-      }}
-    >
-      {options.map((opt) => {
-        const selected = opt.id === tone;
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => onChange(opt.id)}
-            className="transition-colors"
-            style={{
-              height: '24px',
-              padding: '0 10px',
-              borderRadius: '1000px',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-              fontWeight: 600,
-              backgroundColor: selected
-                ? 'var(--modus-wc-color-base-page, #ffffff)'
-                : 'transparent',
-              color: selected
-                ? 'var(--modus-wc-color-base-content, #171c1e)'
-                : 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              boxShadow: selected ? '0px 1px 2px rgba(0,0,0,0.08)' : 'none',
-            }}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ── Reading-time chip ──────────────────────────────────────────── */
-function ReadingTimeChip({ seconds }: { seconds: number }) {
-  return (
-    <span
-      className="inline-flex items-center"
-      aria-label={`Estimated ${seconds} second read`}
-      style={{
-        height: '20px',
-        padding: '0 8px',
-        borderRadius: '1000px',
-        backgroundColor: 'transparent',
-        color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-        fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-        fontWeight: 600,
-        gap: '4px',
-      }}
-    >
-      <ModusWcIcon name="clock" size="xs" decorative />
-      {seconds}s read
-    </span>
-  );
-}
-
-/* ── A jargon term with a dotted underline and an inline popover ─ */
-function JargonTerm({
-  term,
-  definition,
-  open,
-  onToggle,
-}: {
-  term: string;
-  definition: string;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <span className="relative inline">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="inline"
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          margin: 0,
-          font: 'inherit',
-          color: 'var(--modus-wc-color-primary, #0063a3)',
-          textDecoration: 'underline',
-          textDecorationStyle: 'dotted',
-          textUnderlineOffset: '3px',
-          cursor: 'pointer',
+          background: color,
+          color: '#ffffff',
+          height: '32px',
+          padding: '0 18px',
+          borderRadius: '1000px',
+          fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap',
+          alignSelf: 'flex-start',
         }}
       >
-        {term}
-      </button>
-      {open && (
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex"
+      style={{
+        background: color,
+        padding: '2px',
+        borderRadius: '1000px',
+        alignSelf: 'flex-start',
+      }}
+    >
+      <span
+        className="inline-flex items-center justify-center"
+        style={{
+          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+          height: '28px',
+          padding: '0 16px',
+          borderRadius: '1000px',
+        }}
+      >
         <span
-          role="tooltip"
-          className="block"
           style={{
-            marginTop: '4px',
-            padding: '8px 10px',
-            borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-            borderLeft:
-              '3px solid var(--modus-wc-color-primary, #0063a3)',
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-            fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-            lineHeight: '18px',
-            fontWeight: 400,
+            background: color,
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+            fontWeight: 800,
+            letterSpacing: '0.02em',
+            whiteSpace: 'nowrap',
           }}
         >
-          <span
-            style={{
-              fontWeight: 600,
-              marginRight: '4px',
-            }}
-          >
-            {term}:
-          </span>
-          {definition}
+          {label}
         </span>
-      )}
+      </span>
     </span>
   );
 }
 
-/* ── "Show me where" inline mini site sketch ────────────────────── */
-function SiteSketch() {
+/* ── A single chat card — the response slot is swapped per example ─
+   Border is rendered via the padding-wrap technique so `accent` can be
+   either a solid colour ("var(...)") or a gradient ("linear-gradient(...)").
+   The outer + inner are both `flex flex-col` and `flex: 1` so the card
+   stretches to match its sibling when the parent uses items-stretch. */
+function ChatCard({
+  accent,
+  response,
+  shadow = true,
+  borderThickness = 1.5,
+  glow = false,
+}: {
+  accent: string;
+  response: ReactNode;
+  shadow?: boolean;
+  borderThickness?: number;
+  /** When true, the rainbow gradient on the border slowly shifts position
+   *  so the border line itself glitters. The drop shadow is unchanged. */
+  glow?: boolean;
+}) {
   return (
     <div
       className="flex flex-col"
       style={{
-        marginTop: '6px',
-        padding: '10px 12px',
-        borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-        backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+        width: '400px',
+        background: accent,
+        backgroundSize: glow ? '200% 100%' : '100% 100%',
+        animation: glow
+          ? 'expert3-rainbow-shimmer 3.6s ease-in-out infinite'
+          : undefined,
+        padding: `${borderThickness}px`,
+        borderRadius: `${12 + borderThickness}px`,
+        boxShadow: shadow ? '0px 0px 10px 0px rgba(0,0,0,0.15)' : 'none',
+        flex: 1,
+      }}
+    >
+      <div
+        className="bg-white flex flex-col"
+        style={{
+          padding: '24px',
+          gap: '24px',
+          borderRadius: '12px',
+          flex: 1,
+        }}
+      >
+        {/* User prompt — same casual phrasing on both sides */}
+        <UserBubble text={PROMPT_TEXT} />
+
+        {/* Agent response */}
+        <div className="flex gap-0 items-start">
+          {/* Avatar column — 40px wrapper vertically centers the logo. */}
+          <div className="flex items-start pr-2 shrink-0">
+            <div
+              className="flex items-center justify-center rounded-full"
+              style={{ width: '40px', height: '40px' }}
+            >
+              <TrimbleAiLogo size={32} />
+            </div>
+          </div>
+
+          {/* Bubble stack */}
+          <div
+            className="flex flex-col flex-1 min-w-0"
+            style={{ gap: '12px', padding: '8px 0' }}
+          >
+            {response}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Re-usable response paragraph ────────────────────────────────── */
+function ResponseParagraph({ children }: { children: ReactNode }) {
+  return (
+    <p
+      style={{
+        fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+        color: 'var(--modus-wc-color-base-content, #171c1e)',
+        lineHeight: '22px',
+        margin: 0,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+/* ── Thinking-dots placeholder shown before typing starts ─────────── */
+function ThinkingDots() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setPhase((p) => (p + 1) % 3), 350);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const dot = {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+    transition: 'opacity 200ms ease, transform 200ms ease',
+  } as const;
+
+  return (
+    <div
+      aria-label="Thinking"
+      role="status"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+        minHeight: '22px',
+        padding: '4px 0',
+      }}
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          style={{
+            ...dot,
+            opacity: phase === i ? 1 : 0.35,
+            transform: phase === i ? 'scale(1.15)' : 'scale(1)',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ── Blinking caret shown at the typing position ─────────────────── */
+function BlinkingCaret() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const id = window.setInterval(() => setOn((v) => !v), 530);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: 'inline-block',
+        width: '2px',
+        height: '14px',
+        marginLeft: '2px',
+        verticalAlign: 'text-bottom',
+        backgroundColor: 'var(--modus-wc-color-base-content, #171c1e)',
+        opacity: on ? 1 : 0,
+        transition: 'opacity 60ms',
+      }}
+    />
+  );
+}
+
+/* ── Typed response — a list of paragraphs, each a list of parts.
+   String parts are typed char-by-char; element parts appear instantly
+   once all preceding text has been typed. ───────────────────────── */
+type TypingPart = string | ReactNode;
+type TypingBlock = TypingPart[];
+
+function TypingResponse({
+  blocks,
+  speed = 10,
+  enabled = true,
+  onComplete,
+}: {
+  blocks: TypingBlock[];
+  speed?: number;
+  enabled?: boolean;
+  onComplete?: () => void;
+}) {
+  const totalChars = useMemo(() => {
+    let total = 0;
+    for (const block of blocks) {
+      for (const part of block) {
+        if (typeof part === 'string') total += part.length;
+      }
+    }
+    return total;
+  }, [blocks]);
+
+  const [progress, setProgress] = useState(0);
+
+  // Stable ref so we can fire onComplete from an effect without re-running it.
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (progress >= totalChars) return;
+    const id = window.setTimeout(() => setProgress((p) => p + 1), speed);
+    return () => window.clearTimeout(id);
+  }, [enabled, progress, totalChars, speed]);
+
+  // Fire onComplete exactly once when typing finishes.
+  const finished = enabled && totalChars > 0 && progress >= totalChars;
+  useEffect(() => {
+    if (finished) onCompleteRef.current?.();
+  }, [finished]);
+
+  /** Until enabled, treat progress as 0 so all chars render hidden but the
+   *  full final text still computes the layout (fixed container size). */
+  const effectiveProgress = enabled ? progress : 0;
+  const done = enabled && progress >= totalChars;
+  let charsSeen = 0;
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+      }}
+    >
+      {blocks.map((block, bi) => (
+        <ResponseParagraph key={bi}>
+          {block.map((part, pi) => {
+            if (typeof part === 'string') {
+              const partStart = charsSeen;
+              const partEnd = charsSeen + part.length;
+              charsSeen = partEnd;
+
+              const typedChars = Math.max(
+                0,
+                Math.min(part.length, effectiveProgress - partStart),
+              );
+              const typed = part.slice(0, typedChars);
+              const untyped = part.slice(typedChars);
+
+              // The caret sits right after the last typed char in the part
+              // that currently contains the typing cursor.
+              const caretInPart =
+                enabled &&
+                !done &&
+                effectiveProgress >= partStart &&
+                effectiveProgress < partEnd;
+
+              return (
+                <Fragment key={pi}>
+                  {typed}
+                  {caretInPart && <BlinkingCaret />}
+                  {untyped && (
+                    <span aria-hidden="true" style={{ visibility: 'hidden' }}>
+                      {untyped}
+                    </span>
+                  )}
+                </Fragment>
+              );
+            }
+            // Element parts: rendered into the layout from the start, but
+            // visibility-hidden until typing reaches their position.
+            const visible = charsSeen <= effectiveProgress;
+            return (
+              <span
+                key={pi}
+                aria-hidden={!visible}
+                style={{ visibility: visible ? 'visible' : 'hidden' }}
+              >
+                {part}
+              </span>
+            );
+          })}
+        </ResponseParagraph>
+      ))}
+
+      {/* Thinking dots overlay while waiting to start typing. The hidden
+          paragraphs above already reserve the final container height. */}
+      {!enabled && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '0',
+            left: '0',
+          }}
+        >
+          <ThinkingDots />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Floating popover anchored to "show me where" ───────────────── */
+function SiteSketchPopover({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-label="Soft patch location"
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: 'calc(100% + 12px)',
+        transform: 'translateY(-50%)',
+        zIndex: 50,
+        width: '280px',
+        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+        borderRadius: 'var(--modus-wc-border-radius-xl, 16px)',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        padding: '14px 16px',
+        display: 'flex',
+        flexDirection: 'column',
         gap: '8px',
       }}
     >
+      {/* Tail / arrow pointing left to the link */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '-7px',
+          width: '12px',
+          height: '12px',
+          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+          borderLeft: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          transform: 'translateY(-50%) rotate(45deg)',
+        }}
+      />
+
+      {/* Header — title + close button */}
       <div className="flex items-center justify-between">
         <span
+          className="inline-flex items-center"
           style={{
+            gap: '6px',
             fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--modus-wc-color-base-content, #171c1e)',
           }}
         >
           Your site
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+              color:
+                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              fontWeight: 600,
+            }}
+          >
+            (N ↑)
+          </span>
         </span>
-        <span
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
           style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+            width: '20px',
+            height: '20px',
+            borderRadius: '1000px',
+            border: 'none',
+            background: 'transparent',
             color:
               'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: '16px',
+            lineHeight: 1,
+            padding: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor =
+              'var(--modus-wc-color-base-100, #f1f1f6)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
           }}
         >
-          N ↑
-        </span>
+          ×
+        </button>
       </div>
 
+      {/* SVG sketch */}
       <svg
         viewBox="0 0 240 120"
         width="100%"
-        height="120"
+        height="108"
         role="img"
         aria-label="Site sketch with soft area highlighted in the north-east corner"
       >
@@ -395,13 +553,13 @@ function SiteSketch() {
           width="224"
           height="104"
           rx="6"
-          fill="#ffffff"
+          fill="var(--modus-wc-color-base-100, #f1f1f6)"
           stroke="var(--modus-wc-color-base-content-low-contrast, #6a6e79)"
           strokeWidth="1"
           strokeDasharray="4 3"
         />
 
-        {/* Solid (firm) ground label dots */}
+        {/* Solid (firm) ground dots */}
         <g
           fill="var(--modus-wc-color-base-content-low-contrast, #6a6e79)"
           opacity="0.5"
@@ -421,15 +579,15 @@ function SiteSketch() {
           width="64"
           height="40"
           rx="6"
-          fill="rgba(255, 32, 146, 0.12)"
-          stroke="#FF2092"
+          fill="rgba(213, 0, 87, 0.12)"
+          stroke={AVOID_ACCENT}
           strokeWidth="1.5"
         />
         <text
           x="192"
           y="40"
           textAnchor="middle"
-          fill="#FF2092"
+          fill={AVOID_ACCENT}
           fontSize="10"
           fontWeight="700"
           fontFamily="inherit"
@@ -437,7 +595,7 @@ function SiteSketch() {
           Soft patch
         </text>
 
-        {/* Compass: just an N arrow */}
+        {/* Compass: N arrow */}
         <g>
           <line
             x1="20"
@@ -454,6 +612,7 @@ function SiteSketch() {
         </g>
       </svg>
 
+      {/* Caption — plain-English description */}
       <p
         style={{
           fontSize: 'var(--modus-wc-font-size-xs, 12px)',
@@ -462,656 +621,104 @@ function SiteSketch() {
           margin: 0,
         }}
       >
-        The pink area is the softer spot — roughly the size of a two-car
-        garage. Everywhere else is solid.
+        The highlighted area is the softer spot — roughly the size of a
+        two-car garage. Everywhere else is solid.
       </p>
     </div>
   );
 }
 
-/* ── Source chip — "Based on: …" ────────────────────────────────── */
-function SourcePill({ icon, label }: { icon: string; label: string }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center transition-colors"
-      style={{
-        height: '22px',
-        padding: '0 8px',
-        borderRadius: '1000px',
-        border:
-          '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        backgroundColor: 'transparent',
-        color: 'var(--modus-wc-color-base-content, #171c1e)',
-        fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-        fontWeight: 600,
-        gap: '4px',
-        cursor: 'pointer',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor =
-          'var(--modus-wc-color-base-100, #f1f1f6)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent';
-      }}
-    >
-      <ModusWcIcon name={icon} size="xs" decorative />
-      {label}
-    </button>
-  );
-}
+/* ── Stateful Instead response with the working "show me where" ─── */
+function InsteadResponse({ enabled }: { enabled: boolean }) {
+  const [showMap, setShowMap] = useState(false);
 
-/* ── Follow-up suggestion chip ──────────────────────────────────── */
-function FollowUpChip({
-  label,
-  asked,
-  onClick,
-}: {
-  label: string;
-  asked: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center transition-colors"
-      style={{
-        height: '26px',
-        padding: '0 10px',
-        borderRadius: '1000px',
-        border: `1px solid ${
-          asked
-            ? 'var(--modus-wc-color-primary, #0063a3)'
-            : 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)'
-        }`,
-        backgroundColor: asked
-          ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
-          : 'transparent',
-        color: asked
-          ? 'var(--modus-wc-color-primary, #0063a3)'
-          : 'var(--modus-wc-color-base-content, #171c1e)',
-        fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-        fontWeight: 400,
-        gap: '4px',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-      }}
+  const showMeWhere = (
+    <span
+      key="show-me-where"
+      style={{ position: 'relative', display: 'inline-block' }}
     >
-      {asked ? (
-        <ModusWcIcon name="check" size="xs" decorative />
-      ) : (
-        <ModusWcIcon name="add" size="xs" decorative />
-      )}
-      {label}
-    </button>
+      <button
+        type="button"
+        onClick={() => setShowMap((p) => !p)}
+        aria-expanded={showMap}
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          font: 'inherit',
+          color: 'var(--modus-wc-color-primary, #0063a3)',
+          fontWeight: 600,
+          cursor: 'pointer',
+          textDecoration: 'underline',
+        }}
+      >
+        show me where
+      </button>
+      {showMap && <SiteSketchPopover onClose={() => setShowMap(false)} />}
+    </span>
   );
+
+  const blocks: TypingBlock[] = [
+    [
+      'The ground is firm, water drains away nicely, and we don’t expect anything to shift or sink.',
+    ],
+    [
+      'There’s one small soft patch near the north edge — ',
+      showMeWhere,
+      '. A wider footing there will keep you safe.',
+    ],
+  ];
+
+  return <TypingResponse blocks={blocks} enabled={enabled} />;
 }
 
 /* ── Expert 3 — Prioritize Clarity Over Complexity ──────────────── */
 export default function Expert3() {
-  const [tone, setTone] = useState<Tone>('friendly');
-  const [openTerm, setOpenTerm] = useState<string | null>(null);
-  const [showMap, setShowMap] = useState(false);
-  const [askedFollowUp, setAskedFollowUp] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [draft, setDraft] = useState('');
-
-  function toggleTerm(term: string) {
-    setOpenTerm((prev) => (prev === term ? null : term));
-  }
-
-  function handleToneChange(next: Tone) {
-    setTone(next);
-    setOpenTerm(null);
-    setShowMap(false);
-  }
-
-  function handleFollowUp(id: string) {
-    setAskedFollowUp((prev) => (prev === id ? null : id));
-  }
-
-  function handleReset() {
-    setTone('friendly');
-    setOpenTerm(null);
-    setShowMap(false);
-    setAskedFollowUp(null);
-  }
-
-  const readingSeconds = useMemo(() => {
-    if (tone === 'quick') return 5;
-    if (tone === 'friendly') return 15;
-    return 35;
-  }, [tone]);
-
-  const askedAnswer = useMemo(
-    () => FOLLOWUPS.find((f) => f.id === askedFollowUp)?.answer ?? null,
-    [askedFollowUp],
-  );
-
-  function handleCopy() {
-    const text =
-      tone === 'quick'
-        ? 'Short answer: yes — your site is safe to build on. Just plan a wider footing in the north-east corner.'
-        : tone === 'friendly'
-          ? [
-              'Short answer: yes — your site looks good to build on.',
-              '',
-              'The ground is firm, water drains away nicely, and we don’t expect anything to shift or sink. There’s one small soft patch near the north edge — a wider footing there will keep you safe.',
-              '',
-              'Want me to walk you through how we know?',
-            ].join('\n')
-          : [
-              'Subgrade assessment: site is suitable for construction.',
-              '',
-              'Bearing capacity exceeds 150 kPa across 92% of the parcel. SPT N-values average 18 (well above the 8-blow threshold). CBR > 6 indicates a stable subgrade. Differential settlement is projected below L/500 per ASCE 7-22. The north-east quadrant shows reduced N-values requiring spread-footing geometry per IBC 1808.',
-              '',
-              'See the geotechnical report for full SPT logs, gradation curves, and consolidation results.',
-            ].join('\n');
-
-    navigator.clipboard?.writeText(text).catch(() => {});
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
-  }
+  /** Instead starts typing only after Avoid finishes (+ a brief pause). */
+  const [insteadEnabled, setInsteadEnabled] = useState(false);
 
   return (
-    <div
-      className="bg-white rounded-xl flex flex-col"
-      style={{
-        width: '460px',
-        boxShadow: '0px 0px 10px 0px rgba(0,0,0,0.15)',
-        padding: '24px 24px 8px 24px',
-        gap: '24px',
-      }}
-    >
-      {/* User prompt — deliberately casual, non-expert phrasing */}
-      <UserBubble text="Is my site safe to build on?" />
-
-      {/* Agent response */}
-      <div className="flex gap-0 items-start">
-        {/* Avatar column */}
-        <div className="flex items-start pr-2 pt-2 shrink-0">
-          <div
-            className="flex items-center justify-center rounded-full"
-            style={{ width: '40px', height: '40px' }}
-          >
-            <TrimbleAiLogo size={24} />
-          </div>
-        </div>
-
-        {/* Bubble stack */}
-        <div
-          className="flex flex-col flex-1 min-w-0"
-          style={{ gap: '12px', padding: '8px 0' }}
-        >
-          {/* Tone toggle row + reading time */}
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <ToneToggle tone={tone} onChange={handleToneChange} />
-            <ReadingTimeChip seconds={readingSeconds} />
-          </div>
-
-          {tone === 'quick' && (
-            <>
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                  fontWeight: 600,
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '24px',
-                  margin: 0,
-                }}
-              >
-                Yes — safe to build on.
-              </p>
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '22px',
-                  margin: 0,
-                }}
-              >
-                Just plan a wider footing in the north-east corner.{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowMap((p) => !p)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: 'var(--modus-wc-color-primary, #0063a3)',
-                    fontSize: 'inherit',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  {showMap ? 'Hide map' : 'Show me where'}
-                </button>
-              </p>
-              {showMap && <SiteSketch />}
-            </>
-          )}
-
-          {tone === 'friendly' && (
-            <>
-              {/* Headline answer — short, friendly, conversational */}
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                  fontWeight: 600,
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '24px',
-                  margin: 0,
-                }}
-              >
-                Short answer: yes — your site looks good to build on.
-              </p>
-
-              {/* Casual explanation, zero jargon */}
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '22px',
-                  margin: 0,
-                }}
-              >
-                The ground is firm, water drains away nicely, and we don’t
-                expect anything to shift or sink. There’s one small soft patch
-                near the north edge —{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowMap((p) => !p)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: 'var(--modus-wc-color-primary, #0063a3)',
-                    fontSize: 'inherit',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  {showMap ? 'hide map' : 'show me where'}
-                </button>
-                . A wider footing there will keep you safe.
-              </p>
-
-              {showMap && <SiteSketch />}
-
-              {/* Friendly closer / next step */}
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color:
-                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  lineHeight: '20px',
-                  margin: 0,
-                }}
-              >
-                Want me to walk you through how we know?
-              </p>
-            </>
-          )}
-
-          {tone === 'technical' && (
-            <>
-              {/* Technical headline — same answer, denser */}
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                  fontWeight: 600,
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '24px',
-                  margin: 0,
-                }}
-              >
-                Site is suitable for construction.
-              </p>
-
-              {/* Technical body with inline glossary terms.
-                  Acronyms are NEVER used without a tap-to-define affordance. */}
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '22px',
-                  margin: 0,
-                }}
-              >
-                The{' '}
-                <JargonTerm
-                  term="subgrade"
-                  definition={GLOSSARY.subgrade}
-                  open={openTerm === 'subgrade'}
-                  onToggle={() => toggleTerm('subgrade')}
-                />{' '}
-                has{' '}
-                <JargonTerm
-                  term="bearing capacity"
-                  definition={GLOSSARY['bearing capacity']}
-                  open={openTerm === 'bearing capacity'}
-                  onToggle={() => toggleTerm('bearing capacity')}
-                />{' '}
-                above 150 kPa across 92% of the parcel.{' '}
-                <JargonTerm
-                  term="SPT"
-                  definition={GLOSSARY.SPT}
-                  open={openTerm === 'SPT'}
-                  onToggle={() => toggleTerm('SPT')}
-                />{' '}
-                values average 18 — well above the 8-blow threshold — and{' '}
-                <JargonTerm
-                  term="CBR"
-                  definition={GLOSSARY.CBR}
-                  open={openTerm === 'CBR'}
-                  onToggle={() => toggleTerm('CBR')}
-                />{' '}
-                is greater than 6. Projected{' '}
-                <JargonTerm
-                  term="differential settlement"
-                  definition={GLOSSARY['differential settlement']}
-                  open={openTerm === 'differential settlement'}
-                  onToggle={() => toggleTerm('differential settlement')}
-                />{' '}
-                stays under L/500. The north-east quadrant has lower readings
-                and needs a wider spread footing.{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowMap((p) => !p)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: 'var(--modus-wc-color-primary, #0063a3)',
-                    fontSize: 'inherit',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  {showMap ? 'Hide location' : 'Show location'}
-                </button>
-              </p>
-
-              {showMap && <SiteSketch />}
-
-              {/* Hint that defines the interaction */}
-              <p
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  color:
-                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  lineHeight: '18px',
-                  margin: 0,
-                  fontStyle: 'italic',
-                }}
-              >
-                Tap any underlined term for a plain-English definition.
-              </p>
-            </>
-          )}
-
-          {/* Source chips — what the answer is based on */}
-          <div
-            className="flex items-center flex-wrap"
-            style={{ gap: '6px', marginTop: '4px' }}
-          >
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                fontWeight: 600,
-                color:
-                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                marginRight: '2px',
-              }}
-            >
-              Based on
-            </span>
-            {SOURCES.map((s) => (
-              <SourcePill key={s.id} icon={s.icon} label={s.label} />
-            ))}
-          </div>
-
-          {/* Follow-up suggestions — in casual user voice */}
-          <div className="flex flex-col" style={{ gap: '6px', marginTop: '4px' }}>
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                fontWeight: 600,
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-              }}
-            >
-              You can also ask:
-            </span>
-            <div className="flex flex-wrap" style={{ gap: '6px' }}>
-              {FOLLOWUPS.map((f) => (
-                <FollowUpChip
-                  key={f.id}
-                  label={f.question}
-                  asked={askedFollowUp === f.id}
-                  onClick={() => handleFollowUp(f.id)}
-                />
-              ))}
-            </div>
-            {askedAnswer && (
-              <div
-                style={{
-                  marginTop: '4px',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  borderLeft:
-                    '3px solid var(--modus-wc-color-primary, #0063a3)',
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                    color: 'var(--modus-wc-color-base-content, #171c1e)',
-                    lineHeight: '20px',
-                    margin: 0,
-                  }}
-                >
-                  {askedAnswer}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Action toolbar */}
-          <div className="flex gap-1 items-center pt-1">
-            <ActionIconButton
-              icon="thumbs_up"
-              label="Helpful"
-              active={feedback === 'up'}
-              onClick={() => setFeedback((p) => (p === 'up' ? null : 'up'))}
-            />
-            <ActionIconButton
-              icon="thumbs_down"
-              label="Not helpful"
-              active={feedback === 'down'}
-              onClick={() =>
-                setFeedback((p) => (p === 'down' ? null : 'down'))
-              }
-            />
-            <ActionIconButton
-              icon="refresh"
-              label="Regenerate"
-              onClick={handleReset}
-            />
-            <ActionIconButton icon="share" label="Share" />
-            <ActionIconButton
-              icon={copied ? 'check' : 'content_copy'}
-              label={copied ? 'Copied' : 'Copy response'}
-              onClick={handleCopy}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Prompt input with rainbow gradient border */}
-      <div
-        className="rounded-2xl"
-        style={{
-          padding: '2px',
-          background: TRIMBLE_RAINBOW,
+    <div className="flex items-stretch" style={{ gap: '24px' }}>
+      {/* Keyframes for the Instead card's border-line glitter. Scoped by a
+       *  prefixed animation name so it can't clash with other components. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `@keyframes expert3-rainbow-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }`,
         }}
-      >
-        <div
-          className="bg-white rounded-[14px] flex flex-col gap-1"
-          style={{ padding: '8px' }}
-        >
-          {/* Text input row */}
-          <div className="px-1">
-            <ModusWcTextInput
-              value={draft}
-              placeholder="How can I help you?"
-              bordered={false}
-              onInputChange={(e: CustomEvent) =>
-                setDraft(e.detail?.target?.value || '')
+      />
+      {/* AVOID — same question, jargon-heavy answer */}
+      <div className="flex flex-col" style={{ gap: '10px' }}>
+        <LabelPill label="Avoid" color={AVOID_ACCENT} />
+        <ChatCard
+          accent={AVOID_ACCENT}
+          shadow={false}
+          response={
+            <TypingResponse
+              onComplete={() =>
+                window.setTimeout(() => setInsteadEnabled(true), 300)
               }
+              blocks={[
+                [
+                  'Subgrade bearing capacity exceeds 150 kPa across 92% of the parcel per SPT N-values (avg 18). Hydraulic conductivity ≥ 1×10⁻⁵ m/s supports adequate surface drainage. Differential settlement is projected below L/500 per ASCE 7-22.',
+                ],
+                [
+                  'The NE quadrant exhibits reduced N-values requiring spread-footing geometry per IBC 1808 — refer to boring logs BL-04 and BL-05.',
+                ],
+              ]}
             />
-          </div>
-
-          {/* Parameters / actions row */}
-          <div className="flex items-center justify-between gap-2 pt-0.5 px-1">
-            {/* Left: model + scope */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="flex items-center gap-1"
-                style={{
-                  height: '24px',
-                  padding: '0 4px 0 8px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  border:
-                    '1px solid var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  color:
-                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0px 1px 1px rgba(0,0,0,0.05)',
-                }}
-              >
-                GPT 5
-                <ModusWcIcon name="expand_more" size="xs" decorative />
-              </button>
-
-              <button
-                type="button"
-                className="flex items-center justify-center"
-                style={{
-                  height: '24px',
-                  padding: '0 8px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: 'pointer',
-                  gap: '4px',
-                }}
-                aria-label="Add context"
-              >
-                <ModusWcIcon name="sparkle" size="xs" decorative />
-              </button>
-            </div>
-
-            {/* Right: add source + send */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                aria-label="Add source"
-                className="flex items-center justify-center"
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    'var(--modus-wc-color-base-100, #f1f1f6)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <ModusWcIcon name="add" size="sm" decorative />
-              </button>
-              <button
-                type="button"
-                aria-label="Send"
-                disabled={draft.trim() === ''}
-                className="flex items-center justify-center"
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '1000px',
-                  backgroundColor:
-                    draft.trim() === ''
-                      ? 'transparent'
-                      : 'var(--modus-wc-color-primary, #0063a3)',
-                  color:
-                    draft.trim() === ''
-                      ? 'var(--modus-wc-color-base-content, #171c1e)'
-                      : '#ffffff',
-                  border: 'none',
-                  cursor: draft.trim() === '' ? 'default' : 'pointer',
-                  opacity: draft.trim() === '' ? 0.6 : 1,
-                  transition: 'background-color 120ms ease',
-                }}
-              >
-                <ModusWcIcon name="send" size="sm" decorative />
-              </button>
-            </div>
-          </div>
-        </div>
+          }
+        />
       </div>
 
-      {/* Disclaimer */}
-      <div className="flex items-center gap-1 px-1">
-        <span
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            fontWeight: 600,
-            lineHeight: '16px',
-          }}
-        >
-          AI can make mistakes.
-        </span>
-        <button
-          type="button"
-          className="cursor-pointer"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '0 4px',
-            color: 'var(--modus-wc-color-primary, #0063a3)',
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            lineHeight: '16px',
-          }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.textDecoration = 'underline')
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.textDecoration = 'none')
-          }
-        >
-          Acceptable Use
-        </button>
+      {/* INSTEAD — same question, plain-English answer */}
+      <div className="flex flex-col" style={{ gap: '10px' }}>
+        <LabelPill label="Instead" color={INSTEAD_PILL_COLOR} />
+        <ChatCard
+          accent={INSTEAD_ACCENT}
+          borderThickness={2}
+          glow={insteadEnabled}
+          response={<InsteadResponse enabled={insteadEnabled} />}
+        />
       </div>
     </div>
   );
