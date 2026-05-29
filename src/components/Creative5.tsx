@@ -46,7 +46,6 @@ interface SiteOption {
   accentSoft: string;
   metrics: Metric[];
   pros: string[];
-  tradeoff: string;
 }
 
 const OPTIONS: SiteOption[] = [
@@ -68,7 +67,6 @@ const OPTIONS: SiteOption[] = [
       'Standard fabrication — no specialist contractor needed',
       'Shortest construction timeline (~18 months)',
     ],
-    tradeoff: 'Two in-river piers — most aquatic disruption.',
   },
   {
     id: 'arch',
@@ -88,7 +86,6 @@ const OPTIONS: SiteOption[] = [
       'Iconic single-span profile — a regional landmark',
       'Lighter steel use than an equivalent truss',
     ],
-    tradeoff: 'Highest upfront cost; sensitive to wind loads.',
   },
   {
     id: 'cableStay',
@@ -108,7 +105,6 @@ const OPTIONS: SiteOption[] = [
       'Strong visual identity from kilometres away',
       'Most efficient deck weight per metre',
     ],
-    tradeoff: 'Most expensive; longest design + construction lead time.',
   },
   {
     id: 'truss',
@@ -128,7 +124,6 @@ const OPTIONS: SiteOption[] = [
       'All-bolted shop fabrication — fast erection',
       'Material-honest, industrial visual character',
     ],
-    tradeoff: 'Bulky superstructure obstructs upstream sightlines.',
   },
 ];
 
@@ -563,44 +558,6 @@ function DetailModal({
             </div>
           </div>
 
-          {/* Trade-off */}
-          <div
-            className="flex items-start gap-2 p-2.5 rounded-lg"
-            style={{ backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)' }}
-          >
-            <ModusWcIcon
-              name="alert_outline"
-              size="xs"
-              decorative
-              style={{
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)',
-                marginTop: '2px',
-                flexShrink: 0,
-              }}
-            />
-            <div className="flex flex-col gap-0.5">
-              <span
-                className="font-semibold"
-                style={{
-                  fontSize: '10px',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  letterSpacing: '0.3px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Trade-off
-              </span>
-              <span
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-                  lineHeight: 1.45,
-                }}
-              >
-                {option.tradeoff}
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
