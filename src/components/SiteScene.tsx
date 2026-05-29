@@ -5,7 +5,7 @@ import Creative6 from './Creative6';
 
 const CARD_RIGHT = 56;
 const CARD_TOP = 72;
-const CARD_WIDTH = 260;
+const CARD_WIDTH = 300;
 
 const ANCHOR = new THREE.Vector3(-4, 15.5, -4);
 
@@ -256,8 +256,8 @@ export default function SiteScene() {
       if (line && card && openRef.current) {
         const cr = card.getBoundingClientRect();
         const mountRect = mount.getBoundingClientRect();
-        const cx = cr.left - mountRect.left;
-        const cy = cr.top + 60 - mountRect.top;
+        const cx = cr.left + cr.width / 2 - mountRect.left;
+        const cy = cr.top + cr.height / 2 - mountRect.top;
         line.setAttribute('x1', String(sx));
         line.setAttribute('y1', String(sy));
         line.setAttribute('x2', String(cx));

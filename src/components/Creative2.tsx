@@ -1,255 +1,282 @@
 import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 const TRIMBLE_RAINBOW =
-  'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
+  'linear-gradient(135deg, #00D7C0 0%, #009AFE 30%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%)';
 
-/* ── Build-upon chip ────────────────────────────────────────────── */
-/* The focused component — the new iteration sits on top of a fanned
-   stack of existing decisions (software state, document, sketch,
-   previous iteration). */
+const COLOR_USED = '#00B8B0';
+const COLOR_REMAINING = '#9FD9D4';
+const COLOR_NEW = 'var(--modus-wc-color-status-warning, #d97706)';
 
-interface Layer {
+interface Segment {
   id: string;
-  icon: string;
   label: string;
-  accent: string;
-  accentSoft: string;
+  value: number;
+  color: string;
+  isNew?: boolean;
 }
 
-const layers: Layer[] = [
-  {
-    id: 'last-iteration',
-    icon: 'history',
-    label: 'Last AI proposal · 1 h ago',
-    accent: 'var(--modus-wc-color-status-success, #1e7e34)',
-    accentSoft: 'var(--modus-wc-color-status-success-light, #e6f4ea)',
-  },
-  {
-    id: 'plan-v3',
-    icon: 'layers',
-    label: 'Grading plan · v3 (current)',
-    accent: 'var(--modus-wc-color-primary, #0063A3)',
-    accentSoft: 'var(--modus-wc-color-primary-light, #e8f4fd)',
-  },
-  {
-    id: 'site-sketch',
-    icon: 'gesture',
-    label: 'Site-walk sketch · Jan 14',
-    accent: 'var(--modus-wc-color-status-warning, #856404)',
-    accentSoft: 'var(--modus-wc-color-status-warning-light, #fff8e1)',
-  },
-  {
-    id: 'intent-memo',
-    icon: 'document_outline',
-    label: 'Pre-design intent memo',
-    accent: 'var(--modus-wc-color-status-info, #004f83)',
-    accentSoft: 'var(--modus-wc-color-status-info-light, #e8f4fd)',
-  },
+const segments: Segment[] = [
+  { id: 'used', label: 'Budget Used', value: 70, color: COLOR_USED },
+  { id: 'remaining', label: 'Remaining Budget', value: 20, color: COLOR_REMAINING },
+  { id: 'contingency', label: 'Contingency', value: 10, color: COLOR_NEW, isNew: true },
 ];
 
-function TrimbleAiMark({ size = 22 }: { size?: number }) {
+/* ── User avatar (stick-figure SVG) ─────────────────────────────── */
+function UserAvatar({ size = 22 }: { size?: number }) {
   return (
-    <span
-      className="flex items-center justify-center shrink-0"
-      style={{ width: `${size}px`, height: `${size}px` }}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
     >
-      <svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 30.002 32.6797"
+      <circle
+        cx="12"
+        cy="8"
+        r="3.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M5 20 Q5 13.5 12 13.5 Q19 13.5 19 20"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
         fill="none"
-        preserveAspectRatio="xMidYMid meet"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <linearGradient
-            id="trimbleAiLogo2"
-            x1="3.7558"
-            y1="10.5251"
-            x2="20.4332"
-            y2="30.2565"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#FF2BFC" />
-            <stop offset="0.628993" stopColor="#0563A7" />
-            <stop offset="1" stopColor="#075CA4" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M1.69824 24.9697C3.48353 26.9109 5.82653 28.2524 8.4043 28.8096L1.69824 32.6797V24.9697ZM10.6523 5.60742C16.5357 5.60742 21.3057 10.3803 21.3057 16.2676C21.3055 22.1547 16.5356 26.9268 10.6523 26.9268C4.76928 26.9265 0.00017177 22.1545 0 16.2676C0 10.3805 4.76918 5.60766 10.6523 5.60742ZM10.6523 7.69238C5.9201 7.69263 2.08398 11.5321 2.08398 16.2676C2.08416 21.0029 5.92021 24.8416 10.6523 24.8418C15.3847 24.8418 19.2215 21.003 19.2217 16.2676C19.2217 11.532 15.3848 7.69238 10.6523 7.69238ZM30.002 16.3398L23.2803 20.2217C24.0854 17.7019 24.0922 14.9945 23.2998 12.4707L30.002 16.3398ZM8.35547 3.83691C5.79861 4.40439 3.47535 5.73916 1.69824 7.66309V0L8.35547 3.83691Z"
-          fill="url(#trimbleAiLogo2)"
-        />
-      </svg>
-    </span>
+      />
+    </svg>
   );
 }
 
-function BuildUponChip() {
+/* ── Trimble AI sparkle ─────────────────────────────────────────── */
+function SparkleMark({ size = 18 }: { size?: number }) {
   return (
-    <div style={{ width: '340px' }}>
-      {/* Top iteration sheet */}
-      <div
-        className="rounded-2xl p-[2px] relative"
-        style={{
-          background: TRIMBLE_RAINBOW,
-          boxShadow:
-            '0 10px 24px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.08)',
-          zIndex: 50,
-        }}
-      >
-        <div
-          className="rounded-[14px] flex items-start gap-2.5 px-4 py-3"
-          style={{ backgroundColor: 'var(--modus-wc-color-base-page, #fff)' }}
-        >
-          <TrimbleAiMark />
-          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-            <span
-              className="font-semibold"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #101828)',
-                lineHeight: '20px',
-              }}
-            >
-              Iterating on {layers.length} existing decisions
-            </span>
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                color:
-                  'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-                lineHeight: '16px',
-                marginBottom: 0,
-              }}
-            >
-              Building forward — nothing here gets rewritten.
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Source layers fanning out beneath */}
-      {layers.map((layer, i) => {
-        const depth = i + 1;
-        return (
-          <div
-            key={layer.id}
-            className="rounded-xl flex items-center gap-2.5 px-3 py-2.5 relative"
-            style={{
-              marginTop: '-10px',
-              marginLeft: `${depth * 8}px`,
-              marginRight: `${depth * 8}px`,
-              backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-              border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-              boxShadow: '0 6px 10px rgba(0,0,0,0.04)',
-              opacity: Math.max(0.5, 1 - i * 0.13),
-              zIndex: 40 - i,
-            }}
-          >
-            <div
-              className="flex items-center justify-center rounded-md shrink-0"
-              style={{
-                width: '22px',
-                height: '22px',
-                backgroundColor: layer.accentSoft,
-              }}
-            >
-              <ModusWcIcon
-                name={layer.icon}
-                size="xs"
-                decorative
-                style={{ color: layer.accent }}
-              />
-            </div>
-            <span
-              className="font-medium truncate flex-1"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                color: 'var(--modus-wc-color-base-content, #364153)',
-                lineHeight: '18px',
-                marginBottom: 0,
-              }}
-            >
-              {layer.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="sparkleGrad2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FF2BFC" />
+          <stop offset="60%" stopColor="#4A00FF" />
+          <stop offset="100%" stopColor="#0563A7" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M12 2 L13.6 9.4 L21 11 L13.6 12.6 L12 20 L10.4 12.6 L3 11 L10.4 9.4 Z"
+        fill="url(#sparkleGrad2)"
+      />
+    </svg>
   );
 }
 
-/* ── Scenario ───────────────────────────────────────────────────── */
-/* The chip lives at the top of a "proposed iteration" artifact pinned
-   to a specific element in the project (here: north boundary, in the
-   grading plan). No chat, no avatars — just a recommendation surface
-   you'd see in the workspace. */
+/* ── Donut chart (3 segments) ───────────────────────────────────── */
+function Donut({ centerValue, centerLabel }: { centerValue: string; centerLabel: string }) {
+  const cx = 60;
+  const cy = 60;
+  const r = 42;
+  const C = 2 * Math.PI * r;
+
+  const rings = segments.map((s, i) => {
+    const dash = (s.value / 100) * C;
+    const beforeSum = segments
+      .slice(0, i)
+      .reduce((acc, x) => acc + (x.value / 100) * C, 0);
+    return { id: s.id, color: s.color, dash, offset: -beforeSum };
+  });
+
+  return (
+    <svg width={140} height={140} viewBox="0 0 120 120" aria-hidden="true">
+      {rings.map((ring) => (
+        <circle
+          key={ring.id}
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill="none"
+          stroke={ring.color}
+          strokeWidth={14}
+          strokeDasharray={`${ring.dash} ${C - ring.dash}`}
+          strokeDashoffset={ring.offset}
+          transform={`rotate(-90 ${cx} ${cy})`}
+        />
+      ))}
+      <text
+        x={cx}
+        y={cy - 2}
+        textAnchor="middle"
+        fontSize="18"
+        fontWeight="600"
+        fill="var(--modus-wc-color-base-content, #101828)"
+      >
+        {centerValue}
+      </text>
+      <text
+        x={cx}
+        y={cy + 16}
+        textAnchor="middle"
+        fontSize="11"
+        fill="var(--modus-wc-color-base-content-low-contrast, #6a6e79)"
+      >
+        {centerLabel}
+      </text>
+    </svg>
+  );
+}
+
+/* ── Creative 2 — Build upon existing work ─────────────────────── */
+/* Scenario: the user asks the AI to iterate on last quarter's Budget
+   Tracker. The new output preserves the existing structure and adds
+   one new line — clearly tagged — so it's obvious the AI built on
+   the previous decision instead of starting fresh. */
 
 export default function Creative2() {
   return (
-    <div className="flex flex-col gap-3" style={{ width: '340px' }}>
-      {/* Context kicker — what this artifact is pinned to */}
-      <div className="flex items-center gap-1.5">
-        <ModusWcIcon
-          name="place"
-          size="xs"
-          decorative
-          style={{
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)',
-          }}
-        />
-        <span
-          className="font-semibold"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            letterSpacing: '0.4px',
-            textTransform: 'uppercase',
-          }}
-        >
-          Pinned to north boundary · Grading plan v3
-        </span>
-      </div>
-
-      {/* The focused build-upon chip — masthead of the artifact */}
-      <BuildUponChip />
-
-      {/* The proposed iteration body — calls out the preserved decisions
-          by name so the chip's promise is grounded in the output. */}
+    <div className="flex flex-col items-start gap-4" style={{ width: '420px' }}>
+      {/* User prompt bubble */}
       <div
-        className="rounded-xl px-4 py-3"
+        className="flex items-center gap-3 px-4 py-3 rounded-2xl"
         style={{
-          backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+          maxWidth: '340px',
+          backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
+          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
         }}
       >
         <span
-          className="block font-semibold"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            letterSpacing: '0.4px',
-            textTransform: 'uppercase',
-            marginBottom: '6px',
-          }}
+          className="shrink-0"
+          style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
         >
-          Proposed change
+          <UserAvatar />
         </span>
-        <p
+        <span
           style={{
             fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-            lineHeight: '1.55',
-            marginBottom: 0,
+            color: 'var(--modus-wc-color-base-content, #101828)',
+            fontStyle: 'italic',
+            lineHeight: '20px',
           }}
         >
-          Re-grade the north boundary to{' '}
-          <span className="font-semibold">2% slope</span> — eliminates the
-          segmental retaining wall, saves{' '}
-          <span className="font-semibold">~$40k</span>, and keeps the on-site
-          fill phasing from{' '}
-          <span className="font-semibold">plan v3</span> intact. Southern
-          hedge and east loading dock stay untouched.
-        </p>
+          &ldquo;Update my budget tracker for Q2 — add a contingency line&rdquo;
+        </span>
+      </div>
+
+      {/* AI Budget Tracker output */}
+      <div
+        className="rounded-2xl p-[3px]"
+        style={{
+          background: TRIMBLE_RAINBOW,
+          width: '100%',
+          boxShadow:
+            '0 10px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)',
+        }}
+      >
+        <div
+          className="rounded-[14px] flex flex-col"
+          style={{ backgroundColor: 'var(--modus-wc-color-base-page, #fff)' }}
+        >
+          {/* Title + iteration badge */}
+          <div className="flex flex-col items-center gap-2 px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2">
+              <SparkleMark />
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-md, 16px)',
+                  color: 'var(--modus-wc-color-base-content, #101828)',
+                  lineHeight: '22px',
+                }}
+              >
+                Budget Tracker
+              </span>
+            </div>
+
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+              style={{
+                backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+              }}
+            >
+              <ModusWcIcon
+                name="history"
+                size="xs"
+                decorative
+                style={{
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                }}
+              />
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+                  color:
+                    'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+                  letterSpacing: '0.4px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Building on Q1 Tracker
+              </span>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div
+            style={{
+              borderTop:
+                '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            }}
+          />
+
+          {/* Chart + Legend */}
+          <div className="flex items-center gap-5 px-5 py-5">
+            <Donut centerValue="20%" centerLabel="Remaining" />
+            <div className="flex flex-col gap-2.5 flex-1">
+              {segments.map((s) => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <span
+                    className="rounded-full shrink-0"
+                    style={{
+                      width: '10px',
+                      height: '10px',
+                      backgroundColor: s.color,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                      color: 'var(--modus-wc-color-base-content, #364153)',
+                      lineHeight: '20px',
+                    }}
+                  >
+                    {s.label}
+                  </span>
+                  {s.isNew && (
+                    <span
+                      className="px-1.5 py-0.5 rounded-full font-semibold"
+                      style={{
+                        fontSize: '9px',
+                        backgroundColor:
+                          'var(--modus-wc-color-status-warning-light, #fff4e6)',
+                        color:
+                          'var(--modus-wc-color-status-warning, #b45309)',
+                        letterSpacing: '0.4px',
+                      }}
+                    >
+                      NEW
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

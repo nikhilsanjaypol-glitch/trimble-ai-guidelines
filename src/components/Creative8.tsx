@@ -10,9 +10,10 @@ import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-reac
    under the sentence. Sign the note → tokens lock with the surveyor's
    name attached (and a field-sheet entry ID).
 
-   The full-canvas map is a satellite-style site view with the survey
-   overlay (parcel boundary, control points). The pulsing AI marker is
-   anchored to the AI's recommended primary control monument.
+   The full-canvas backdrop is a real aerial photograph of the site,
+   captured by drone, with the survey overlay (parcel boundary, control
+   points, monument symbols) drawn on top — AR-style. The pulsing AI
+   marker is anchored to the AI's recommended primary control monument.
    ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
@@ -612,310 +613,258 @@ const SECONDARY_CONTROLS = [
   { id: 'CP-302', x: 800, y: 600, label: 'CP-302', sub: 'Interior' },
 ];
 
+/* Aerial photograph of the survey location — replaces the satellite-style
+   SVG with an actual photo, then layers the survey overlay (parcel
+   boundary, control points, monument symbol) on top, AR-style. */
+const SITE_PHOTO_URL =
+  'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80&auto=format&fit=crop';
+
 function SitePlan() {
   return (
-    <svg
-      width="1600"
-      height="1100"
-      viewBox="0 0 1600 1100"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ display: 'block' }}
+    <div
+      style={{
+        width: '1600px',
+        height: '1100px',
+        position: 'relative',
+        backgroundColor: '#3a4a3a',
+      }}
     >
-      <defs>
-        {/* Subtle noise-ish pattern overlaid on satellite to break up flat fills */}
-        <pattern id="noise8" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
-          <rect width="6" height="6" fill="transparent" />
-          <circle cx="1" cy="1" r="0.5" fill="rgba(0,0,0,0.04)" />
-          <circle cx="4" cy="3" r="0.5" fill="rgba(255,255,255,0.04)" />
-        </pattern>
-        <filter id="bldShadow8" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-          <feOffset dx="2" dy="3" result="offsetblur" />
-          <feComponentTransfer><feFuncA type="linear" slope="0.35" /></feComponentTransfer>
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        {/* radial gradient to give large tree canopies a more organic feel */}
-        <radialGradient id="canopy8">
-          <stop offset="0%" stopColor="#5d8045" />
-          <stop offset="100%" stopColor="#3f5a2c" />
-        </radialGradient>
-      </defs>
-
-      {/* ── Satellite base: bare earth / dry grass ─────────────────── */}
-      <rect x="0" y="0" width="1600" height="1100" fill="#b8a878" />
-      <rect x="0" y="0" width="1600" height="1100" fill="url(#noise8)" />
-
-      {/* Lighter cleared / cultivated patches */}
-      <path d="M 0 0 L 460 0 L 520 180 L 380 340 L 200 300 L 0 240 Z" fill="#c8b890" opacity="0.85" />
-      <path d="M 1200 0 L 1600 0 L 1600 320 L 1380 340 L 1220 220 Z" fill="#c5b58a" opacity="0.85" />
-      <path d="M 0 700 L 180 740 L 240 920 L 60 1020 L 0 980 Z" fill="#b09e72" opacity="0.85" />
-      <path d="M 1320 700 L 1600 680 L 1600 1100 L 1280 1080 L 1260 920 Z" fill="#a89a72" opacity="0.85" />
-
-      {/* ── Tree canopies (organic clusters) ───────────────────────── */}
-      {[
-        { x: 120, y: 220, r: 110 }, { x: 220, y: 380, r: 80 }, { x: 80, y: 480, r: 95 },
-        { x: 1340, y: 180, r: 100 }, { x: 1480, y: 320, r: 120 }, { x: 1420, y: 480, r: 80 },
-        { x: 1500, y: 880, r: 130 }, { x: 1320, y: 980, r: 90 },
-        { x: 280, y: 100, r: 70 }, { x: 60, y: 60, r: 60 },
-      ].map((c, i) => (
-        <circle key={`canopy-${i}`} cx={c.x} cy={c.y} r={c.r} fill="url(#canopy8)" />
-      ))}
-
-      {/* small scattered trees */}
-      {[
-        [320, 240], [380, 200], [420, 280], [260, 460], [320, 520], [380, 460],
-        [1200, 240], [1240, 320], [1300, 380],
-        [240, 800], [340, 860], [180, 920],
-        [1380, 760], [1420, 840], [1300, 880],
-      ].map(([x, y], i) => (
-        <g key={`tree-${i}`}>
-          <circle cx={x} cy={y} r="14" fill="#4f6e3d" />
-          <circle cx={x - 3} cy={y - 3} r="10" fill="#5d8045" opacity="0.9" />
-        </g>
-      ))}
-
-      {/* ── Creek / stream meandering through ──────────────────────── */}
-      <path
-        d="M -20 920 Q 200 880 320 940 T 600 1020 T 900 980 Q 1100 940 1300 1020 T 1620 1080"
-        stroke="#6a8db3"
-        strokeWidth="22"
-        fill="none"
-        strokeLinecap="round"
-        opacity="0.95"
+      {/* Aerial photograph backdrop */}
+      <img
+        src={SITE_PHOTO_URL}
+        alt="Aerial photograph of Pine Ridge Tract 12-A"
+        draggable={false}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          filter: 'saturate(0.92) contrast(1.02)',
+        }}
       />
-      <path
-        d="M -20 920 Q 200 880 320 940 T 600 1020 T 900 980 Q 1100 940 1300 1020 T 1620 1080"
-        stroke="#8aa9c8"
-        strokeWidth="6"
-        fill="none"
-        strokeLinecap="round"
-        opacity="0.6"
-      />
-      <text x="280" y="900" fontSize="11" fontStyle="italic" fontWeight="600" fill="#3a5973" opacity="0.9">
-        Pine Creek
-      </text>
 
-      {/* ── Hwy 41 — east-west asphalt road ────────────────────────── */}
-      <rect x="-20" y="270" width="1640" height="42" fill="#2e2e2e" transform="rotate(-2 800 290)" />
-      {Array.from({ length: 24 }).map((_, i) => (
-        <rect
-          key={`hwy-line-${i}`}
-          x={-10 + i * 70}
-          y={288}
-          width="34"
-          height="4"
-          fill="#f0e7a8"
-          opacity="0.85"
-          transform="rotate(-2 800 290)"
+      {/* Slight darken layer — so the white survey overlay reads cleanly */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.18) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Survey overlay — sits on top of the photograph */}
+      <svg
+        width="1600"
+        height="1100"
+        viewBox="0 0 1600 1100"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'block',
+          pointerEvents: 'none',
+        }}
+      >
+        <defs>
+          <filter id="overlayShadow8" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+            <feOffset dx="0" dy="1" result="offsetblur" />
+            <feComponentTransfer><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Subject parcel: semi-transparent yellow fill, red dashed boundary */}
+        <polygon
+          points={PARCEL_POLYGON}
+          fill="rgba(242,201,76,0.22)"
+          stroke="#ffd23f"
+          strokeWidth="3"
+          strokeDasharray="10 5"
+          filter="url(#overlayShadow8)"
         />
-      ))}
-      <text x="1380" y="262" fontSize="11" fontWeight="700" fill="#2e2e2e" transform="rotate(-2 1380 262)">
-        STATE HWY 41
-      </text>
 
-      {/* Dirt access road branching south into the parcel */}
-      <path
-        d="M 760 300 Q 780 460 720 600 T 660 880"
-        stroke="#a8946a"
-        strokeWidth="16"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path
-        d="M 760 300 Q 780 460 720 600 T 660 880"
-        stroke="#7d6b4a"
-        strokeWidth="1"
-        strokeDasharray="3 4"
-        fill="none"
-        opacity="0.7"
-      />
+        {/* Parcel corner ticks */}
+        {PARCEL_POLYGON.split(' ').map((p) => {
+          const [x, y] = p.split(',').map(Number);
+          return (
+            <g key={`corner-${x}-${y}`} filter="url(#overlayShadow8)">
+              <circle cx={x} cy={y} r="6" fill="#ffffff" stroke="#c73838" strokeWidth="2" />
+            </g>
+          );
+        })}
 
-      {/* ── Buildings (rural homesteads) with drop shadow ──────────── */}
-      <g filter="url(#bldShadow8)">
-        <rect x="700" y="180" width="60" height="44" fill="#ededed" stroke="#5a5a5a" strokeWidth="1" />
-        <polygon points="700,180 760,180 730,166" fill="#a55a3a" />
-      </g>
-      <g filter="url(#bldShadow8)">
-        <rect x="1340" y="640" width="80" height="56" fill="#ededed" stroke="#5a5a5a" strokeWidth="1" />
-        <polygon points="1340,640 1420,640 1380,624" fill="#8a6a4a" />
-      </g>
-      <g filter="url(#bldShadow8)">
-        <rect x="160" y="640" width="50" height="36" fill="#e0e0e0" stroke="#5a5a5a" strokeWidth="1" />
-      </g>
-      <g filter="url(#bldShadow8)">
-        <rect x="240" y="720" width="40" height="28" fill="#cfcfcf" stroke="#5a5a5a" strokeWidth="1" />
-      </g>
+        {/* Bearing/distance labels on a couple of boundary legs */}
+        <g filter="url(#overlayShadow8)">
+          <rect x="772" y="320" width="148" height="20" rx="3" fill="rgba(255,255,255,0.92)" />
+          <text x="780" y="335" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace">
+            N 87°12' E · 560.4 ft
+          </text>
+        </g>
+        <g transform="rotate(72 1240 500)" filter="url(#overlayShadow8)">
+          <rect x="1232" y="486" width="148" height="20" rx="3" fill="rgba(255,255,255,0.92)" />
+          <text x="1240" y="500" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace">
+            S 14°08' E · 412.6 ft
+          </text>
+        </g>
 
-      {/* ─────────────────────────────────────────────────────────────
-          SURVEY OVERLAY — sits on top of the satellite imagery
-          ───────────────────────────────────────────────────────────── */}
+        {/* Parcel label — large, low opacity over photo */}
+        <text x="780" y="600" fontSize="32" fontWeight="800" fill="rgba(255,255,255,0.85)" textAnchor="middle" letterSpacing="3" filter="url(#overlayShadow8)">
+          TRACT 12-A
+        </text>
+        <text x="780" y="624" fontSize="11" fontWeight="700" fill="rgba(255,255,255,0.85)" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, monospace" filter="url(#overlayShadow8)">
+          12.4 AC · PINE RIDGE SUBDIVISION
+        </text>
 
-      {/* Subject parcel: semi-transparent yellow fill */}
-      <polygon
-        points={PARCEL_POLYGON}
-        fill="rgba(242,201,76,0.22)"
-        stroke="#c73838"
-        strokeWidth="3"
-        strokeDasharray="10 5"
-      />
-
-      {/* Parcel corner ticks */}
-      {PARCEL_POLYGON.split(' ').map((p) => {
-        const [x, y] = p.split(',').map(Number);
-        return (
-          <g key={`corner-${x}-${y}`}>
-            <circle cx={x} cy={y} r="5" fill="#fff" stroke="#c73838" strokeWidth="2" />
+        {/* Secondary control points — triangle + label box */}
+        {SECONDARY_CONTROLS.map((cp) => (
+          <g key={cp.id} filter="url(#overlayShadow8)">
+            <circle cx={cp.x} cy={cp.y} r="14" fill="rgba(255,255,255,0.65)" stroke="rgba(0,0,0,0.25)" strokeWidth="1" />
+            <polygon
+              points={`${cp.x},${cp.y - 9} ${cp.x - 8},${cp.y + 6} ${cp.x + 8},${cp.y + 6}`}
+              fill="#ffffff"
+              stroke="#1f242c"
+              strokeWidth="1.5"
+            />
+            <circle cx={cp.x} cy={cp.y} r="1.8" fill="#1f242c" />
+            <rect
+              x={cp.x + 14}
+              y={cp.y - 14}
+              width="76"
+              height="28"
+              rx="4"
+              fill="rgba(255,255,255,0.96)"
+              stroke="rgba(0,0,0,0.22)"
+              strokeWidth="1"
+            />
+            <text x={cp.x + 22} y={cp.y - 2} fontSize="10" fontWeight="800" fill="#1f242c" fontFamily="ui-monospace, SFMono-Regular, monospace">
+              {cp.label}
+            </text>
+            <text x={cp.x + 22} y={cp.y + 10} fontSize="9" fill="rgba(60,70,90,0.85)" fontFamily="ui-monospace, SFMono-Regular, monospace">
+              {cp.sub}
+            </text>
           </g>
-        );
-      })}
+        ))}
 
-      {/* Bearing/distance labels on a couple of boundary legs */}
-      <text x="780" y="335" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace">
-        N 87°12' E · 560.4 ft
-      </text>
-      <text x="1240" y="500" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace" transform="rotate(72 1240 500)">
-        S 14°08' E · 412.6 ft
-      </text>
-
-      {/* Parcel label */}
-      <text x="780" y="600" fontSize="22" fontWeight="800" fill="rgba(74,32,32,0.55)" textAnchor="middle" letterSpacing="2">
-        TRACT 12-A
-      </text>
-      <text x="780" y="624" fontSize="11" fontWeight="600" fill="rgba(74,32,32,0.55)" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, monospace">
-        12.4 AC · PINE RIDGE SUBDIVISION
-      </text>
-
-      {/* ── Secondary control points (triangles) ───────────────────── */}
-      {SECONDARY_CONTROLS.map((cp) => (
-        <g key={cp.id}>
-          {/* Halo ring */}
-          <circle cx={cp.x} cy={cp.y} r="14" fill="rgba(255,255,255,0.65)" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
-          {/* Surveyor triangle */}
-          <polygon
-            points={`${cp.x},${cp.y - 9} ${cp.x - 8},${cp.y + 6} ${cp.x + 8},${cp.y + 6}`}
-            fill="#ffffff"
-            stroke="#3a3f48"
+        {/* Primary control BM-104 — where the AI marker anchors */}
+        <g filter="url(#overlayShadow8)">
+          {/* GNSS sky-view ring */}
+          <circle
+            cx={PRIMARY_CONTROL_WORLD.x}
+            cy={PRIMARY_CONTROL_WORLD.y}
+            r={140}
+            fill="rgba(0,154,254,0.10)"
+            stroke="rgba(0,154,254,0.65)"
             strokeWidth="1.5"
+            strokeDasharray="6 4"
           />
-          <circle cx={cp.x} cy={cp.y} r="1.8" fill="#3a3f48" />
-          {/* Label */}
-          <rect
-            x={cp.x + 14}
-            y={cp.y - 14}
-            width="76"
-            height="28"
-            rx="4"
-            fill="rgba(255,255,255,0.92)"
-            stroke="rgba(0,0,0,0.18)"
-            strokeWidth="1"
-          />
-          <text x={cp.x + 22} y={cp.y - 2} fontSize="10" fontWeight="800" fill="#1f242c" fontFamily="ui-monospace, SFMono-Regular, monospace">
-            {cp.label}
+          <rect x={PRIMARY_CONTROL_WORLD.x + 86} y={PRIMARY_CONTROL_WORLD.y - 122} width="138" height="20" rx="3" fill="rgba(255,255,255,0.92)" />
+          <text
+            x={PRIMARY_CONTROL_WORLD.x + 92}
+            y={PRIMARY_CONTROL_WORLD.y - 107}
+            fontSize="10"
+            fontWeight="700"
+            fill="#0063a3"
+            fontFamily="ui-monospace, SFMono-Regular, monospace"
+          >
+            GNSS sky view · 92%
           </text>
-          <text x={cp.x + 22} y={cp.y + 10} fontSize="9" fill="rgba(60,70,90,0.85)" fontFamily="ui-monospace, SFMono-Regular, monospace">
-            {cp.sub}
+
+          {/* Monument symbol — square with X (concrete mon.) */}
+          <circle cx={PRIMARY_CONTROL_WORLD.x} cy={PRIMARY_CONTROL_WORLD.y} r="22" fill="rgba(255,255,255,0.85)" />
+          <rect
+            x={PRIMARY_CONTROL_WORLD.x - 11}
+            y={PRIMARY_CONTROL_WORLD.y - 11}
+            width="22"
+            height="22"
+            fill="#ffffff"
+            stroke="#0063a3"
+            strokeWidth="2"
+          />
+          <line
+            x1={PRIMARY_CONTROL_WORLD.x - 7}
+            y1={PRIMARY_CONTROL_WORLD.y - 7}
+            x2={PRIMARY_CONTROL_WORLD.x + 7}
+            y2={PRIMARY_CONTROL_WORLD.y + 7}
+            stroke="#0063a3"
+            strokeWidth="2"
+          />
+          <line
+            x1={PRIMARY_CONTROL_WORLD.x + 7}
+            y1={PRIMARY_CONTROL_WORLD.y - 7}
+            x2={PRIMARY_CONTROL_WORLD.x - 7}
+            y2={PRIMARY_CONTROL_WORLD.y + 7}
+            stroke="#0063a3"
+            strokeWidth="2"
+          />
+          {/* BM-104 callout */}
+          <rect x={PRIMARY_CONTROL_WORLD.x - 60} y={PRIMARY_CONTROL_WORLD.y + 30} width="120" height="34" rx="4" fill="rgba(255,255,255,0.96)" stroke="rgba(0,99,167,0.45)" strokeWidth="1" />
+          <text
+            x={PRIMARY_CONTROL_WORLD.x}
+            y={PRIMARY_CONTROL_WORLD.y + 46}
+            fontSize="11"
+            fontWeight="800"
+            fill="#0a3a5a"
+            textAnchor="middle"
+            fontFamily="ui-monospace, SFMono-Regular, monospace"
+          >
+            BM-104
+          </text>
+          <text
+            x={PRIMARY_CONTROL_WORLD.x}
+            y={PRIMARY_CONTROL_WORLD.y + 58}
+            fontSize="9"
+            fill="rgba(10,58,90,0.85)"
+            textAnchor="middle"
+            fontFamily="ui-monospace, SFMono-Regular, monospace"
+          >
+            14,237.92 E · 5,892.18 N
           </text>
         </g>
-      ))}
 
-      {/* ── Primary control point (BM-104) — where the AI marker anchors ── */}
-      <g>
-        {/* GNSS satellite-window halo */}
-        <circle
-          cx={PRIMARY_CONTROL_WORLD.x}
-          cy={PRIMARY_CONTROL_WORLD.y}
-          r={140}
-          fill="rgba(0,99,167,0.08)"
-          stroke="rgba(0,99,167,0.4)"
-          strokeWidth="1.5"
-          strokeDasharray="6 4"
-        />
-        <text
-          x={PRIMARY_CONTROL_WORLD.x + 100}
-          y={PRIMARY_CONTROL_WORLD.y - 105}
-          fontSize="10"
-          fontWeight="700"
-          fill="rgba(0,99,167,0.85)"
-          fontFamily="ui-monospace, SFMono-Regular, monospace"
-        >
-          GNSS sky view · 92%
-        </text>
+        {/* North arrow — top-right */}
+        <g transform="translate(1500 90)" filter="url(#overlayShadow8)">
+          <circle cx="0" cy="0" r="28" fill="rgba(255,255,255,0.92)" stroke="#1f242c" strokeWidth="1.2" />
+          <polygon points="0,-20 8,8 0,2 -8,8" fill="#b3261e" />
+          <polygon points="0,20 8,-8 0,-2 -8,-8" fill="#1f242c" />
+          <text x="0" y="-32" fontSize="11" fontWeight="800" fill="#ffffff" textAnchor="middle" stroke="#1f242c" strokeWidth="0.4">
+            N
+          </text>
+        </g>
 
-        {/* Monument symbol — square with X inside (concrete mon.) */}
-        <circle cx={PRIMARY_CONTROL_WORLD.x} cy={PRIMARY_CONTROL_WORLD.y} r="22" fill="rgba(255,255,255,0.7)" />
-        <rect
-          x={PRIMARY_CONTROL_WORLD.x - 11}
-          y={PRIMARY_CONTROL_WORLD.y - 11}
-          width="22"
-          height="22"
-          fill="#ffffff"
-          stroke="#0063a3"
-          strokeWidth="2"
-        />
-        <line
-          x1={PRIMARY_CONTROL_WORLD.x - 7}
-          y1={PRIMARY_CONTROL_WORLD.y - 7}
-          x2={PRIMARY_CONTROL_WORLD.x + 7}
-          y2={PRIMARY_CONTROL_WORLD.y + 7}
-          stroke="#0063a3"
-          strokeWidth="2"
-        />
-        <line
-          x1={PRIMARY_CONTROL_WORLD.x + 7}
-          y1={PRIMARY_CONTROL_WORLD.y - 7}
-          x2={PRIMARY_CONTROL_WORLD.x - 7}
-          y2={PRIMARY_CONTROL_WORLD.y + 7}
-          stroke="#0063a3"
-          strokeWidth="2"
-        />
-        {/* BM-104 callout below monument */}
-        <text
-          x={PRIMARY_CONTROL_WORLD.x}
-          y={PRIMARY_CONTROL_WORLD.y + 42}
-          fontSize="11"
-          fontWeight="800"
-          fill="#0a3a5a"
-          textAnchor="middle"
-          fontFamily="ui-monospace, SFMono-Regular, monospace"
-        >
-          BM-104
-        </text>
-        <text
-          x={PRIMARY_CONTROL_WORLD.x}
-          y={PRIMARY_CONTROL_WORLD.y + 56}
-          fontSize="9"
-          fill="rgba(10,58,90,0.75)"
-          textAnchor="middle"
-          fontFamily="ui-monospace, SFMono-Regular, monospace"
-        >
-          14,237.92 E · 5,892.18 N
-        </text>
-      </g>
+        {/* Scale bar — bottom-left */}
+        <g transform="translate(60 1040)" filter="url(#overlayShadow8)">
+          <rect x="-6" y="-4" width="180" height="40" rx="3" fill="rgba(255,255,255,0.85)" />
+          <rect x="0" y="0" width="40" height="8" fill="#1f242c" />
+          <rect x="40" y="0" width="40" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
+          <rect x="80" y="0" width="40" height="8" fill="#1f242c" />
+          <rect x="120" y="0" width="40" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
+          <text x="0" y="26" fontSize="10" fontWeight="700" fill="#1f242c">0</text>
+          <text x="80" y="26" fontSize="10" fontWeight="700" fill="#1f242c" textAnchor="middle">100 ft</text>
+          <text x="160" y="26" fontSize="10" fontWeight="700" fill="#1f242c" textAnchor="middle">200 ft</text>
+        </g>
 
-      {/* North arrow — top-right of plan */}
-      <g transform="translate(1500 90)">
-        <circle cx="0" cy="0" r="28" fill="rgba(255,255,255,0.9)" stroke="#3a3f48" strokeWidth="1.2" />
-        <polygon points="0,-20 8,8 0,2 -8,8" fill="#b3261e" />
-        <polygon points="0,20 8,-8 0,-2 -8,-8" fill="#3a3f48" />
-        <text x="0" y="-32" fontSize="11" fontWeight="800" fill="#3a3f48" textAnchor="middle">
-          N
-        </text>
-      </g>
-
-      {/* Scale bar — bottom of plan */}
-      <g transform="translate(60 1040)">
-        <rect x="0" y="0" width="40" height="8" fill="#1f242c" />
-        <rect x="40" y="0" width="40" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
-        <rect x="80" y="0" width="40" height="8" fill="#1f242c" />
-        <rect x="120" y="0" width="40" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
-        <text x="0" y="26" fontSize="10" fontWeight="600" fill="#1f242c">0</text>
-        <text x="80" y="26" fontSize="10" fontWeight="600" fill="#1f242c" textAnchor="middle">100 ft</text>
-        <text x="160" y="26" fontSize="10" fontWeight="600" fill="#1f242c" textAnchor="middle">200 ft</text>
-      </g>
-    </svg>
+        {/* Photo metadata stamp — bottom-right */}
+        <g transform="translate(1310 1050)" filter="url(#overlayShadow8)">
+          <rect x="0" y="0" width="240" height="34" rx="4" fill="rgba(20,24,32,0.78)" />
+          <text x="12" y="14" fontSize="9" fontWeight="700" fill="#9aa0aa" fontFamily="ui-monospace, SFMono-Regular, monospace">
+            DJI MAVIC 3 · 90 m AGL
+          </text>
+          <text x="12" y="26" fontSize="9" fontWeight="600" fill="#ffffff" fontFamily="ui-monospace, SFMono-Regular, monospace">
+            14 May · 09:42 · 36.4 MP
+          </text>
+        </g>
+      </svg>
+    </div>
   );
 }
 
@@ -985,7 +934,7 @@ function TitleBlock() {
           letterSpacing: '0.3px',
         }}
       >
-        FIELD SHEET F-100 · BOUNDARY &amp; TOPO
+        SITE PHOTO · F-100 · 14 MAY 2026
       </span>
       <span
         className="font-semibold"
@@ -994,7 +943,7 @@ function TitleBlock() {
           color: 'var(--modus-wc-color-base-content, #101828)',
         }}
       >
-        Pine Ridge Tract 12-A — Survey
+        Pine Ridge Tract 12-A — BM-104 site
       </span>
       <span
         style={{
@@ -1002,7 +951,7 @@ function TitleBlock() {
           color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
         }}
       >
-        1 : 1000 · NAD 83 (2011) · State Plane CO Central
+        DJI Mavic 3 · 90 m AGL · georeferenced to NAD 83 (2011)
       </span>
     </div>
   );

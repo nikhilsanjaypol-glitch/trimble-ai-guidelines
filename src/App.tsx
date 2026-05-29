@@ -6,6 +6,7 @@ import Creative3 from './components/Creative3';
 import Creative4 from './components/Creative4';
 import Creative5 from './components/Creative5';
 import Creative7 from './components/Creative7';
+import Creative7Mobile from './components/Creative7Mobile';
 import Creative8 from './components/Creative8';
 import Creative9 from './components/Creative9';
 import Expert1 from './components/Expert1';
@@ -38,6 +39,7 @@ const routes: RouteDef[] = [
   { path: '/creative5', label: 'Creative 5 — Offer Breadth', Component: Creative5 },
   { path: '/creative6', label: 'Creative 6 — Ground Insights in Context', Component: SiteScene, fullBleed: true },
   { path: '/creative7', label: 'Creative 7 — Reiterate the Plan', Component: Creative7 },
+  { path: '/creative7-mobile', label: 'Creative 7 — Mobile (TI_M2)', Component: Creative7Mobile },
   { path: '/creative8', label: 'Creative 8 — Give Professionals Control', Component: Creative8, fullBleed: true },
   { path: '/creative9', label: 'Creative 9 — Offer Possibilities', Component: Creative9 },
   { path: '/expert1', label: 'Expert 1 — Lead the Conversation', Component: Expert1 },
