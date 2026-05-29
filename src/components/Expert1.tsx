@@ -916,8 +916,8 @@ function ContactSupportCard({
   );
 }
 
-/* ── Expert 1 — Lead the Conversation (Troubleshooting) ─────────── */
-export default function Expert1() {
+/* ── Expert 1 — Lead the Conversation (Troubleshooting card) ───── */
+function TroubleshootCard() {
   const [activeStep, setActiveStep] = useState<StepId | null>(null);
   const [triedSteps, setTriedSteps] = useState<StepId[]>([]);
   const [powerChecks, setPowerChecks] = useState<boolean[]>([false, false, false, false]);
@@ -1067,15 +1067,7 @@ export default function Expert1() {
     : null;
 
   return (
-    <div
-      className="bg-white rounded-xl flex flex-col"
-      style={{
-        width: '440px',
-        boxShadow: '0px 0px 10px 0px rgba(0,0,0,0.15)',
-        padding: '24px 24px 8px 24px',
-        gap: '20px',
-      }}
-    >
+    <div className="flex-1 flex flex-col min-h-0 w-full">
       <style>{`
         @keyframes expert1-typing {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
@@ -1083,8 +1075,13 @@ export default function Expert1() {
         }
       `}</style>
 
-      {/* User pastes a cryptic error code */}
-      <UserBubble text="Error Code C0342" />
+      {/* Scrollable conversation area — fills the phone between top bar and prompt */}
+      <div
+        className="flex-1 flex flex-col overflow-y-auto min-h-0"
+        style={{ padding: '18px 16px 12px 16px', gap: '20px' }}
+      >
+        {/* User pastes a cryptic error code */}
+        <UserBubble text="Error Code C0342" />
 
       {/* Agent — diagnosis + ordered next-step stack */}
       <div className="flex gap-0 items-start">
@@ -1421,7 +1418,17 @@ export default function Expert1() {
           </div>
         </div>
       </div>
+      </div>
 
+      {/* Sticky bottom — rainbow prompt + disclaimer, pinned to the bottom of the phone */}
+      <div
+        className="shrink-0 flex flex-col"
+        style={{
+          padding: '8px 16px 16px 16px',
+          gap: '8px',
+          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+        }}
+      >
       {/* Prompt input with rainbow gradient border */}
       <div
         className="rounded-2xl"
@@ -1582,6 +1589,103 @@ export default function Expert1() {
           Acceptable Use
         </button>
       </div>
+      </div>
     </div>
   );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * TI_M2 — Mobile chat shell (Figma 593:68076)
+ *   375 × 812 mobile shell with:
+ *     · Top bar — hamburger (left) + circular avatar (right)
+ *     · Collapsible user-question bubble with expand chevron
+ *     · Trimble AI logo + long-form AI response
+ *     · Sticky bottom prompt bar with rainbow stroke
+ * ───────────────────────────────────────────────────────────────── */
+
+const MOBILE_WIDTH = 375;
+const MOBILE_HEIGHT = 812;
+
+/* ── Mobile top bar — hamburger + circular avatar ───────────────── */
+function MobileTopBar() {
+  return (
+    <div
+      className="flex items-center justify-between shrink-0"
+      style={{
+        height: '56px',
+        padding: '12px 16px',
+        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Open menu"
+        title="Menu"
+        className="flex items-center justify-center transition-colors hover:bg-[var(--modus-wc-color-base-100)]"
+        style={{
+          width: '32px',
+          height: '32px',
+          background: 'transparent',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          padding: 0,
+        }}
+      >
+        <ModusWcIcon
+          name="menu"
+          size="sm"
+          decorative
+          style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}
+        />
+      </button>
+
+      <button
+        type="button"
+        aria-label="Profile"
+        title="Profile"
+        className="flex items-center justify-center rounded-full overflow-hidden"
+        style={{
+          width: '32px',
+          height: '32px',
+          backgroundColor: 'var(--modus-wc-color-primary-light, #e8f4fd)',
+          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          cursor: 'pointer',
+          padding: 0,
+        }}
+      >
+        <ModusWcIcon
+          name="person"
+          size="sm"
+          decorative
+          style={{ color: 'var(--modus-wc-color-primary, #0063A7)' }}
+        />
+      </button>
+    </div>
+  );
+}
+
+/* ── TI_M2 — mobile chat shell with the troubleshooting card inside ─ */
+function TiM2Mobile() {
+  return (
+    <div
+      className="rounded-[40px] overflow-hidden flex flex-col relative shrink-0"
+      style={{
+        width: `${MOBILE_WIDTH}px`,
+        height: `${MOBILE_HEIGHT}px`,
+        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        boxShadow:
+          '0 28px 60px rgba(0,0,0,0.16), 0 6px 18px rgba(0,0,0,0.08)',
+      }}
+    >
+      <MobileTopBar />
+      <TroubleshootCard />
+    </div>
+  );
+}
+
+/* ── Expert 1 — page export ────────────────────────────────────── */
+export default function Expert1() {
+  return <TiM2Mobile />;
 }

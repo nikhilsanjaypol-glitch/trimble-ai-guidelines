@@ -113,10 +113,6 @@ const PIPE = {
   drain: 'var(--modus-wc-color-status-success, #1e7e34)',
 };
 
-/* Trimble brand-ish rainbow used for the matrix card border. */
-const TRIMBLE_RAINBOW =
-  'linear-gradient(135deg, #e0529c 0%, #a058d9 25%, #4f7df7 55%, #1ea185 85%, #f5b54a 100%)';
-
 /* ── Schematic plumbing-plan SVG ────────────────────────────────── */
 
 function PlanSVG({ option }: { option: Option }) {
@@ -229,56 +225,6 @@ function PlanSVG({ option }: { option: Option }) {
   );
 }
 
-/* ── Carousel thumb ─────────────────────────────────────────────── */
-
-function CarouselThumb({
-  option,
-  size,
-  onClick,
-}: {
-  option: Option;
-  size: 'large' | 'small';
-  onClick: () => void;
-}) {
-  const isLarge = size === 'large';
-  const w = isLarge ? 280 : 210;
-  const h = isLarge ? 195 : 145;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-2xl flex shrink-0 overflow-hidden"
-      style={{
-        width: `${w}px`,
-        height: `${h}px`,
-        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        border: isLarge
-          ? `2px solid ${option.accent}`
-          : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: isLarge
-          ? '0 14px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.05)'
-          : '0 6px 14px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
-        cursor: isLarge ? 'default' : 'pointer',
-        padding: '8px',
-        transition:
-          'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease',
-      }}
-      onMouseEnter={(e) => {
-        if (isLarge) return;
-        e.currentTarget.style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={(e) => {
-        if (isLarge) return;
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
-      aria-label={`${isLarge ? 'Selected — ' : 'Show '}${option.label}, ${option.caption}`}
-    >
-      <PlanSVG option={option} />
-    </button>
-  );
-}
-
 /* ── Carousel arrow ─────────────────────────────────────────────── */
 
 function CarouselArrow({
@@ -324,56 +270,39 @@ function CarouselArrow({
   );
 }
 
-/* ── Active option caption (under the large thumb) ──────────────── */
+/* ── Comparison matrix: 4 separated column cards ─────────────────── */
 
-function ActiveCaption({ option }: { option: Option }) {
-  return (
-    <div className="flex flex-col items-center" style={{ gap: '4px' }}>
-      <span
-        className="uppercase tracking-wide font-semibold"
-        style={{
-          fontSize: 'var(--modus-wc-font-size-md, 14px)',
-          color: option.accent,
-          letterSpacing: '0.05em',
-        }}
-      >
-        {option.label} · {option.caption}
-      </span>
-      <span
-        style={{
-          fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-        }}
-      >
-        {option.bestForLabel}
-      </span>
-    </div>
-  );
-}
-
-/* ── Comparison matrix card (rainbow border) ────────────────────── */
+/* Fixed heights keep all 4 column cards the same total height so rows
+ * line up across the gaps between cards. */
+const HEADER_H        = 60;
+const ROW_H           = 50;
+const CTA_H           = 76;  // bottom CTA area on the 3 option cards
+const BIG_THUMB_H     = 180; // active card's image preview
+const SMALL_THUMB_H   = 130; // inactive cards' image preview
+const THUMB_AREA_H    = BIG_THUMB_H; // total top "image" area on every option card
 
 function CompareMatrix({
   activeIdx,
   chosenIdx,
   onChoose,
+  onActivate,
 }: {
   activeIdx: number;
   chosenIdx: number | null;
   onChoose: () => void;
+  onActivate: (idx: number) => void;
 }) {
-  const centerOpt = OPTIONS[activeIdx];
   const isChosen = chosenIdx === activeIdx;
 
   /* For each criterion, compute who the row winner is (lowest rank). */
   const rowWinners: Record<CriterionId, number> = CRITERIA.reduce(
     (acc, c) => {
-      let bestIdx = 0;
+      let bestIdx  = 0;
       let bestRank = OPTIONS[0].values[c.id].rank;
       for (let i = 1; i < OPTIONS.length; i++) {
         if (OPTIONS[i].values[c.id].rank < bestRank) {
           bestRank = OPTIONS[i].values[c.id].rank;
-          bestIdx = i;
+          bestIdx  = i;
         }
       }
       acc[c.id] = bestIdx;
@@ -382,217 +311,274 @@ function CompareMatrix({
     {} as Record<CriterionId, number>,
   );
 
-  /* Column header cell */
-  const renderHeader = (opt: Option, optIdx: number) => {
-    const isActive = optIdx === activeIdx;
-    return (
-      <div
-        key={`hdr-${opt.id}`}
-        className="flex flex-col items-center justify-center text-center"
-        style={{
-          padding: '14px 12px',
-          backgroundColor: isActive ? opt.accentSoft : 'transparent',
-          borderLeft:
-            optIdx > 0
-              ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
-              : 'none',
-          borderTop: isActive ? `2px solid ${opt.accent}` : '2px solid transparent',
-        }}
-      >
-        <span
-          className="font-semibold"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-md, 16px)',
-            color: isActive ? opt.accent : 'var(--modus-wc-color-base-content, #101828)',
-          }}
-        >
-          {opt.label}
-        </span>
-        <span
-          style={{
-            marginTop: '2px',
-            fontSize: 'var(--modus-wc-font-size-sm, 12px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          }}
-        >
-          {opt.caption}
-        </span>
-      </div>
-    );
-  };
-
-  /* Data cell */
-  const renderCell = (c: Criterion, opt: Option, optIdx: number, rowIdx: number) => {
-    const isActive    = optIdx === activeIdx;
-    const isRowWinner = rowWinners[c.id] === optIdx;
-    const isLastRow   = rowIdx === CRITERIA.length - 1;
-
-    return (
-      <div
-        key={`cell-${c.id}-${opt.id}`}
-        className="relative flex items-center justify-center"
-        style={{
-          padding: '14px 12px',
-          backgroundColor: isActive ? opt.accentSoft : 'transparent',
-          borderLeft:
-            optIdx > 0
-              ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
-              : 'none',
-          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          borderBottom: isActive && isLastRow ? `2px solid ${opt.accent}` : 'none',
-        }}
-      >
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-md, 15px)',
-            fontWeight: isActive ? 600 : 500,
-            color: isActive
-              ? opt.accent
-              : 'var(--modus-wc-color-base-content, #101828)',
-          }}
-        >
-          {opt.values[c.id].display}
-        </span>
-
-        {isRowWinner && (
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              right: '8px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '5px',
-              height: '5px',
-              borderRadius: '999px',
-              backgroundColor:
-                'var(--modus-wc-color-base-content-low-contrast, #9aa0a8)',
-            }}
-          />
-        )}
-      </div>
-    );
+  const cardBase: React.CSSProperties = {
+    backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+    borderRadius: '14px',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   return (
     <div
-      className="rounded-2xl"
+      className="grid"
       style={{
-        padding: '2px',
-        background: TRIMBLE_RAINBOW,
+        gridTemplateColumns: '180px 1fr 1fr 1fr',
+        gap: '12px',
+        alignItems: 'stretch',
       }}
     >
-      <div
-        className="rounded-2xl"
-        style={{
-          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Header row */}
+        {/* Labels column — empty thumb area on top + empty CTA area on
+            the bottom keep this card the same height as the option cards. */}
         <div
-          className="grid"
-          style={{ gridTemplateColumns: '180px 1fr 1fr 1fr' }}
+          style={{
+            ...cardBase,
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+          }}
         >
-          <div /> {/* empty label cell */}
-          {OPTIONS.map((opt, i) => renderHeader(opt, i))}
-        </div>
-
-        {/* Data rows */}
-        {CRITERIA.map((c, i) => (
+          {/* Spacer matching the option cards' image area */}
+          <div style={{ height: `${THUMB_AREA_H}px` }} />
+          {/* Header */}
           <div
-            key={`row-${c.id}`}
-            className="grid"
-            style={{ gridTemplateColumns: '180px 1fr 1fr 1fr' }}
+            className="flex items-center"
+            style={{
+              height: `${HEADER_H}px`,
+              padding: '0 18px',
+              backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
+              borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+              borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            }}
           >
+            <span
+              className="uppercase tracking-wide font-semibold"
+              style={{
+                fontSize: '11px',
+                letterSpacing: '0.06em',
+                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              }}
+            >
+              Criterion
+            </span>
+          </div>
+          {/* Rows */}
+          {CRITERIA.map((c, i) => (
             <div
+              key={`lbl-${c.id}`}
               className="flex items-center"
               style={{
-                padding: '14px 18px',
-                borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                height: `${ROW_H}px`,
+                padding: '0 18px',
+                borderTop:
+                  i > 0
+                    ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
+                    : 'none',
                 fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
                 fontWeight: 500,
+                color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
               }}
             >
               {c.label}
             </div>
-            {OPTIONS.map((opt, oi) => renderCell(c, opt, oi, i))}
-          </div>
-        ))}
+          ))}
 
-        {/* Legend strip */}
-        <div
-          className="flex items-center justify-end"
-          style={{
-            padding: '10px 18px',
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            fontSize: 'var(--modus-wc-font-size-sm, 12px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          }}
-        >
-          <span className="flex items-center gap-1.5">
-            <span
-              aria-hidden
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '999px',
-                backgroundColor: 'var(--modus-wc-color-base-content-low-contrast, #9aa0a8)',
-                display: 'inline-block',
-              }}
-            />
-            Best in row
-          </span>
+          {/* Spacer matching the CTA area on the option cards */}
+          <div style={{ height: `${CTA_H}px`, marginTop: 'auto' }} />
         </div>
 
-        {/* Footer with context + Choose CTA */}
-        <div
-          className="flex items-center justify-between"
-          style={{
-            padding: '14px 18px',
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <ModusWcIcon
-              name="info"
-              size="sm"
-              decorative
-              style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-            />
-            <span
-              className="truncate"
+        {/* Three option cards */}
+        {OPTIONS.map((opt, optIdx) => {
+          const isActive    = optIdx === activeIdx;
+          const thumbH      = isActive ? BIG_THUMB_H : SMALL_THUMB_H;
+          const topSpacerH  = THUMB_AREA_H - thumbH; // pushes inactive thumbs down so their bottoms align with the active thumb's bottom
+          return (
+            <div
+              key={`col-${opt.id}`}
+              role={isActive ? undefined : 'button'}
+              tabIndex={isActive ? undefined : 0}
+              onClick={isActive ? undefined : () => onActivate(optIdx)}
+              onKeyDown={
+                isActive
+                  ? undefined
+                  : (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onActivate(optIdx);
+                      }
+                    }
+              }
+              aria-label={
+                isActive
+                  ? undefined
+                  : `Switch to ${opt.label}: ${opt.caption}`
+              }
               style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+                ...cardBase,
+                border: isActive
+                  ? `2px solid ${opt.accent}`
+                  : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                boxShadow: isActive
+                  ? '0 14px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.05)'
+                  : '0 2px 6px rgba(0,0,0,0.04)',
+                cursor: isActive ? 'default' : 'pointer',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               }}
+              onMouseEnter={
+                isActive
+                  ? undefined
+                  : (e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow =
+                        '0 8px 18px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05)';
+                    }
+              }
+              onMouseLeave={
+                isActive
+                  ? undefined
+                  : (e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow =
+                        '0 2px 6px rgba(0,0,0,0.04)';
+                    }
+              }
             >
-              Reviewing <span className="font-semibold" style={{ color: 'var(--modus-wc-color-base-content, #101828)' }}>
-                {centerOpt.label}
-              </span>{' · '}{centerOpt.caption}. Confirm to commit to your project log.
-            </span>
-          </div>
+              {/* Image area — fills the top of the card; inactive thumbs
+                  sit at the bottom of this band so all thumb bottoms align */}
+              <div
+                style={{
+                  height: `${THUMB_AREA_H}px`,
+                  backgroundColor: isActive ? opt.accentSoft : 'transparent',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {topSpacerH > 0 && <div style={{ height: `${topSpacerH}px` }} />}
+                <div
+                  style={{
+                    height: `${thumbH}px`,
+                    padding: '10px 12px',
+                  }}
+                >
+                  <PlanSVG option={opt} />
+                </div>
+              </div>
 
-          {isChosen ? (
-            <ModusWcButton size="md" color="secondary" variant="outlined" disabled>
-              <span className="flex items-center gap-1.5">
-                <ModusWcIcon name="check_circle" size="sm" decorative />
-                Chosen
-              </span>
-            </ModusWcButton>
-          ) : (
-            <ModusWcButton size="md" color="primary" onButtonClick={onChoose}>
-              <span className="flex items-center gap-1.5">
-                <ModusWcIcon name="check" size="sm" decorative />
-                Choose {centerOpt.label}
-              </span>
-            </ModusWcButton>
-          )}
-        </div>
-      </div>
+              {/* Header */}
+              <div
+                className="flex flex-col items-center justify-center text-center"
+                style={{
+                  height: `${HEADER_H}px`,
+                  padding: '4px 12px',
+                  backgroundColor: isActive
+                    ? opt.accentSoft
+                    : 'var(--modus-wc-color-base-100, #f7f8fa)',
+                  borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                  borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                }}
+              >
+                <span
+                  className="font-semibold"
+                  style={{
+                    fontSize: 'var(--modus-wc-font-size-md, 16px)',
+                    color: isActive
+                      ? opt.accent
+                      : 'var(--modus-wc-color-base-content, #101828)',
+                  }}
+                >
+                  {opt.label}
+                </span>
+                <span
+                  style={{
+                    marginTop: '2px',
+                    fontSize: 'var(--modus-wc-font-size-sm, 12px)',
+                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  }}
+                >
+                  {opt.caption}
+                </span>
+              </div>
+              {/* Cells */}
+              {CRITERIA.map((c, i) => {
+                const isRowWinner = rowWinners[c.id] === optIdx;
+                return (
+                  <div
+                    key={`cell-${opt.id}-${c.id}`}
+                    className="relative flex items-center justify-center"
+                    style={{
+                      height: `${ROW_H}px`,
+                      padding: '0 12px',
+                      backgroundColor: isActive ? opt.accentSoft : 'transparent',
+                      borderTop:
+                        i > 0
+                          ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
+                          : 'none',
+                    }}
+                  >
+                    <span
+                      className="tabular-nums"
+                      style={{
+                        fontSize: 'var(--modus-wc-font-size-md, 15px)',
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive
+                          ? opt.accent
+                          : 'var(--modus-wc-color-base-content, #101828)',
+                      }}
+                    >
+                      {opt.values[c.id].display}
+                    </span>
+
+                    {isRowWinner && (
+                      <span
+                        aria-hidden
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '5px',
+                          height: '5px',
+                          borderRadius: '999px',
+                          backgroundColor:
+                            'var(--modus-wc-color-base-content-low-contrast, #9aa0a8)',
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* CTA section — only the active column shows the button */}
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  height: `${CTA_H}px`,
+                  padding: '12px',
+                  marginTop: 'auto',
+                  backgroundColor: isActive ? opt.accentSoft : 'transparent',
+                  borderTop: isActive
+                    ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
+                    : 'none',
+                }}
+              >
+                {isActive && (isChosen ? (
+                  <ModusWcButton size="md" color="secondary" variant="outlined" disabled>
+                    <span className="flex items-center gap-1.5">
+                      <ModusWcIcon name="check_circle" size="sm" decorative />
+                      Chosen
+                    </span>
+                  </ModusWcButton>
+                ) : (
+                  <ModusWcButton size="md" color="primary" onButtonClick={onChoose}>
+                    <span className="flex items-center gap-1.5">
+                      <ModusWcIcon name="check" size="sm" decorative />
+                      Choose {opt.label}
+                    </span>
+                  </ModusWcButton>
+                ))}
+              </div>
+            </div>
+          );
+        })}
     </div>
   );
 }
@@ -606,31 +592,19 @@ export default function Creative4() {
   const N = OPTIONS.length;
   const leftIdx   = (activeIdx - 1 + N) % N;
   const rightIdx  = (activeIdx + 1) % N;
-  const leftOpt   = OPTIONS[leftIdx];
-  const centerOpt = OPTIONS[activeIdx];
-  const rightOpt  = OPTIONS[rightIdx];
 
   return (
-    <div className="flex flex-col" style={{ width: '840px', gap: 'var(--modus-wc-spacing-xl, 24px)' }}>
-      {/* 1. Carousel + active caption */}
-      <div className="flex flex-col items-center" style={{ gap: '16px' }}>
-        <div className="flex items-center justify-center" style={{ gap: '12px' }}>
-          <CarouselArrow direction="left" onClick={() => setActiveIdx(leftIdx)} />
-          <CarouselThumb option={leftOpt}   size="small" onClick={() => setActiveIdx(leftIdx)} />
-          <CarouselThumb option={centerOpt} size="large" onClick={() => { /* already active */ }} />
-          <CarouselThumb option={rightOpt}  size="small" onClick={() => setActiveIdx(rightIdx)} />
-          <CarouselArrow direction="right" onClick={() => setActiveIdx(rightIdx)} />
-        </div>
-
-        <ActiveCaption option={centerOpt} />
+    <div className="flex items-center" style={{ width: '880px', gap: '12px' }}>
+      <CarouselArrow direction="left" onClick={() => setActiveIdx(leftIdx)} />
+      <div className="flex-1 min-w-0">
+        <CompareMatrix
+          activeIdx={activeIdx}
+          chosenIdx={chosenIdx}
+          onChoose={() => setChosenIdx(activeIdx)}
+          onActivate={setActiveIdx}
+        />
       </div>
-
-      {/* 2. Comparison matrix */}
-      <CompareMatrix
-        activeIdx={activeIdx}
-        chosenIdx={chosenIdx}
-        onChoose={() => setChosenIdx(activeIdx)}
-      />
+      <CarouselArrow direction="right" onClick={() => setActiveIdx(rightIdx)} />
     </div>
   );
 }

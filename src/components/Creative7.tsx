@@ -20,7 +20,7 @@ import { ModusWcButton, ModusWcIcon, ModusWcTextInput } from '@trimble-oss/modus
 const TRIMBLE_RAINBOW =
   'linear-gradient(135deg, #00D7C0 0%, #009AFE 30%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%)';
 
-export const USER_REQUEST =
+const USER_REQUEST =
   'Recommend a grading approach for the north boundary that minimises cost without slowing the schedule too much.';
 
 const PARAPHRASE_DEFAULT =
@@ -40,7 +40,7 @@ const PLAN_STEPS: PlanStep[] = [
 
 /* ── Trimble AI logo (mini, used in chat avatar) ───────────────── */
 
-export function TrimbleAiLogo({ size = 22 }: { size?: number }) {
+function TrimbleAiLogo({ size = 22 }: { size?: number }) {
   return (
     <span
       className="flex items-center justify-center shrink-0"
@@ -97,7 +97,7 @@ const EDIT_INPUT_BASE = {
   transition: 'border-color 120ms ease, box-shadow 120ms ease',
 } as const;
 
-export function PlanCard() {
+function PlanCard() {
   const [editing, setEditing] = useState(false);
   const [paraphrase, setParaphrase] = useState(PARAPHRASE_DEFAULT);
   const [steps, setSteps] = useState<PlanStep[]>(PLAN_STEPS);

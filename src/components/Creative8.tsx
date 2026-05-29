@@ -599,9 +599,19 @@ function Marker({
    monument (BM-104).
    ───────────────────────────────────────────────────────────────── */
 
-const PRIMARY_CONTROL_WORLD = { x: 1080, y: 360 };
-const MIN_ZOOM = 0.45;
+/* The original 2400×1600 site plan is wrapped in a translate(800 600)
+   group so the surveyed parcel sits in the bottom-right of the larger
+   canvas. BM_104 is the position inside that group (original design
+   coords); PRIMARY_CONTROL_WORLD is the same point in absolute world
+   coords — used by the marker overlay outside the SVG. */
+const SHIFT_X = 800;
+const SHIFT_Y = 600;
+const BM_104 = { x: 1080, y: 360 };
+const PRIMARY_CONTROL_WORLD = { x: BM_104.x + SHIFT_X, y: BM_104.y + SHIFT_Y };
+
+const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.5;
+const INITIAL_ZOOM = 0.65;
 
 const PARCEL_POLYGON =
   '520,340 1080,360 1180,560 1140,840 660,900 440,720 400,500';
@@ -612,148 +622,357 @@ const SECONDARY_CONTROLS = [
   { id: 'CP-302', x: 800, y: 600, label: 'CP-302', sub: 'Interior' },
 ];
 
+/* Expansive canvas (3200×2200 world units) styled like Google Maps'
+   default Terrain layer: warm cream base, subtle hill shading, brown
+   contour lines, pale green forest, light blue water, and white road
+   cores with proper highway/local casings. The bigger world gives the
+   surveyor more terrain to pan and zoom across. */
 function SitePlan() {
   return (
     <svg
-      width="1600"
-      height="1100"
-      viewBox="0 0 1600 1100"
+      width="3200"
+      height="2200"
+      viewBox="0 0 3200 2200"
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >
       <defs>
-        {/* Subtle noise-ish pattern overlaid on satellite to break up flat fills */}
-        <pattern id="noise8" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
-          <rect width="6" height="6" fill="transparent" />
-          <circle cx="1" cy="1" r="0.5" fill="rgba(0,0,0,0.04)" />
-          <circle cx="4" cy="3" r="0.5" fill="rgba(255,255,255,0.04)" />
-        </pattern>
+        {/* Soft hill-shading fill */}
+        <radialGradient id="hill8" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(184,158,115,0.16)" />
+          <stop offset="100%" stopColor="rgba(184,158,115,0)" />
+        </radialGradient>
+
+        {/* Forest fill — soft pale green */}
+        <linearGradient id="forest8" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#cfe5c5" />
+          <stop offset="100%" stopColor="#bbd6ad" />
+        </linearGradient>
+
+        {/* Water — pale blue with soft top-light */}
+        <linearGradient id="water8" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#bcdcec" />
+          <stop offset="100%" stopColor="#a8cee0" />
+        </linearGradient>
+
+        {/* Drop shadow for buildings (very subtle, Google-like) */}
         <filter id="bldShadow8" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-          <feOffset dx="2" dy="3" result="offsetblur" />
-          <feComponentTransfer><feFuncA type="linear" slope="0.35" /></feComponentTransfer>
+          <feGaussianBlur in="SourceAlpha" stdDeviation="1" />
+          <feOffset dx="0" dy="1" result="offsetblur" />
+          <feComponentTransfer><feFuncA type="linear" slope="0.18" /></feComponentTransfer>
           <feMerge>
             <feMergeNode />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-        {/* radial gradient to give large tree canopies a more organic feel */}
-        <radialGradient id="canopy8">
-          <stop offset="0%" stopColor="#5d8045" />
-          <stop offset="100%" stopColor="#3f5a2c" />
-        </radialGradient>
       </defs>
 
-      {/* ── Satellite base: bare earth / dry grass ─────────────────── */}
-      <rect x="0" y="0" width="1600" height="1100" fill="#b8a878" />
-      <rect x="0" y="0" width="1600" height="1100" fill="url(#noise8)" />
+      {/* ── Base land ─────────────────────────────────────────────── */}
+      <rect x="0" y="0" width="3200" height="2200" fill="#f5f1e6" />
 
-      {/* Lighter cleared / cultivated patches */}
-      <path d="M 0 0 L 460 0 L 520 180 L 380 340 L 200 300 L 0 240 Z" fill="#c8b890" opacity="0.85" />
-      <path d="M 1200 0 L 1600 0 L 1600 320 L 1380 340 L 1220 220 Z" fill="#c5b58a" opacity="0.85" />
-      <path d="M 0 700 L 180 740 L 240 920 L 60 1020 L 0 980 Z" fill="#b09e72" opacity="0.85" />
-      <path d="M 1320 700 L 1600 680 L 1600 1100 L 1280 1080 L 1260 920 Z" fill="#a89a72" opacity="0.85" />
+      {/* Subtle hill shading — soft mounds across the terrain */}
+      <ellipse cx="1850" cy="420" rx="700" ry="500" fill="url(#hill8)" />
+      <ellipse cx="500" cy="1280" rx="800" ry="540" fill="url(#hill8)" />
+      <ellipse cx="2200" cy="1300" rx="500" ry="380" fill="url(#hill8)" />
+      <ellipse cx="2900" cy="520" rx="620" ry="440" fill="url(#hill8)" />
+      <ellipse cx="2700" cy="1880" rx="780" ry="520" fill="url(#hill8)" />
+      <ellipse cx="1400" cy="1980" rx="900" ry="500" fill="url(#hill8)" />
 
-      {/* ── Tree canopies (organic clusters) ───────────────────────── */}
+      {/* ── Contour lines ─────────────────────────────────────────── */}
       {[
-        { x: 120, y: 220, r: 110 }, { x: 220, y: 380, r: 80 }, { x: 80, y: 480, r: 95 },
-        { x: 1340, y: 180, r: 100 }, { x: 1480, y: 320, r: 120 }, { x: 1420, y: 480, r: 80 },
-        { x: 1500, y: 880, r: 130 }, { x: 1320, y: 980, r: 90 },
-        { x: 280, y: 100, r: 70 }, { x: 60, y: 60, r: 60 },
-      ].map((c, i) => (
-        <circle key={`canopy-${i}`} cx={c.x} cy={c.y} r={c.r} fill="url(#canopy8)" />
+        'M -20 240 Q 400 200 800 280 T 1700 320 T 2400 280 T 3220 240',
+        'M -20 380 Q 460 340 880 420 T 1780 460 T 2400 440 T 3220 400',
+        'M -20 520 Q 520 480 940 560 T 1850 600 T 2400 600 T 3220 580',
+        'M -20 680 Q 480 640 920 720 T 1820 780 T 2400 780 T 3220 760',
+        'M -20 1100 Q 520 1060 980 1140 T 1860 1180 T 2400 1180 T 3220 1160',
+        'M -20 1260 Q 540 1220 1000 1300 T 1900 1320 T 2400 1340 T 3220 1320',
+        'M -20 1420 Q 560 1380 1020 1460 T 1920 1480 T 2400 1480 T 3220 1500',
+        'M -20 1640 Q 560 1600 1080 1680 T 1980 1700 T 2640 1720 T 3220 1700',
+        'M -20 1820 Q 600 1780 1120 1860 T 2040 1880 T 2700 1900 T 3220 1880',
+        'M -20 2020 Q 620 1980 1180 2060 T 2100 2080 T 2780 2100 T 3220 2080',
+      ].map((d, i) => (
+        <path
+          key={`contour-${i}`}
+          d={d}
+          stroke="#b89e73"
+          strokeWidth="0.8"
+          fill="none"
+          opacity="0.42"
+        />
       ))}
 
-      {/* small scattered trees */}
+      {/* ── Forest / park patches ─────────────────────────────────── */}
+      <path
+        d="M 0 60 L 360 40 L 460 220 L 380 380 L 220 420 L 40 360 L 0 280 Z"
+        fill="url(#forest8)"
+      />
+      <path
+        d="M 1500 100 L 1880 60 L 2200 140 L 2380 280 L 2400 460 L 2200 500 L 1900 420 L 1620 360 L 1500 240 Z"
+        fill="url(#forest8)"
+      />
+      <path
+        d="M 0 880 L 240 860 L 360 1020 L 280 1160 L 100 1180 L 0 1100 Z"
+        fill="url(#forest8)"
+      />
+      <path
+        d="M 1880 880 L 2200 860 L 2480 980 L 2520 1240 L 2160 1280 L 1980 1180 L 1880 1040 Z"
+        fill="url(#forest8)"
+      />
+      {/* New: forest in the upper-right of the expanded canvas */}
+      <path
+        d="M 2580 120 L 2900 80 L 3140 200 L 3200 380 L 3200 540 L 2980 580 L 2740 480 L 2620 320 Z"
+        fill="url(#forest8)"
+      />
+      {/* New: pine stand south of the parcel */}
+      <path
+        d="M 220 1700 L 540 1660 L 760 1780 L 820 1960 L 700 2120 L 460 2160 L 240 2080 L 160 1920 Z"
+        fill="url(#forest8)"
+      />
+      {/* New: large forested ridge to the south-east */}
+      <path
+        d="M 1880 1780 L 2240 1740 L 2540 1820 L 2780 1960 L 2820 2140 L 2580 2180 L 2280 2120 L 2020 2020 L 1880 1900 Z"
+        fill="url(#forest8)"
+      />
+      {/* New: thin tree line along the eastern edge */}
+      <path
+        d="M 2980 880 L 3200 860 L 3200 1380 L 3060 1340 L 3000 1100 Z"
+        fill="url(#forest8)"
+      />
+
+      {/* Smaller scattered tree clusters — minimal, Google-Terrain-style */}
       {[
-        [320, 240], [380, 200], [420, 280], [260, 460], [320, 520], [380, 460],
-        [1200, 240], [1240, 320], [1300, 380],
-        [240, 800], [340, 860], [180, 920],
-        [1380, 760], [1420, 840], [1300, 880],
-      ].map(([x, y], i) => (
-        <g key={`tree-${i}`}>
-          <circle cx={x} cy={y} r="14" fill="#4f6e3d" />
-          <circle cx={x - 3} cy={y - 3} r="10" fill="#5d8045" opacity="0.9" />
-        </g>
+        { x: 280, y: 480, r: 26 },
+        { x: 220, y: 580, r: 18 },
+        { x: 320, y: 540, r: 14 },
+        { x: 1380, y: 520, r: 22 },
+        { x: 1560, y: 560, r: 16 },
+        { x: 360, y: 1240, r: 20 },
+        { x: 480, y: 1300, r: 14 },
+        { x: 2080, y: 540, r: 22 },
+        { x: 2200, y: 700, r: 26 },
+        { x: 1820, y: 1080, r: 18 },
+        { x: 2120, y: 1100, r: 20 },
+        { x: 2640, y: 660, r: 22 },
+        { x: 2820, y: 760, r: 18 },
+        { x: 1100, y: 1820, r: 26 },
+        { x: 1240, y: 1900, r: 16 },
+        { x: 940, y: 1880, r: 20 },
+        { x: 2920, y: 1640, r: 18 },
+        { x: 3060, y: 1740, r: 22 },
+        { x: 1660, y: 2020, r: 16 },
+        { x: 1820, y: 2080, r: 14 },
+      ].map((t, i) => (
+        <circle key={`grove-${i}`} cx={t.x} cy={t.y} r={t.r} fill="#bdd5af" />
       ))}
 
-      {/* ── Creek / stream meandering through ──────────────────────── */}
+      {/* ── Pine Creek (water body) ───────────────────────────────── */}
       <path
-        d="M -20 920 Q 200 880 320 940 T 600 1020 T 900 980 Q 1100 940 1300 1020 T 1620 1080"
-        stroke="#6a8db3"
-        strokeWidth="22"
+        d="M -40 1340 Q 240 1280 460 1380 T 880 1440 T 1320 1400 Q 1620 1360 1880 1460 T 2440 1500 T 2900 1480 T 3240 1520"
+        stroke="url(#water8)"
+        strokeWidth="34"
         fill="none"
         strokeLinecap="round"
-        opacity="0.95"
       />
       <path
-        d="M -20 920 Q 200 880 320 940 T 600 1020 T 900 980 Q 1100 940 1300 1020 T 1620 1080"
-        stroke="#8aa9c8"
-        strokeWidth="6"
+        d="M -40 1340 Q 240 1280 460 1380 T 880 1440 T 1320 1400 Q 1620 1360 1880 1460 T 2440 1500 T 2900 1480 T 3240 1520"
+        stroke="rgba(255,255,255,0.55)"
+        strokeWidth="3"
         fill="none"
         strokeLinecap="round"
-        opacity="0.6"
       />
-      <text x="280" y="900" fontSize="11" fontStyle="italic" fontWeight="600" fill="#3a5973" opacity="0.9">
+      <text x="540" y="1330" fontSize="13" fontStyle="italic" fontWeight="600" fill="#4f7e96">
         Pine Creek
       </text>
 
-      {/* ── Hwy 41 — east-west asphalt road ────────────────────────── */}
-      <rect x="-20" y="270" width="1640" height="42" fill="#2e2e2e" transform="rotate(-2 800 290)" />
-      {Array.from({ length: 24 }).map((_, i) => (
-        <rect
-          key={`hwy-line-${i}`}
-          x={-10 + i * 70}
-          y={288}
-          width="34"
-          height="4"
-          fill="#f0e7a8"
-          opacity="0.85"
-          transform="rotate(-2 800 290)"
-        />
-      ))}
-      <text x="1380" y="262" fontSize="11" fontWeight="700" fill="#2e2e2e" transform="rotate(-2 1380 262)">
-        STATE HWY 41
+      {/* Tributary — meanders south through the new lower terrain */}
+      <path
+        d="M 1320 1400 Q 1380 1620 1500 1820 T 1620 2200"
+        stroke="url(#water8)"
+        strokeWidth="22"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 1320 1400 Q 1380 1620 1500 1820 T 1620 2200"
+        stroke="rgba(255,255,255,0.55)"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <text x="1430" y="1820" fontSize="11" fontStyle="italic" fontWeight="600" fill="#4f7e96" transform="rotate(70 1430 1820)">
+        Cedar Branch
       </text>
 
-      {/* Dirt access road branching south into the parcel */}
+      {/* Small pond on the right */}
+      <ellipse cx="2200" cy="1380" rx="80" ry="48" fill="url(#water8)" />
+      <ellipse cx="2200" cy="1380" rx="80" ry="48" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+
+      {/* New pond in the lower-right */}
+      <ellipse cx="2860" cy="1900" rx="120" ry="70" fill="url(#water8)" />
+      <ellipse cx="2860" cy="1900" rx="120" ry="70" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+      <text x="2860" y="1908" fontSize="11" fontStyle="italic" fontWeight="600" fill="#4f7e96" textAnchor="middle">
+        Echo Pond
+      </text>
+
+      {/* ── Roads — Google-style casing + white core ─────────────── */}
+
+      {/* State Hwy 41 — east-west, with yellow casing + white core */}
+      <g transform="rotate(-2 1200 410)">
+        <rect x="-40" y="386" width="3280" height="48" fill="#f4b400" />
+        <rect x="-40" y="394" width="3280" height="32" fill="#ffffff" />
+        {/* center dashes */}
+        {Array.from({ length: 42 }).map((_, i) => (
+          <rect
+            key={`hwy-line-${i}`}
+            x={-20 + i * 80}
+            y={408}
+            width="40"
+            height="4"
+            fill="#f4b400"
+            opacity="0.85"
+          />
+        ))}
+      </g>
+      {/* Highway shield */}
+      <g transform="translate(2100 360)">
+        <rect x="-22" y="-16" width="44" height="32" rx="6" fill="#ffffff" stroke="#3a3f48" strokeWidth="1.5" />
+        <text x="0" y="2" fontSize="9" fontWeight="800" fill="#3a3f48" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, monospace">
+          STATE
+        </text>
+        <text x="0" y="13" fontSize="11" fontWeight="800" fill="#3a3f48" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, monospace">
+          41
+        </text>
+      </g>
+
+      {/* Local road — Lincoln Lane heading south, casing+core */}
       <path
-        d="M 760 300 Q 780 460 720 600 T 660 880"
-        stroke="#a8946a"
+        d="M 760 400 Q 800 600 720 800 T 660 1180 T 700 1500"
+        stroke="#cccccc"
+        strokeWidth="22"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 760 400 Q 800 600 720 800 T 660 1180 T 700 1500"
+        stroke="#ffffff"
+        strokeWidth="14"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <text
+        x="700"
+        y="1100"
+        fontSize="11"
+        fontWeight="600"
+        fill="#5a5f67"
+        fontStyle="italic"
+        transform="rotate(82 700 1100)"
+      >
+        Lincoln Ln
+      </text>
+
+      {/* Dirt access path */}
+      <path
+        d="M 660 880 Q 980 1000 1300 980 T 1820 920"
+        stroke="#a89878"
+        strokeWidth="6"
+        strokeDasharray="4 6"
+        fill="none"
+      />
+
+      {/* Cedar County Rd — east-west collector across the southern terrain */}
+      <path
+        d="M 0 1820 Q 600 1780 1180 1840 T 2200 1880 T 3220 1860"
+        stroke="#cccccc"
+        strokeWidth="20"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 0 1820 Q 600 1780 1180 1840 T 2200 1880 T 3220 1860"
+        stroke="#ffffff"
+        strokeWidth="12"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <text x="2400" y="1850" fontSize="11" fontWeight="600" fill="#5a5f67" fontStyle="italic">
+        Cedar County Rd
+      </text>
+
+      {/* Connector spur joining the parcel access road to Cedar County Rd */}
+      <path
+        d="M 700 1500 Q 760 1640 820 1820"
+        stroke="#cccccc"
         strokeWidth="16"
         fill="none"
         strokeLinecap="round"
       />
       <path
-        d="M 760 300 Q 780 460 720 600 T 660 880"
-        stroke="#7d6b4a"
-        strokeWidth="1"
-        strokeDasharray="3 4"
+        d="M 700 1500 Q 760 1640 820 1820"
+        stroke="#ffffff"
+        strokeWidth="9"
         fill="none"
-        opacity="0.7"
+        strokeLinecap="round"
       />
 
-      {/* ── Buildings (rural homesteads) with drop shadow ──────────── */}
-      <g filter="url(#bldShadow8)">
-        <rect x="700" y="180" width="60" height="44" fill="#ededed" stroke="#5a5a5a" strokeWidth="1" />
-        <polygon points="700,180 760,180 730,166" fill="#a55a3a" />
-      </g>
-      <g filter="url(#bldShadow8)">
-        <rect x="1340" y="640" width="80" height="56" fill="#ededed" stroke="#5a5a5a" strokeWidth="1" />
-        <polygon points="1340,640 1420,640 1380,624" fill="#8a6a4a" />
-      </g>
-      <g filter="url(#bldShadow8)">
-        <rect x="160" y="640" width="50" height="36" fill="#e0e0e0" stroke="#5a5a5a" strokeWidth="1" />
-      </g>
-      <g filter="url(#bldShadow8)">
-        <rect x="240" y="720" width="40" height="28" fill="#cfcfcf" stroke="#5a5a5a" strokeWidth="1" />
-      </g>
+      {/* ── Buildings — light gray with subtle shadow ─────────────── */}
+      {[
+        { x: 700, y: 280, w: 60, h: 44 },
+        { x: 1340, y: 740, w: 80, h: 56 },
+        { x: 160, y: 740, w: 50, h: 36 },
+        { x: 240, y: 820, w: 40, h: 28 },
+        { x: 2020, y: 760, w: 70, h: 50 },
+        { x: 2080, y: 1080, w: 56, h: 40 },
+        { x: 540, y: 1340, w: 44, h: 30 },
+        { x: 1740, y: 480, w: 52, h: 36 },
+        // New buildings in the expanded canvas
+        { x: 2640, y: 1740, w: 64, h: 44 },
+        { x: 2720, y: 1760, w: 40, h: 30 },
+        { x: 2680, y: 1700, w: 48, h: 30 },
+        { x: 2780, y: 1700, w: 44, h: 32 },
+        { x: 380, y: 1900, w: 56, h: 38 },
+        { x: 460, y: 1940, w: 40, h: 28 },
+        { x: 1480, y: 2020, w: 52, h: 36 },
+        { x: 3000, y: 720, w: 60, h: 42 },
+      ].map((b, i) => (
+        <rect
+          key={`bld-${i}`}
+          x={b.x}
+          y={b.y}
+          width={b.w}
+          height={b.h}
+          fill="#ebe8e0"
+          stroke="#c8c4b8"
+          strokeWidth="1"
+          filter="url(#bldShadow8)"
+        />
+      ))}
+
+      {/* Place labels */}
+      <text x="2080" y="640" fontSize="13" fontWeight="600" fill="#666" letterSpacing="1">
+        Pine Ridge
+      </text>
+      <text x="2080" y="660" fontSize="10" fill="#888" letterSpacing="0.5">
+        Unincorporated
+      </text>
+      <text x="2700" y="1660" fontSize="13" fontWeight="600" fill="#666" letterSpacing="1">
+        Cedar Hollow
+      </text>
+      <text x="2700" y="1680" fontSize="10" fill="#888" letterSpacing="0.5">
+        Pop. 142
+      </text>
+      <text x="3000" y="280" fontSize="13" fontWeight="600" fill="#666" letterSpacing="1">
+        Black Pine SF
+      </text>
+      <text x="3000" y="300" fontSize="10" fill="#888" letterSpacing="0.5">
+        State Forest
+      </text>
 
       {/* ─────────────────────────────────────────────────────────────
-          SURVEY OVERLAY — sits on top of the satellite imagery
+          SURVEY OVERLAY — drawn on top of the terrain map
           ───────────────────────────────────────────────────────────── */}
 
-      {/* Subject parcel: semi-transparent yellow fill */}
+      {/* Subject parcel — yellow fill, red dashed boundary */}
       <polygon
         points={PARCEL_POLYGON}
         fill="rgba(242,201,76,0.22)"
@@ -772,28 +991,32 @@ function SitePlan() {
         );
       })}
 
-      {/* Bearing/distance labels on a couple of boundary legs */}
-      <text x="780" y="335" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace">
-        N 87°12' E · 560.4 ft
-      </text>
-      <text x="1240" y="500" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace" transform="rotate(72 1240 500)">
-        S 14°08' E · 412.6 ft
-      </text>
+      {/* Bearing/distance labels */}
+      <g>
+        <rect x="772" y="320" width="148" height="20" rx="3" fill="rgba(255,255,255,0.92)" stroke="rgba(199,56,56,0.35)" strokeWidth="1" />
+        <text x="780" y="335" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace">
+          N 87°12' E · 560.4 ft
+        </text>
+      </g>
+      <g transform="rotate(72 1240 500)">
+        <rect x="1232" y="486" width="148" height="20" rx="3" fill="rgba(255,255,255,0.92)" stroke="rgba(199,56,56,0.35)" strokeWidth="1" />
+        <text x="1240" y="500" fontSize="10" fontWeight="700" fill="#7a1f1f" fontFamily="ui-monospace, SFMono-Regular, monospace">
+          S 14°08' E · 412.6 ft
+        </text>
+      </g>
 
       {/* Parcel label */}
-      <text x="780" y="600" fontSize="22" fontWeight="800" fill="rgba(74,32,32,0.55)" textAnchor="middle" letterSpacing="2">
+      <text x="780" y="600" fontSize="26" fontWeight="800" fill="rgba(74,32,32,0.55)" textAnchor="middle" letterSpacing="3">
         TRACT 12-A
       </text>
-      <text x="780" y="624" fontSize="11" fontWeight="600" fill="rgba(74,32,32,0.55)" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, monospace">
+      <text x="780" y="624" fontSize="11" fontWeight="600" fill="rgba(74,32,32,0.6)" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, monospace">
         12.4 AC · PINE RIDGE SUBDIVISION
       </text>
 
-      {/* ── Secondary control points (triangles) ───────────────────── */}
+      {/* Secondary control points */}
       {SECONDARY_CONTROLS.map((cp) => (
         <g key={cp.id}>
-          {/* Halo ring */}
-          <circle cx={cp.x} cy={cp.y} r="14" fill="rgba(255,255,255,0.65)" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
-          {/* Surveyor triangle */}
+          <circle cx={cp.x} cy={cp.y} r="14" fill="rgba(255,255,255,0.85)" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
           <polygon
             points={`${cp.x},${cp.y - 9} ${cp.x - 8},${cp.y + 6} ${cp.x + 8},${cp.y + 6}`}
             fill="#ffffff"
@@ -801,14 +1024,13 @@ function SitePlan() {
             strokeWidth="1.5"
           />
           <circle cx={cp.x} cy={cp.y} r="1.8" fill="#3a3f48" />
-          {/* Label */}
           <rect
             x={cp.x + 14}
             y={cp.y - 14}
             width="76"
             height="28"
             rx="4"
-            fill="rgba(255,255,255,0.92)"
+            fill="rgba(255,255,255,0.96)"
             stroke="rgba(0,0,0,0.18)"
             strokeWidth="1"
           />
@@ -821,9 +1043,8 @@ function SitePlan() {
         </g>
       ))}
 
-      {/* ── Primary control point (BM-104) — where the AI marker anchors ── */}
+      {/* Primary control BM-104 — where the AI marker anchors */}
       <g>
-        {/* GNSS satellite-window halo */}
         <circle
           cx={PRIMARY_CONTROL_WORLD.x}
           cy={PRIMARY_CONTROL_WORLD.y}
@@ -833,19 +1054,18 @@ function SitePlan() {
           strokeWidth="1.5"
           strokeDasharray="6 4"
         />
+        <rect x={PRIMARY_CONTROL_WORLD.x + 86} y={PRIMARY_CONTROL_WORLD.y - 122} width="138" height="20" rx="3" fill="rgba(255,255,255,0.92)" />
         <text
-          x={PRIMARY_CONTROL_WORLD.x + 100}
-          y={PRIMARY_CONTROL_WORLD.y - 105}
+          x={PRIMARY_CONTROL_WORLD.x + 92}
+          y={PRIMARY_CONTROL_WORLD.y - 107}
           fontSize="10"
           fontWeight="700"
-          fill="rgba(0,99,167,0.85)"
+          fill="#0063a3"
           fontFamily="ui-monospace, SFMono-Regular, monospace"
         >
           GNSS sky view · 92%
         </text>
-
-        {/* Monument symbol — square with X inside (concrete mon.) */}
-        <circle cx={PRIMARY_CONTROL_WORLD.x} cy={PRIMARY_CONTROL_WORLD.y} r="22" fill="rgba(255,255,255,0.7)" />
+        <circle cx={PRIMARY_CONTROL_WORLD.x} cy={PRIMARY_CONTROL_WORLD.y} r="22" fill="rgba(255,255,255,0.85)" />
         <rect
           x={PRIMARY_CONTROL_WORLD.x - 11}
           y={PRIMARY_CONTROL_WORLD.y - 11}
@@ -871,10 +1091,10 @@ function SitePlan() {
           stroke="#0063a3"
           strokeWidth="2"
         />
-        {/* BM-104 callout below monument */}
+        <rect x={PRIMARY_CONTROL_WORLD.x - 60} y={PRIMARY_CONTROL_WORLD.y + 30} width="120" height="34" rx="4" fill="rgba(255,255,255,0.96)" stroke="rgba(0,99,167,0.45)" strokeWidth="1" />
         <text
           x={PRIMARY_CONTROL_WORLD.x}
-          y={PRIMARY_CONTROL_WORLD.y + 42}
+          y={PRIMARY_CONTROL_WORLD.y + 46}
           fontSize="11"
           fontWeight="800"
           fill="#0a3a5a"
@@ -885,9 +1105,9 @@ function SitePlan() {
         </text>
         <text
           x={PRIMARY_CONTROL_WORLD.x}
-          y={PRIMARY_CONTROL_WORLD.y + 56}
+          y={PRIMARY_CONTROL_WORLD.y + 58}
           fontSize="9"
-          fill="rgba(10,58,90,0.75)"
+          fill="rgba(10,58,90,0.85)"
           textAnchor="middle"
           fontFamily="ui-monospace, SFMono-Regular, monospace"
         >
@@ -896,8 +1116,8 @@ function SitePlan() {
       </g>
 
       {/* North arrow — top-right of plan */}
-      <g transform="translate(1500 90)">
-        <circle cx="0" cy="0" r="28" fill="rgba(255,255,255,0.9)" stroke="#3a3f48" strokeWidth="1.2" />
+      <g transform="translate(3100 110)">
+        <circle cx="0" cy="0" r="28" fill="rgba(255,255,255,0.95)" stroke="#3a3f48" strokeWidth="1.2" />
         <polygon points="0,-20 8,8 0,2 -8,8" fill="#b3261e" />
         <polygon points="0,20 8,-8 0,-2 -8,-8" fill="#3a3f48" />
         <text x="0" y="-32" fontSize="11" fontWeight="800" fill="#3a3f48" textAnchor="middle">
@@ -905,15 +1125,16 @@ function SitePlan() {
         </text>
       </g>
 
-      {/* Scale bar — bottom of plan */}
-      <g transform="translate(60 1040)">
-        <rect x="0" y="0" width="40" height="8" fill="#1f242c" />
-        <rect x="40" y="0" width="40" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
-        <rect x="80" y="0" width="40" height="8" fill="#1f242c" />
-        <rect x="120" y="0" width="40" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
-        <text x="0" y="26" fontSize="10" fontWeight="600" fill="#1f242c">0</text>
-        <text x="80" y="26" fontSize="10" fontWeight="600" fill="#1f242c" textAnchor="middle">100 ft</text>
-        <text x="160" y="26" fontSize="10" fontWeight="600" fill="#1f242c" textAnchor="middle">200 ft</text>
+      {/* Scale bar — bottom-left */}
+      <g transform="translate(60 2140)">
+        <rect x="-6" y="-6" width="200" height="44" rx="3" fill="rgba(255,255,255,0.92)" />
+        <rect x="0" y="0" width="46" height="8" fill="#1f242c" />
+        <rect x="46" y="0" width="46" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
+        <rect x="92" y="0" width="46" height="8" fill="#1f242c" />
+        <rect x="138" y="0" width="46" height="8" fill="#ffffff" stroke="#1f242c" strokeWidth="1" />
+        <text x="0" y="26" fontSize="10" fontWeight="700" fill="#1f242c">0</text>
+        <text x="92" y="26" fontSize="10" fontWeight="700" fill="#1f242c" textAnchor="middle">100 ft</text>
+        <text x="184" y="26" fontSize="10" fontWeight="700" fill="#1f242c" textAnchor="middle">200 ft</text>
       </g>
     </svg>
   );
@@ -1042,7 +1263,7 @@ export default function Creative8() {
   const dragRef = useRef({ x: 0, y: 0, panX: 0, panY: 0, didMove: false });
 
   const [open, setOpen] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(INITIAL_ZOOM);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -1053,8 +1274,8 @@ export default function Creative8() {
     const el = containerRef.current;
     if (!el) return;
     setPan({
-      x: el.clientWidth / 2 - PRIMARY_CONTROL_WORLD.x,
-      y: el.clientHeight / 2 - PRIMARY_CONTROL_WORLD.y,
+      x: el.clientWidth / 2 - PRIMARY_CONTROL_WORLD.x * INITIAL_ZOOM,
+      y: el.clientHeight / 2 - PRIMARY_CONTROL_WORLD.y * INITIAL_ZOOM,
     });
     setInitialized(true);
   }, [initialized]);
@@ -1124,10 +1345,10 @@ export default function Creative8() {
   function resetView() {
     const el = containerRef.current;
     if (!el) return;
-    setZoom(1);
+    setZoom(INITIAL_ZOOM);
     setPan({
-      x: el.clientWidth / 2 - PRIMARY_CONTROL_WORLD.x,
-      y: el.clientHeight / 2 - PRIMARY_CONTROL_WORLD.y,
+      x: el.clientWidth / 2 - PRIMARY_CONTROL_WORLD.x * INITIAL_ZOOM,
+      y: el.clientHeight / 2 - PRIMARY_CONTROL_WORLD.y * INITIAL_ZOOM,
     });
   }
 
