@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type SVGProps } from 'react';
 import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
@@ -140,11 +140,13 @@ const BANK = '#d8d2c0';
 function ScaleBar({ x, y, label = '100 m' }: { x: number; y: number; label?: string }) {
   return (
     <g>
+      {/* Paper backing so the bar reads cleanly over the water */}
+      <rect x={x - 2} y={y - 6} width={42} height={11} fill={PAPER} opacity={0.85} />
       <rect x={x} y={y} width={12} height={3} fill={INK} />
       <rect x={x + 12} y={y} width={12} height={3} fill={PAPER} stroke={INK} strokeWidth={0.6} />
       <rect x={x + 24} y={y} width={12} height={3} fill={INK} />
-      <text x={x} y={y - 1.5} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace">0</text>
-      <text x={x + 36} y={y - 1.5} fontSize={4} fill={INK_LIGHT} textAnchor="end" fontFamily="ui-monospace, monospace">{label}</text>
+      <text x={x} y={y - 1.5} fontSize={4} fontWeight={600} fill={INK} fontFamily="ui-monospace, monospace">0</text>
+      <text x={x + 36} y={y - 1.5} fontSize={4} fontWeight={600} fill={INK} textAnchor="end" fontFamily="ui-monospace, monospace">{label}</text>
     </g>
   );
 }
@@ -158,6 +160,26 @@ function CarScale({ x, y }: { x: number; y: number }) {
       <circle cx={-2.2} cy={0.1} r={0.7} fill={INK} />
       <circle cx={2.2}  cy={0.1} r={0.7} fill={INK} />
     </g>
+  );
+}
+
+// Text with a paper-coloured halo behind it so it stays readable when it
+// overlaps lines, hatching, cables, or coloured fills.
+type HaloTextProps = SVGProps<SVGTextElement> & {
+  haloColor?: string;
+  haloWidth?: number;
+};
+function HaloText({ haloColor = PAPER, haloWidth = 1.8, children, ...rest }: HaloTextProps) {
+  return (
+    <text
+      {...rest}
+      stroke={haloColor}
+      strokeWidth={haloWidth}
+      strokeLinejoin="round"
+      paintOrder="stroke fill"
+    >
+      {children}
+    </text>
   );
 }
 
@@ -218,12 +240,12 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
         stroke={INK}
         strokeWidth={0.6}
       />
-      <text x={18} y={GROUND_Y - 2} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace" letterSpacing={0.3}>
+      <HaloText x={18} y={GROUND_Y - 2} fontSize={4.2} fontWeight={700} fill={INK} fontFamily="ui-monospace, monospace" letterSpacing={0.4}>
         WEST BANK
-      </text>
-      <text x={W - 18} y={GROUND_Y - 2} fontSize={4} fill={INK_LIGHT} fontFamily="ui-monospace, monospace" letterSpacing={0.3} textAnchor="end">
+      </HaloText>
+      <HaloText x={W - 18} y={GROUND_Y - 2} fontSize={4.2} fontWeight={700} fill={INK} fontFamily="ui-monospace, monospace" letterSpacing={0.4} textAnchor="end">
         EAST BANK
-      </text>
+      </HaloText>
 
       {/* Existing approach roads (dashed) */}
       <line x1={0} y1={DECK_Y + DECK_T / 2} x2={BANK_L} y2={DECK_Y + DECK_T / 2} stroke={INK_LIGHT} strokeWidth={0.6} strokeDasharray="3 2" />
@@ -250,9 +272,9 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
             </g>
           ))}
           {/* Bridge type caption */}
-          <text x={W / 2} y={DECK_Y - 5} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={DECK_Y - 5} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             STEEL BOX GIRDER · 3-SPAN CONTINUOUS
-          </text>
+          </HaloText>
         </g>
       )}
 
@@ -280,12 +302,12 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           {/* Deck */}
           <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
           {/* Caption */}
-          <text x={W / 2} y={20} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={20} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             STEEL TIED ARCH · SINGLE SPAN
-          </text>
+          </HaloText>
           {/* Arch-rise dimension */}
           <line x1={BANK_L + SPAN / 2 - 2} y1={14} x2={BANK_L + SPAN / 2 - 2} y2={DECK_Y} stroke={DIM} strokeWidth={0.5} strokeDasharray="2 1.5" />
-          <text x={BANK_L + SPAN / 2 + 2} y={(14 + DECK_Y) / 2} fontSize={4} fill={DIM} fontFamily="ui-monospace, monospace">RISE 60 m</text>
+          <HaloText x={BANK_L + SPAN / 2 + 2} y={(14 + DECK_Y) / 2} fontSize={4.2} fontWeight={700} fill={DIM} fontFamily="ui-monospace, monospace">RISE 60 m</HaloText>
         </g>
       )}
 
@@ -320,11 +342,11 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           {/* Deck */}
           <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
           {/* Caption */}
-          <text x={W / 2} y={20} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={20} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             SINGLE-PYLON CABLE-STAY · ASYMMETRIC
-          </text>
+          </HaloText>
           {/* Pylon-height dimension */}
-          <text x={BANK_L + SPAN * 0.36 + 5} y={28} fontSize={4} fill={DIM} fontFamily="ui-monospace, monospace">PYLON 130 m</text>
+          <HaloText x={BANK_L + SPAN * 0.36 + 5} y={28} fontSize={4.2} fontWeight={700} fill={DIM} fontFamily="ui-monospace, monospace">PYLON 130 m</HaloText>
         </g>
       )}
 
@@ -359,9 +381,9 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           {/* Deck */}
           <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
           {/* Caption */}
-          <text x={W / 2} y={36} fontSize={4.2} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={36} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             STEEL WARREN THROUGH-TRUSS
-          </text>
+          </HaloText>
         </g>
       )}
 
@@ -373,15 +395,15 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
         <line x1={BANK_L} y1={GROUND_Y + 16} x2={BANK_R} y2={GROUND_Y + 16} stroke={DIM} strokeWidth={0.55} />
         <line x1={BANK_L} y1={GROUND_Y + 14} x2={BANK_L} y2={GROUND_Y + 18} stroke={DIM} strokeWidth={0.55} />
         <line x1={BANK_R} y1={GROUND_Y + 14} x2={BANK_R} y2={GROUND_Y + 18} stroke={DIM} strokeWidth={0.55} />
-        <text x={W / 2} y={GROUND_Y + 14} fontSize={4.5} fill={DIM} textAnchor="middle" fontFamily="ui-monospace, monospace" fontWeight={600}>
+        <HaloText x={W / 2} y={GROUND_Y + 14} fontSize={4.6} fill={DIM} textAnchor="middle" fontFamily="ui-monospace, monospace" fontWeight={700}>
           {option.metrics[0].value} · MAIN SPAN
-        </text>
+        </HaloText>
       </g>
 
       {/* Flow direction */}
-      <text x={W - 8} y={GROUND_Y + 8} fontSize={4} fill="rgba(0,99,167,0.85)" textAnchor="end" fontStyle="italic" fontFamily="ui-monospace, monospace">
+      <HaloText x={W - 8} y={GROUND_Y + 8} fontSize={4.2} fontWeight={600} fill="rgba(0,99,167,0.95)" textAnchor="end" fontStyle="italic" fontFamily="ui-monospace, monospace">
         FLOW →
-      </text>
+      </HaloText>
 
       <ScaleBar x={18} y={H - 6} label="100 m" />
     </svg>

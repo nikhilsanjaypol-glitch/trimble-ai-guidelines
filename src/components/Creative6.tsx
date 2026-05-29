@@ -556,24 +556,6 @@ export default function Creative6({ open = true, onClose }: Creative6Props = {})
           width: '300px',
         }}
       >
-        {/* Dismiss button (floating top-right outside the inner card) */}
-        <button
-          onClick={() => onClose?.()}
-          className="absolute -top-2 -right-2 z-20 flex items-center justify-center size-6 rounded-full transition-transform hover:scale-110"
-          style={{
-            backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-          }}
-          aria-label="Dismiss"
-        >
-          <ModusWcIcon
-            name="close"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-          />
-        </button>
-
         {/* Prev / Next cycle arrows on outer edges */}
         <button
           type="button"
@@ -662,32 +644,54 @@ export default function Creative6({ open = true, onClose }: Creative6Props = {})
                 </svg>
               </span>
 
-              {/* Confidence chip — colour shifts per-strategy */}
-              <span
-                className="flex items-center gap-1 px-2 py-1 rounded transition-colors"
-                style={{
-                  border: `1px solid ${confidenceStyle.border}`,
-                  backgroundColor: confidenceStyle.bg,
-                }}
-                aria-label={confidenceStyle.label}
-              >
-                <ModusWcIcon
-                  name={confidenceStyle.icon}
-                  size="xs"
-                  decorative
-                  style={{ color: confidenceStyle.text }}
-                />
+              {/* Confidence chip + close button, grouped at the top-right */}
+              <div className="flex items-center gap-2">
                 <span
-                  className="font-semibold"
+                  className="flex items-center gap-1 px-2 py-1 rounded transition-colors"
                   style={{
-                    fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                    color: confidenceStyle.text,
-                    letterSpacing: '0.1px',
+                    border: `1px solid ${confidenceStyle.border}`,
+                    backgroundColor: confidenceStyle.bg,
                   }}
+                  aria-label={confidenceStyle.label}
                 >
-                  {confidenceStyle.label}
+                  <ModusWcIcon
+                    name={confidenceStyle.icon}
+                    size="xs"
+                    decorative
+                    style={{ color: confidenceStyle.text }}
+                  />
+                  <span
+                    className="font-semibold"
+                    style={{
+                      fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+                      color: confidenceStyle.text,
+                      letterSpacing: '0.1px',
+                    }}
+                  >
+                    {confidenceStyle.label}
+                  </span>
                 </span>
-              </span>
+
+                {/* Dismiss button — sits just beside the confidence chip */}
+                <button
+                  type="button"
+                  onClick={() => onClose?.()}
+                  className="flex items-center justify-center size-6 rounded-full transition-colors hover:bg-base-200"
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  aria-label="Dismiss"
+                >
+                  <ModusWcIcon
+                    name="close"
+                    size="xs"
+                    decorative
+                    style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
+                  />
+                </button>
+              </div>
             </div>
           </div>
 

@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Creative6 from './Creative6';
 
-const CARD_RIGHT = 56;
-const CARD_TOP = 72;
 const CARD_WIDTH = 300;
+const CARD_MARGIN = 16;
+const CARD_GAP = 96;
 
 const ANCHOR = new THREE.Vector3(-4, 15.5, -4);
 
@@ -253,15 +253,48 @@ export default function SiteScene() {
         if (!onScreen || openRef.current) pill.classList.remove('visible');
       }
 
-      if (line && card && openRef.current) {
-        const cr = card.getBoundingClientRect();
-        const mountRect = mount.getBoundingClientRect();
-        const cx = cr.left + cr.width / 2 - mountRect.left;
-        const cy = cr.top + cr.height / 2 - mountRect.top;
-        line.setAttribute('x1', String(sx));
-        line.setAttribute('y1', String(sy));
-        line.setAttribute('x2', String(cx));
-        line.setAttribute('y2', String(cy));
+      // Position the card near the pulse marker (instead of pinning to top-right).
+      // Choose the side with more room, then clamp vertically so it stays on-screen.
+      // We update on every frame (not just when open) so the line endpoints are
+      // already correct on the first frame the SVG fades in — otherwise the
+      // line briefly flashes from stale coordinates and looks like a blink.
+      if (card) {
+        const cardW = card.offsetWidth || CARD_WIDTH;
+        const cardH = card.offsetHeight || 480;
+
+        let cardLeft: number;
+        if (sx + CARD_GAP + cardW + CARD_MARGIN <= W) {
+          cardLeft = sx + CARD_GAP;
+        } else if (sx - CARD_GAP - cardW - CARD_MARGIN >= 0) {
+          cardLeft = sx - CARD_GAP - cardW;
+        } else {
+          cardLeft = Math.max(
+            CARD_MARGIN,
+            Math.min(W - cardW - CARD_MARGIN, sx - cardW / 2),
+          );
+        }
+
+        let cardTop = sy - cardH / 2;
+        cardTop = Math.max(
+          CARD_MARGIN,
+          Math.min(H - cardH - CARD_MARGIN, cardTop),
+        );
+
+        // Round to integers so transform doesn't snap on sub-pixel boundaries.
+        const cardLeftPx = Math.round(cardLeft);
+        const cardTopPx = Math.round(cardTop);
+        card.style.transform = `translate3d(${cardLeftPx}px, ${cardTopPx}px, 0)`;
+
+        if (line) {
+          // Compute the card center directly from the rounded transform + size
+          // (avoids an extra getBoundingClientRect / layout flush each frame).
+          const cx = cardLeftPx + cardW / 2;
+          const cy = cardTopPx + cardH / 2;
+          line.setAttribute('x1', String(Math.round(sx)));
+          line.setAttribute('y1', String(Math.round(sy)));
+          line.setAttribute('x2', String(Math.round(cx)));
+          line.setAttribute('y2', String(Math.round(cy)));
+        }
       }
     }
 
@@ -321,7 +354,17 @@ export default function SiteScene() {
         }}
       >
         <defs>
-          <linearGradient id="rainbowLine" x1="0%" y1="0%" x2="100%" y2="0%">
+          {/* userSpaceOnUse keeps the gradient anchored to the SVG viewport so
+              it doesn't re-map every frame as the line endpoints change —
+              objectBoundingBox (the default) caused visible shimmer/flicker. */}
+          <linearGradient
+            id="rainbowLine"
+            x1="0"
+            y1="0"
+            x2="2400"
+            y2="0"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop offset="0%" stopColor="#00D7C0" />
             <stop offset="33%" stopColor="#009AFE" />
             <stop offset="55%" stopColor="#4A00FF" />
@@ -335,6 +378,7 @@ export default function SiteScene() {
           strokeWidth="1.5"
           strokeLinecap="round"
           opacity="0.9"
+          shapeRendering="geometricPrecision"
         />
       </svg>
 
@@ -397,16 +441,17 @@ export default function SiteScene() {
         </div>
       </div>
 
-      {/* Creative6 anchored card */}
+      {/* Creative6 anchored card — positioned next to the pulse marker via updateOverlay */}
       <div
         ref={cardWrapRef}
         style={{
           position: 'absolute',
-          top: CARD_TOP,
-          right: CARD_RIGHT,
+          left: 0,
+          top: 0,
           width: CARD_WIDTH,
           zIndex: 10,
           pointerEvents: open ? 'auto' : 'none',
+          willChange: 'transform',
         }}
       >
         <Creative6 open={open} onClose={() => setOpen(false)} />
