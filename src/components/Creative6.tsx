@@ -165,7 +165,7 @@ function ExpandedDetails({
           aria-label="Collapse details"
         >
           <ModusWcIcon
-            name="chevron_up"
+            name="expand_less"
             size="sm"
             decorative
             style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
@@ -802,7 +802,7 @@ export default function Creative6({ open = true, onClose }: Creative6Props = {})
                       }}
                     >
                       <ModusWcIcon
-                        name="chevron_down"
+                        name="expand_more"
                         size="sm"
                         decorative
                         style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}

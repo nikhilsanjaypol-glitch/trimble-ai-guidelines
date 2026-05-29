@@ -51,28 +51,29 @@ function UploadDataModal({ onClose }: { onClose: () => void }) {
   if (uploaded) {
     return (
       <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-2xl w-[440px] shadow-xl flex flex-col overflow-hidden">
-          <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
+        <div className="bg-white rounded-2xl w-[340px] shadow-xl flex flex-col overflow-hidden">
+          <div className="flex flex-col items-center gap-2.5 px-5 py-6 text-center">
             <div
-              className="flex items-center justify-center rounded-full size-14"
+              className="flex items-center justify-center rounded-full size-11"
               style={{ backgroundColor: 'var(--modus-wc-color-status-success-light, #e6f4ea)' }}
             >
               <ModusWcIcon
                 name="check_circle"
-                size="lg"
+                size="md"
                 decorative
                 style={{ color: 'var(--modus-wc-color-status-success, #1e7e34)' }}
               />
             </div>
             <span
               className="font-semibold"
-              style={{ fontSize: 'var(--modus-wc-font-size-lg, 18px)', color: 'var(--modus-wc-color-base-content, #101828)' }}
+              style={{ fontSize: 'var(--modus-wc-font-size-base, 16px)', color: 'var(--modus-wc-color-base-content, #101828)' }}
             >
               Data uploaded successfully
             </span>
             <span
               style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                fontSize: '13px',
+                lineHeight: 1.45,
                 color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
               }}
             >
@@ -81,10 +82,10 @@ function UploadDataModal({ onClose }: { onClose: () => void }) {
             </span>
           </div>
           <div
-            className="flex justify-end px-6 pb-6"
-            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)', paddingTop: '1rem' }}
+            className="flex justify-end px-4 pb-4"
+            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)', paddingTop: '0.75rem' }}
           >
-            <ModusWcButton size="md" color="primary" onButtonClick={onClose}>
+            <ModusWcButton size="sm" color="primary" onButtonClick={onClose}>
               Done
             </ModusWcButton>
           </div>
@@ -239,28 +240,29 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
   if (submitted) {
     return (
       <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-2xl w-[440px] shadow-xl flex flex-col overflow-hidden">
-          <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
+        <div className="bg-white rounded-2xl w-[340px] shadow-xl flex flex-col overflow-hidden">
+          <div className="flex flex-col items-center gap-2.5 px-5 py-6 text-center">
             <div
-              className="flex items-center justify-center rounded-full size-14"
+              className="flex items-center justify-center rounded-full size-11"
               style={{ backgroundColor: 'var(--modus-wc-color-status-success-light, #e6f4ea)' }}
             >
               <ModusWcIcon
                 name="check_circle"
-                size="lg"
+                size="md"
                 decorative
                 style={{ color: 'var(--modus-wc-color-status-success, #1e7e34)' }}
               />
             </div>
             <span
               className="font-semibold"
-              style={{ fontSize: 'var(--modus-wc-font-size-lg, 18px)', color: 'var(--modus-wc-color-base-content, #101828)' }}
+              style={{ fontSize: 'var(--modus-wc-font-size-base, 16px)', color: 'var(--modus-wc-color-base-content, #101828)' }}
             >
               Message sent
             </span>
             <span
               style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                fontSize: '13px',
+                lineHeight: 1.45,
                 color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
               }}
             >
@@ -268,10 +270,10 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
             </span>
           </div>
           <div
-            className="flex justify-end px-6 pb-6"
-            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)', paddingTop: '1rem' }}
+            className="flex justify-end px-4 pb-4"
+            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)', paddingTop: '0.75rem' }}
           >
-            <ModusWcButton size="md" color="primary" onButtonClick={onClose}>
+            <ModusWcButton size="sm" color="primary" onButtonClick={onClose}>
               Done
             </ModusWcButton>
           </div>
