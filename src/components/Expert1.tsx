@@ -54,8 +54,7 @@ const TROUBLE_STEPS: TroubleStep[] = [
     id: 'support',
     label: 'Contact support',
     hint: '~3 min wait · ticket pre-filled with this thread',
-    trailingIcon: 'phone',
-    trailingEmphasis: 'primary',
+    trailingIcon: 'chevron_right_thick',
   },
 ];
 
@@ -367,96 +366,41 @@ function PowerCheckCard({
   onToggle,
   onResolved,
   onUnresolved,
-  onCancel,
 }: {
   checks: boolean[];
   onToggle: (i: number) => void;
   onResolved: () => void;
   onUnresolved: () => void;
-  onCancel: () => void;
 }) {
   const allChecked = checks.every(Boolean);
   return (
     <div
-      className="flex flex-col rounded-xl"
+      className="flex flex-col gap-2.5 rounded-xl"
       style={{
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        padding: '12px',
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        overflow: 'hidden',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
       }}
     >
-      <div
-        className="flex items-center justify-between gap-2"
-        style={{
-          padding: '10px 12px',
-          borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            fontWeight: 600,
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-          }}
-        >
-          Power check
-        </span>
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Close"
-          className="flex items-center justify-center rounded transition-colors"
-          style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              'var(--modus-wc-color-base-100, #f1f1f6)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-        >
-          <ModusWcIcon
-            name="close"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-          />
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-1" style={{ padding: '8px 8px 4px' }}>
+      <div className="flex flex-col">
         {POWER_CHECKS.map((label, i) => (
           <button
             key={label}
             type="button"
             onClick={() => onToggle(i)}
-            className="flex items-center gap-2.5 text-left transition-colors"
+            className="flex items-center gap-2 text-left"
             style={{
-              padding: '6px 8px',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
+              padding: '4px 0',
+              background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor =
-                'var(--modus-wc-color-base-100, #f1f1f6)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span
               className="flex items-center justify-center shrink-0"
               style={{
-                width: '18px',
-                height: '18px',
+                width: '16px',
+                height: '16px',
                 borderRadius: '4px',
                 border: checks[i]
                   ? '1px solid var(--modus-wc-color-primary, #0063a3)'
@@ -491,39 +435,24 @@ function PowerCheckCard({
         ))}
       </div>
 
-      <div
-        className="flex items-center justify-between gap-2"
-        style={{
-          padding: '10px 12px',
-          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          }}
+      <div className="flex items-center justify-end gap-2">
+        <ModusWcButton
+          size="sm"
+          color="tertiary"
+          variant="outlined"
+          disabled={!allChecked || undefined}
+          onButtonClick={onUnresolved}
         >
-          {allChecked ? 'All checked — did it work?' : `${checks.filter(Boolean).length}/${POWER_CHECKS.length} completed`}
-        </span>
-        <div className="flex items-center gap-2">
-          <ModusWcButton
-            size="sm"
-            color="tertiary"
-            variant="outlined"
-            onButtonClick={onUnresolved}
-          >
-            Still broken
-          </ModusWcButton>
-          <ModusWcButton
-            size="sm"
-            color="primary"
-            disabled={!allChecked || undefined}
-            onButtonClick={onResolved}
-          >
-            Resolved
-          </ModusWcButton>
-        </div>
+          Still broken
+        </ModusWcButton>
+        <ModusWcButton
+          size="sm"
+          color="primary"
+          disabled={!allChecked || undefined}
+          onButtonClick={onResolved}
+        >
+          Resolved
+        </ModusWcButton>
       </div>
     </div>
   );
@@ -535,153 +464,77 @@ function AppIsolationCard({
   onAnswer,
   onResolved,
   onUnresolved,
-  onCancel,
 }: {
   answer: 'yes' | 'no' | 'unknown' | null;
   onAnswer: (a: 'yes' | 'no' | 'unknown') => void;
   onResolved: () => void;
   onUnresolved: () => void;
-  onCancel: () => void;
 }) {
   const guidance: Record<'yes' | 'no' | 'unknown', string> = {
-    yes: 'The issue happens across apps — that points to a system-level fault. The next step is to escalate to support.',
-    no: 'The issue is app-specific. Try reinstalling the affected app: uninstall, restart the device, then reinstall.',
-    unknown: 'Open the file in a second app (e.g. Trimble Connect) and try to reproduce the error. I\'ll wait.',
+    yes: 'It\'s likely a system-level fault — escalate to support next.',
+    no: 'It\'s app-specific — try reinstalling the affected app.',
+    unknown: 'Open the file in another app and try to reproduce it.',
   };
 
   return (
     <div
-      className="flex flex-col rounded-xl"
+      className="flex flex-col gap-2.5 rounded-xl"
       style={{
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        padding: '12px',
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        overflow: 'hidden',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
       }}
     >
-      <div
-        className="flex items-center justify-between gap-2"
-        style={{
-          padding: '10px 12px',
-          borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            fontWeight: 600,
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-          }}
-        >
-          Did the error reproduce in another app?
-        </span>
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Close"
-          className="flex items-center justify-center rounded transition-colors"
-          style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              'var(--modus-wc-color-base-100, #f1f1f6)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-        >
-          <ModusWcIcon
-            name="close"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-          />
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-2" style={{ padding: '12px' }}>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { id: 'yes' as const, label: 'Yes — happens in other apps' },
-              { id: 'no' as const, label: 'No — only this app' },
-              { id: 'unknown' as const, label: "Haven't tried yet" },
-            ]
-          ).map((opt) => {
-            const active = answer === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => onAnswer(opt.id)}
-                className="transition-colors"
-                style={{
-                  height: '28px',
-                  padding: '0 12px',
-                  borderRadius: '1000px',
-                  border: active
-                    ? '1px solid var(--modus-wc-color-primary, #0063a3)'
-                    : '1px solid var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  backgroundColor: active
-                    ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
-                    : 'transparent',
-                  color: active
-                    ? 'var(--modus-wc-color-primary, #0063a3)'
-                    : 'var(--modus-wc-color-base-content, #171c1e)',
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  fontWeight: active ? 600 : 400,
-                  cursor: 'pointer',
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {answer && (
-          <div
-            className="flex items-start gap-1.5 rounded-md"
-            style={{
-              padding: '8px 10px',
-              backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-              borderLeft: '2px solid var(--modus-wc-color-primary, #0063a3)',
-            }}
-          >
-            <ModusWcIcon
-              name="info"
-              size="xs"
-              decorative
+      <div className="flex flex-wrap gap-1.5">
+        {([
+          { id: 'yes' as const, label: 'Yes' },
+          { id: 'no' as const, label: 'No' },
+          { id: 'unknown' as const, label: "Haven't tried" },
+        ]).map((opt) => {
+          const active = answer === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onAnswer(opt.id)}
               style={{
-                color: 'var(--modus-wc-color-primary, #0063a3)',
-                marginTop: '3px',
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
+                height: '28px',
+                padding: '0 12px',
+                borderRadius: '1000px',
+                border: active
+                  ? '1px solid var(--modus-wc-color-primary, #0063a3)'
+                  : '1px solid var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                backgroundColor: active
+                  ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
+                  : 'transparent',
+                color: active
+                  ? 'var(--modus-wc-color-primary, #0063a3)'
+                  : 'var(--modus-wc-color-base-content, #171c1e)',
                 fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-                lineHeight: '18px',
+                fontWeight: active ? 600 : 400,
+                cursor: 'pointer',
               }}
             >
-              {guidance[answer]}
-            </span>
-          </div>
-        )}
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div
-        className="flex items-center justify-end gap-2"
-        style={{
-          padding: '10px 12px',
-          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        }}
-      >
+      {answer && (
+        <p
+          style={{
+            fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+            lineHeight: '18px',
+            margin: 0,
+          }}
+        >
+          {guidance[answer]}
+        </p>
+      )}
+
+      <div className="flex items-center justify-end gap-2">
         <ModusWcButton
           size="sm"
           color="tertiary"
@@ -708,73 +561,22 @@ function AppIsolationCard({
 function ContactSupportCard({
   selected,
   onSelect,
-  includeContext,
-  onToggleContext,
   onConnect,
-  onCancel,
 }: {
   selected: ContactMethod['id'] | null;
   onSelect: (id: ContactMethod['id']) => void;
-  includeContext: boolean;
-  onToggleContext: () => void;
   onConnect: () => void;
-  onCancel: () => void;
 }) {
   return (
     <div
-      className="flex flex-col rounded-xl"
+      className="flex flex-col gap-2.5 rounded-xl"
       style={{
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        padding: '12px',
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        overflow: 'hidden',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
       }}
     >
-      <div
-        className="flex items-center justify-between gap-2"
-        style={{
-          padding: '10px 12px',
-          borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            fontWeight: 600,
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-          }}
-        >
-          Reach a human
-        </span>
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Close"
-          className="flex items-center justify-center rounded transition-colors"
-          style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              'var(--modus-wc-color-base-100, #f1f1f6)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-        >
-          <ModusWcIcon
-            name="close"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-          />
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-1.5" style={{ padding: '10px' }}>
+      <div className="flex flex-col gap-1">
         {CONTACT_METHODS.map((m) => {
           const active = selected === m.id;
           return (
@@ -782,134 +584,63 @@ function ContactSupportCard({
               key={m.id}
               type="button"
               onClick={() => onSelect(m.id)}
-              className="flex items-center gap-3 w-full text-left transition-colors"
+              className="flex items-center gap-2.5 w-full text-left transition-colors"
               style={{
                 padding: '8px 10px',
                 borderRadius: '8px',
                 border: active
                   ? '1.5px solid var(--modus-wc-color-primary, #0063a3)'
-                  : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                  : '1px solid transparent',
                 backgroundColor: active
                   ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
-                  : 'var(--modus-wc-color-base-page, #ffffff)',
+                  : 'var(--modus-wc-color-base-100, #f1f1f6)',
                 cursor: 'pointer',
               }}
             >
-              <span
-                className="flex items-center justify-center rounded-full shrink-0"
+              <ModusWcIcon
+                name={m.icon}
+                size="sm"
+                decorative
                 style={{
-                  width: '28px',
-                  height: '28px',
-                  backgroundColor: active
+                  color: active
                     ? 'var(--modus-wc-color-primary, #0063a3)'
-                    : 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  color: active ? '#ffffff' : 'var(--modus-wc-color-primary, #0063a3)',
+                    : 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  flexShrink: 0,
                 }}
-                aria-hidden="true"
+              />
+              <span
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                  fontWeight: 600,
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                  lineHeight: '20px',
+                }}
               >
-                <ModusWcIcon
-                  name={m.icon}
-                  size="sm"
-                  decorative
-                  style={{
-                    color: active
-                      ? '#ffffff'
-                      : 'var(--modus-wc-color-primary, #0063a3)',
-                  }}
-                />
+                {m.label}
               </span>
-              <span className="flex flex-col items-start min-w-0 flex-1">
-                <span
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                    fontWeight: 600,
-                    color: 'var(--modus-wc-color-base-content, #171c1e)',
-                    lineHeight: '20px',
-                  }}
-                >
-                  {m.label}
-                </span>
-                <span
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                    lineHeight: '16px',
-                    margin: 0,
-                  }}
-                >
-                  {m.detail}
-                </span>
+              <span
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  marginLeft: 'auto',
+                  flexShrink: 0,
+                }}
+              >
+                {m.detail.split('·')[1]?.trim() ?? ''}
               </span>
             </button>
           );
         })}
       </div>
 
-      <div
-        className="flex items-center gap-2"
-        style={{ padding: '4px 12px 10px' }}
-      >
-        <button
-          type="button"
-          onClick={onToggleContext}
-          className="flex items-center gap-1.5"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '4px 0',
-            cursor: 'pointer',
-          }}
-        >
-          <span
-            className="flex items-center justify-center shrink-0"
-            style={{
-              width: '16px',
-              height: '16px',
-              borderRadius: '3px',
-              border: includeContext
-                ? '1px solid var(--modus-wc-color-primary, #0063a3)'
-                : '1.5px solid var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              backgroundColor: includeContext
-                ? 'var(--modus-wc-color-primary, #0063a3)'
-                : 'transparent',
-            }}
-          >
-            {includeContext && (
-              <ModusWcIcon name="check" size="xs" decorative style={{ color: '#ffffff' }} />
-            )}
-          </span>
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-              color: 'var(--modus-wc-color-base-content, #171c1e)',
-            }}
-          >
-            Pre-fill ticket with this thread
-          </span>
-        </button>
-      </div>
-
-      <div
-        className="flex items-center justify-end gap-2"
-        style={{
-          padding: '10px 12px',
-          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        }}
-      >
+      <div className="flex items-center justify-end gap-2">
         <ModusWcButton
           size="sm"
           color="primary"
           disabled={!selected || undefined}
           onButtonClick={onConnect}
         >
-          <span className="inline-flex items-center gap-1">
-            <ModusWcIcon
-              name={CONTACT_METHODS.find((m) => m.id === selected)?.icon ?? 'phone'}
-              size="xs"
-              decorative
-            />
-            Connect me
-          </span>
+          Connect me
         </ModusWcButton>
       </div>
     </div>
@@ -964,10 +695,6 @@ function TroubleshootCard() {
   function openStep(id: StepId) {
     setActiveStep(id);
     pause(450);
-  }
-
-  function closeStep() {
-    setActiveStep(null);
   }
 
   function markResolved(id: StepId) {
@@ -1084,14 +811,9 @@ function TroubleshootCard() {
         <UserBubble text="Error Code C0342" />
 
       {/* Agent — diagnosis + ordered next-step stack */}
-      <div className="flex gap-0 items-start">
-        <div className="flex items-start pr-2 pt-2 shrink-0">
-          <div
-            className="flex items-center justify-center rounded-full"
-            style={{ width: '40px', height: '40px' }}
-          >
-            <TrimbleAiLogo size={24} />
-          </div>
+      <div className="flex gap-2 items-start">
+        <div className="shrink-0">
+          <TrimbleAiLogo size={24} />
         </div>
 
         <div className="flex flex-col gap-3 flex-1 min-w-0">
@@ -1209,7 +931,6 @@ function TroubleshootCard() {
               }
               onResolved={() => markResolved('power')}
               onUnresolved={() => markUnresolvedAndAdvance('power')}
-              onCancel={closeStep}
             />
           )}
 
@@ -1219,7 +940,6 @@ function TroubleshootCard() {
               onAnswer={setAppAnswer}
               onResolved={() => markResolved('app')}
               onUnresolved={() => markUnresolvedAndAdvance('app')}
-              onCancel={closeStep}
             />
           )}
 
@@ -1227,10 +947,7 @@ function TroubleshootCard() {
             <ContactSupportCard
               selected={contactMethod}
               onSelect={setContactMethod}
-              includeContext={includeContext}
-              onToggleContext={() => setIncludeContext((v) => !v)}
               onConnect={connectSupport}
-              onCancel={closeStep}
             />
           )}
 
@@ -1429,162 +1146,141 @@ function TroubleshootCard() {
           backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
         }}
       >
-      {/* Prompt input with rainbow gradient border */}
+      {/* _Prompt/Base — rainbow gradient border (ported from Creative 3) */}
       <div
-        className="rounded-2xl"
+        className="flex items-center justify-between w-full overflow-hidden"
         style={{
-          padding: '2px',
-          background: TRIMBLE_RAINBOW,
+          height: '42px',
+          border: '2px solid transparent',
+          borderRadius: '12px',
+          padding: '4px',
+          backgroundImage:
+            'linear-gradient(var(--modus-wc-color-base-page, #f5f6fa), var(--modus-wc-color-base-page, #f5f6fa)), ' +
+            'linear-gradient(90deg, #00d7c0 0%, #0094f0 35%, #b73efa 68%, #ff5a8c 100%)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
         }}
+        data-name="_Prompt/Base"
       >
+        {/* Text input — grows to fill the bar, sized to sit inside the rainbow border */}
         <div
-          className="bg-white rounded-[14px] flex flex-col gap-1"
-          style={{ padding: '8px' }}
+          className="prompt-bar-input flex-1 min-w-0"
+          style={{ display: 'flex', background: 'transparent' }}
         >
-          <div className="px-1">
-            <ModusWcTextInput
-              value={draft}
-              placeholder={
-                resolution
-                  ? 'Ask a follow-up…'
-                  : 'Paste an error or describe what you\'re seeing…'
+          <ModusWcTextInput
+            size="sm"
+            value={draft}
+            placeholder={resolution ? 'Ask a follow-up…' : 'How can I help you?'}
+            bordered={false}
+            onInputChange={(e: CustomEvent) =>
+              setDraft(e.detail?.target?.value || '')
+            }
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
               }
-              bordered={false}
-              onInputChange={(e: CustomEvent) => setDraft(e.detail?.target?.value || '')}
-              onKeyDown={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
+            }}
+            style={{
+              flex: 1,
+              width: '100%',
+              display: 'block',
+              background: 'transparent',
+            }}
+          />
+        </div>
+
+        {/* Basic Actions — Figma icon buttons */}
+        <div
+          className="flex items-center shrink-0"
+          style={{ gap: '0px' }}
+          data-name="Basic Actions"
+        >
+          <button
+            type="button"
+            aria-label="Add attachment"
+            style={{
+              width: '40px',
+              height: '40px',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+            }}
+          >
+            <img
+              src="/assets/prompt-add.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '32px', height: '30px', display: 'block' }}
             />
-          </div>
-
-          <div className="flex items-center justify-between gap-2 pt-0.5 px-1">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="flex items-center gap-1"
-                style={{
-                  height: '24px',
-                  padding: '0 4px 0 8px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  border: '1px solid var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0px 1px 1px rgba(0,0,0,0.05)',
-                }}
-              >
-                GPT 5
-                <ModusWcIcon name="expand_more" size="xs" decorative />
-              </button>
-              <button
-                type="button"
-                className="flex items-center justify-center"
-                style={{
-                  height: '24px',
-                  padding: '0 8px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: 'pointer',
-                  gap: '4px',
-                }}
-                aria-label="Device context"
-                title="Device: TSC7 controller (serial 4427A)"
-              >
-                <ModusWcIcon name="sparkle" size="xs" decorative />
-                <span>Device</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                aria-label="Attach a screenshot or log"
-                title="Attach a screenshot or log"
-                className="flex items-center justify-center"
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    'var(--modus-wc-color-base-100, #f1f1f6)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <ModusWcIcon name="add" size="sm" decorative />
-              </button>
-              <button
-                type="button"
-                aria-label="Send"
-                onClick={() => handleSend()}
-                disabled={draft.trim() === ''}
-                className="flex items-center justify-center"
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '1000px',
-                  backgroundColor:
-                    draft.trim() === ''
-                      ? 'transparent'
-                      : 'var(--modus-wc-color-primary, #0063a3)',
-                  color:
-                    draft.trim() === ''
-                      ? 'var(--modus-wc-color-base-content, #171c1e)'
-                      : '#ffffff',
-                  border: 'none',
-                  cursor: draft.trim() === '' ? 'default' : 'pointer',
-                  opacity: draft.trim() === '' ? 0.6 : 1,
-                  transition: 'background-color 120ms ease',
-                }}
-              >
-                <ModusWcIcon name="send" size="sm" decorative />
-              </button>
-            </div>
-          </div>
+          </button>
+          <button
+            type="button"
+            aria-label="Send prompt"
+            onClick={() => handleSend()}
+            disabled={draft.trim() === ''}
+            style={{
+              width: '40px',
+              height: '40px',
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '999px',
+              cursor: draft.trim() === '' ? 'default' : 'pointer',
+              opacity: draft.trim() === '' ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              transition: 'opacity 120ms ease',
+            }}
+          >
+            <img
+              src="/assets/prompt-send.png"
+              alt=""
+              aria-hidden="true"
+              style={{ width: '32px', height: '30px', display: 'block' }}
+            />
+          </button>
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="flex items-center gap-1 px-1">
-        <span
+      {/* Disclaimer (ported from Creative 3) */}
+      <div
+        className="flex flex-wrap items-center w-full"
+        style={{ paddingLeft: '4px', paddingRight: '4px', gap: '8px' }}
+        data-name="Disclaimer"
+      >
+        <p
           style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            fontFamily: "'Open Sans', sans-serif",
             fontWeight: 600,
+            fontSize: '10px',
             lineHeight: '16px',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            margin: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           AI can make mistakes.
-        </span>
+        </p>
         <button
           type="button"
-          className="cursor-pointer"
           style={{
-            background: 'none',
-            border: 'none',
-            padding: '0 4px',
-            color: 'var(--modus-wc-color-primary, #0063a3)',
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+            fontFamily: "'Open Sans', sans-serif",
+            fontWeight: 600,
+            fontSize: '10px',
             lineHeight: '16px',
+            color: 'var(--modus-wc-color-primary, #0063A7)',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
         >
           Acceptable Use
         </button>
@@ -1604,7 +1300,7 @@ function TroubleshootCard() {
  * ───────────────────────────────────────────────────────────────── */
 
 const MOBILE_WIDTH = 375;
-const MOBILE_HEIGHT = 812;
+const MOBILE_HEIGHT = 720;
 
 /* ── Mobile top bar — hamburger + circular avatar ───────────────── */
 function MobileTopBar() {
@@ -1621,7 +1317,7 @@ function MobileTopBar() {
         type="button"
         aria-label="Open menu"
         title="Menu"
-        className="flex items-center justify-center transition-colors hover:bg-[var(--modus-wc-color-base-100)]"
+        className="flex items-center justify-start transition-colors hover:bg-[var(--modus-wc-color-base-100)]"
         style={{
           width: '32px',
           height: '32px',
@@ -1669,7 +1365,7 @@ function MobileTopBar() {
 function TiM2Mobile() {
   return (
     <div
-      className="rounded-[40px] overflow-hidden flex flex-col relative shrink-0"
+      className="rounded-2xl overflow-hidden flex flex-col relative shrink-0"
       style={{
         width: `${MOBILE_WIDTH}px`,
         height: `${MOBILE_HEIGHT}px`,
