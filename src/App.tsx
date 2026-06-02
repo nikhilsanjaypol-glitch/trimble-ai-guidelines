@@ -22,6 +22,7 @@ import Pro5 from './components/Pro5';
 import Pro6 from './components/Pro6';
 import Pro7 from './components/Pro7';
 import SiteScene from './components/SiteScene';
+import Intro from './components/Intro';
 
 interface RouteDef {
   path: string;
@@ -66,47 +67,156 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-const categories: { id: string; title: string; match: (path: string) => boolean }[] = [
-  { id: 'creative', title: 'Creative', match: (p) => p.startsWith('/creative') },
-  { id: 'expert', title: 'Expert', match: (p) => p.startsWith('/expert') },
-  { id: 'pro', title: 'Pro', match: (p) => p.startsWith('/pro') },
+const categories: {
+  id: string;
+  title: string;
+  color: string;
+  match: (path: string) => boolean;
+}[] = [
+  { id: 'creative', title: 'Creative', color: '#FF2092', match: (p) => p.startsWith('/creative') },
+  { id: 'expert', title: 'Expert', color: '#009AFE', match: (p) => p.startsWith('/expert') },
+  { id: 'pro', title: 'Pro', color: '#4A00FF', match: (p) => p.startsWith('/pro') },
 ];
+
+const IN_PROGRESS_SLUGS = new Set([
+  'creative1',
+  'creative2',
+  'expert2',
+  'expert6',
+  'pro1',
+  'pro2',
+  'pro3',
+  'pro4',
+]);
 
 function Index() {
   return (
-    <Shell>
-      <div className="space-y-8">
-        {categories.map(({ id, title, match }) => {
+    <div
+      className="min-h-screen w-full"
+      style={{ backgroundColor: 'var(--modus-wc-color-base-page, #f5f6fa)' }}
+    >
+      <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+        <header>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1 text-xs uppercase tracking-wide mb-4"
+            style={{
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              textDecoration: 'none',
+            }}
+          >
+            <span aria-hidden="true">←</span> Back to overview
+          </Link>
+          <h1
+            className="text-3xl font-semibold mb-1"
+            style={{ color: 'var(--modus-wc-color-base-content, #1a1a1a)' }}
+          >
+            Trimble AI Guidelines
+          </h1>
+          <p
+            className="text-sm"
+            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
+          >
+            22 reference UIs exploring AI design guidelines. Click a card to open the
+            guideline in a new tab.
+          </p>
+        </header>
+
+        {categories.map(({ id, title, color, match }) => {
           const items = routes.filter((r) => match(r.path));
           if (items.length === 0) return null;
           return (
             <section key={id}>
               <h2
-                className="text-xl font-semibold mb-3"
-                style={{ color: 'var(--modus-wc-color-base-content, #1a1a1a)' }}
+                className="text-base font-semibold mb-3 uppercase tracking-wide inline-flex items-center gap-2"
+                style={{
+                  color:
+                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                }}
               >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-block',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                  }}
+                />
                 {title}
               </h2>
-              <ul className="space-y-2 text-lg">
-                {items.map(({ path, label }) => (
-                  <li key={path}>
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {items.map(({ path, label }) => {
+                  const slug = path.slice(1);
+                  const dashIdx = label.indexOf(' — ');
+                  const pre = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
+                  const name = dashIdx >= 0 ? label.slice(dashIdx + 3) : '';
+                  return (
                     <Link
+                      key={path}
                       to={path}
                       target="_blank"
                       rel="noreferrer"
-                      className="underline"
-                      style={{ color: 'var(--modus-wc-color-base-content, #1a1a1a)' }}
+                      className="thumb-card thumb-card--highlight block overflow-hidden rounded-md"
+                      style={{
+                        backgroundColor:
+                          'var(--modus-wc-color-base-100, #ffffff)',
+                        color:
+                          'var(--modus-wc-color-base-content, #1a1a1a)',
+                        textDecoration: 'none',
+                        ['--thumb-accent' as never]: color,
+                      }}
                     >
-                      {label}
+                      <div
+                        className="overflow-hidden flex items-center justify-center"
+                        style={{
+                          aspectRatio: '16 / 10',
+                          backgroundColor:
+                            'var(--modus-wc-color-base-200, #eef0f4)',
+                        }}
+                      >
+                        {IN_PROGRESS_SLUGS.has(slug) ? (
+                          <span
+                            className="text-[11px] uppercase tracking-[0.25em] font-semibold"
+                            style={{
+                              color:
+                                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                            }}
+                          >
+                            In progress
+                          </span>
+                        ) : (
+                          <img
+                            src={`/thumbnails/${slug}.png`}
+                            alt={`${pre} preview`}
+                            loading="lazy"
+                            className="thumb-img w-full h-full object-cover object-top"
+                          />
+                        )}
+                      </div>
+                      <div className="px-2.5 py-2">
+                        <div
+                          className="text-[10px] uppercase tracking-wide font-semibold leading-none"
+                          style={{ color }}
+                        >
+                          {pre}
+                        </div>
+                        {name && (
+                          <div className="mt-1 text-xs font-semibold leading-snug line-clamp-2">
+                            {name}
+                          </div>
+                        )}
+                      </div>
                     </Link>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
             </section>
           );
         })}
       </div>
-    </Shell>
+    </div>
   );
 }
 
@@ -114,7 +224,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<Intro />} />
+        <Route path="/guidelines" element={<Index />} />
         {routes.map(({ path, Component, fullBleed }) => (
           <Route
             key={path}
