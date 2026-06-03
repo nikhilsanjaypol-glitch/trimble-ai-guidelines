@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Creative1 from './components/Creative1';
 import Creative2 from './components/Creative2';
@@ -37,7 +37,7 @@ const routes: RouteDef[] = [
   { path: '/creative3', label: 'Creative 3 — Provide Options', Component: Creative3 },
   { path: '/creative4', label: 'Creative 4 — Present Relevant Information', Component: Creative4 },
   { path: '/creative5', label: 'Creative 5 — Offer Breadth', Component: Creative5 },
-  { path: '/creative6', label: 'Creative 6 — Ground Insights in Context', Component: SiteScene, fullBleed: true },
+  { path: '/creative6', label: 'Creative 6 — Suggest Alternatives', Component: SiteScene, fullBleed: true },
   { path: '/creative7', label: 'Creative 7 — Reiterate the Plan', Component: Creative7 },
   { path: '/creative8', label: 'Creative 8 — Give Professionals Control', Component: Creative8, fullBleed: true },
   { path: '/creative9', label: 'Creative 9 — Offer Possibilities', Component: Creative9 },
@@ -88,6 +88,209 @@ const IN_PROGRESS_SLUGS = new Set([
   'pro3',
   'pro4',
 ]);
+
+/* Per-guideline content for the top-left overlay shown when viewing
+ * an individual guideline. `purpose` is the short "To …" sub-line;
+ * `body` is the longer explanation. */
+interface GuidelineInfo {
+  purpose?: string;
+  body: string;
+}
+
+const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
+  creative3: {
+    purpose: "To support the creative process.",
+    body: "The AI should provide multiple divergent options which allow for the professional to provide creative direction, and retain a sense of creative control.",
+  },
+  creative4: {
+    purpose: "To support informed decision making.",
+    body: "AI tools should present & communicate options which are optimized for different criteria, allowing the professional to make effective trade-offs based on their priorities.",
+  },
+  creative5: {
+    purpose: "To offer divergent creative options.",
+    body: "The AI should offer distinct, diverse options \u2014 not tiny variations \u2014 so users feel they are truly in a position to steer the creative direction of work.",
+  },
+  creative6: {
+    purpose: "To encourage alternative or un-explored avenues.",
+    body: "The AI should encourage exploration of new directions, styles, ideas, or approaches that the professional may not have initially considered.",
+  },
+  creative7: {
+    purpose: "To ensure mutual understanding of the key factors.",
+    body: "The AI should communicate its plan, and expand areas of ambiguity. This might look like paraphrasing its understanding allowing you to iterate the plan before receiving results.",
+  },
+  creative8: {
+    purpose: "To give professionals control while maintaining their ownership & accountability.",
+    body: "The AI should extract and elevate key details and professional decisions such as references, colors, feelings, or materials into clear reviewable choices.",
+  },
+  creative9: {
+    purpose: "To inspire professionals as a creative partner, while maintaining their control.",
+    body: "AI workflows should consider presenting multiple options which can guide exploration in a way which is simple for professionals to interact with. Consider UI controls instead of text conversations.",
+  },
+  expert1: {
+    purpose: "To guide user requests.",
+    body: "Don\u2019t force the user to guess how to talk to the expert. Use clarifying questions to help the user formulate their request, especially if the initial prompt is vague or lacks technical detail.",
+  },
+  expert3: {
+    purpose: "To provide digestible information.",
+    body: "Because the user is not an expert, AI must deliver that information concisely while presenting information in a digestible way. This could involve using a casual, conversational, human tone and avoiding technical jargon or acronyms unless clearly defined.",
+  },
+  expert4: {
+    purpose: "To provide evidence-based clarity & traceability.",
+    body: "An expert doesn\u2019t just give an answer; they provide the evidence. When providing advice, the AI should highlight specific sources, such as internal legal policies or contract paragraphs, to remove guesswork.",
+  },
+  expert5: {
+    purpose: "To identify knowledge gaps.",
+    body: "When AI doesn\u2019t know how to address a request, customers need it to explicitly mention this rather than hallucinating or providing generic or incorrect filler.",
+  },
+  pro5: {
+    purpose: "To ensure traceability & integrity.",
+    body: "Professionals must be able to feel confident of the \u201cwhy\u201d behind the \u201cwhat.\u201d Citations to specific sources allow the professional to easily trace the AI\u2019s logic to confirm accuracy, or to intervene with different interpretations.",
+  },
+  pro6: {
+    purpose: "To focus professional attention.",
+    body: "Professionals need to quickly identify areas that require their expertise. Visual cues such as highlighting areas where AI has performed edits help to direct a user\u2019s attention so they can quickly validate & accept the work.",
+  },
+  pro7: {
+    purpose: "To verify high-impact sections.",
+    body: "Don\u2019t wait for the user to find the hard parts; proactively ask them to verify high-impact sections. These prompts act as a safety net, ensuring nothing important is missed and reducing the need for manual triple-checking.",
+  },
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  creative: '#FF2092',
+  expert: '#009AFE',
+  pro: '#4A00FF',
+};
+
+function categoryOf(slug: string): keyof typeof CATEGORY_COLORS | null {
+  if (slug.startsWith('creative')) return 'creative';
+  if (slug.startsWith('expert')) return 'expert';
+  if (slug.startsWith('pro')) return 'pro';
+  return null;
+}
+
+/* ── Top-left guideline overlay ────────────────────────────────── */
+function GuidelineOverlay({
+  label,
+  info,
+  color,
+}: {
+  label: string;
+  info: GuidelineInfo;
+  color: string;
+}) {
+  const [open, setOpen] = useState(true);
+  const dashIdx = label.indexOf(' — ');
+  const pre = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
+  const name = dashIdx >= 0 ? label.slice(dashIdx + 3) : '';
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Show guideline info"
+        className="fixed top-4 right-4 z-[60] inline-flex items-center justify-center"
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          backgroundColor: '#fff',
+          color,
+          border: 'none',
+          boxShadow:
+            '0 6px 16px -6px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          fontSize: 16,
+          fontWeight: 700,
+        }}
+      >
+        i
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="fixed top-4 right-4 z-[60] rounded-lg"
+      style={{
+        maxWidth: 320,
+        backgroundColor: 'rgba(255,255,255,0.96)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow:
+          '0 12px 28px -10px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.08)',
+        borderTop: `3px solid ${color}`,
+        padding: '14px 16px 14px 16px',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        aria-label="Hide guideline info"
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          width: 22,
+          height: 22,
+          borderRadius: '50%',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          cursor: 'pointer',
+          fontSize: 16,
+          lineHeight: 1,
+        }}
+      >
+        ×
+      </button>
+      <div
+        className="text-[10px] uppercase tracking-[0.25em] font-semibold"
+        style={{ color }}
+      >
+        {pre}
+      </div>
+      {name && (
+        <div
+          className="font-semibold mt-1 leading-snug"
+          style={{
+            fontSize: 14,
+            color: 'var(--modus-wc-color-base-content, #1a1a1a)',
+            paddingRight: 18,
+          }}
+        >
+          {name}
+        </div>
+      )}
+      {info.purpose && (
+        <div
+          className="mt-2"
+          style={{
+            fontSize: 11,
+            lineHeight: 1.4,
+            fontStyle: 'italic',
+            color,
+            fontWeight: 600,
+          }}
+        >
+          {info.purpose}
+        </div>
+      )}
+      <p
+        className="mt-2"
+        style={{
+          fontSize: 12,
+          lineHeight: 1.55,
+          color: 'var(--modus-wc-color-base-content-low-contrast, #4a4f59)',
+          margin: 0,
+        }}
+      >
+        {info.body}
+      </p>
+    </div>
+  );
+}
 
 function Index() {
   return (
@@ -226,21 +429,39 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Intro />} />
         <Route path="/guidelines" element={<Index />} />
-        {routes.map(({ path, Component, fullBleed }) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              fullBleed ? (
-                <Component />
-              ) : (
-                <Shell>
-                  <Component />
-                </Shell>
-              )
-            }
-          />
-        ))}
+        {routes.map(({ path, label, Component, fullBleed }) => {
+          const slug = path.slice(1);
+          const cat = categoryOf(slug);
+          const info = GUIDELINE_EXPLANATIONS[slug];
+          const overlay =
+            info && cat ? (
+              <GuidelineOverlay
+                label={label}
+                info={info}
+                color={CATEGORY_COLORS[cat]}
+              />
+            ) : null;
+
+          return (
+            <Route
+              key={path}
+              path={path}
+              element={
+                fullBleed ? (
+                  <>
+                    {overlay}
+                    <Component />
+                  </>
+                ) : (
+                  <Shell>
+                    {overlay}
+                    <Component />
+                  </Shell>
+                )
+              }
+            />
+          );
+        })}
       </Routes>
     </BrowserRouter>
   );

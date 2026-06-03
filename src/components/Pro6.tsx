@@ -417,7 +417,7 @@ export default function Pro6() {
         />
       </div>
 
-      {/* Notification card — sparkle + "Added Structural joints" + rainbow line */}
+      {/* Notification card — sparkle + message + Accept button + rainbow line */}
       <div
         className="absolute"
         style={{
@@ -427,29 +427,19 @@ export default function Pro6() {
           zIndex: 10,
         }}
       >
-        <button
-          type="button"
-          onClick={accepted ? reset : acceptChanges}
-          className="relative flex flex-col bg-white transition-shadow"
+        <div
+          className="relative flex flex-col bg-white"
           style={{
             width: '300px',
             borderRadius: '12px',
-            padding: '14px 16px 16px',
+            padding: '14px 16px 18px',
             border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
             boxShadow: '0px 8px 22px rgba(20, 24, 32, 0.12)',
-            cursor: 'pointer',
             overflow: 'hidden',
-            textAlign: 'left',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow =
-              '0px 10px 28px rgba(20, 24, 32, 0.16)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow =
-              '0px 8px 22px rgba(20, 24, 32, 0.12)';
+            gap: '12px',
           }}
         >
+          {/* Message row */}
           <div className="flex items-center" style={{ gap: '10px' }}>
             <ModusWcIcon
               name={accepted ? 'check_circle' : 'sparkle'}
@@ -459,31 +449,74 @@ export default function Pro6() {
                 color: accepted ? ACCEPTED_GREEN : AI_COLOR,
               }}
             />
-            <div className="flex flex-col">
-              <span
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  fontWeight: 600,
-                  lineHeight: '20px',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                }}
-              >
-                {accepted ? 'Changes accepted' : 'Added Structural joints'}
-              </span>
-              <span
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  color:
-                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  lineHeight: '14px',
-                }}
-              >
-                {accepted ? 'Click to reset demo' : 'Click to accept · 4 joints'}
-              </span>
-            </div>
+            <span
+              style={{
+                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                fontWeight: 600,
+                lineHeight: '20px',
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+              }}
+            >
+              {accepted ? 'Changes accepted' : 'Added Structural joints'}
+            </span>
           </div>
+
+          {/* Action: Accept Changes (primary) or Reset demo (secondary) */}
+          {!accepted ? (
+            <button
+              type="button"
+              onClick={acceptChanges}
+              className="w-full flex items-center justify-center transition-colors"
+              style={{
+                height: '34px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: HL_CYAN_DEEP,
+                color: '#ffffff',
+                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                fontWeight: 700,
+                letterSpacing: '0.01em',
+                cursor: 'pointer',
+                gap: '6px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#1A9C93';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = HL_CYAN_DEEP;
+              }}
+            >
+              <ModusWcIcon name="check" size="xs" decorative />
+              Accept Changes
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={reset}
+              className="self-start flex items-center transition-colors"
+              style={{
+                gap: '4px',
+                height: '24px',
+                padding: '0 8px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: AI_COLOR,
+                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = 'none';
+              }}
+            >
+              <ModusWcIcon name="refresh" size="xs" decorative />
+              Reset demo
+            </button>
+          )}
 
           {/* Rainbow accent line — sits at the very bottom edge */}
           <div
@@ -497,7 +530,7 @@ export default function Pro6() {
               background: TRIMBLE_RAINBOW,
             }}
           />
-        </button>
+        </div>
       </div>
     </div>
   );

@@ -20,9 +20,7 @@ p {
 .thumb-card {
   position: relative;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
-  box-shadow:
-    0 6px 14px -6px var(--thumb-accent, rgba(0, 0, 0, 0.10)),
-    0 2px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .thumb-card::after {
   content: '';
@@ -68,10 +66,8 @@ p {
   z-index: 1;
 }
 .thumb-card--highlight:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    0 18px 32px -8px var(--thumb-accent, rgba(74, 0, 255, 0.20)),
-    0 6px 14px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 .thumb-card--highlight:hover::before {
   opacity: 1;
