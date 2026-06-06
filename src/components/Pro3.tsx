@@ -393,7 +393,7 @@ export default function Pro3() {
       /* KM card line — always drawn from card bottom-right to marker. */
       if (km && lineKm && onScreen) {
         const kmRect = km.getBoundingClientRect();
-        const cRect = container.getBoundingClientRect();
+        const cRect = container!.getBoundingClientRect();
         const kx = kmRect.right - cRect.left - 16;
         const ky = kmRect.bottom - cRect.top - 16;
         lineKm.setAttribute('x1', String(Math.round(kx)));
@@ -421,8 +421,8 @@ export default function Pro3() {
 
     /* Resize */
     function onResize() {
-      W = mount.clientWidth;
-      H = mount.clientHeight;
+      W = mount!.clientWidth;
+      H = mount!.clientHeight;
       camera.aspect = W / H;
       camera.updateProjectionMatrix();
       renderer.setSize(W, H);

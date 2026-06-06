@@ -296,8 +296,8 @@ export default function Pro6() {
 
     /* ── Resize ───────────────────────────────────────────────── */
     function onResize() {
-      W = mount.clientWidth;
-      H = mount.clientHeight;
+      W = mount!.clientWidth;
+      H = mount!.clientHeight;
       camera.aspect = W / H;
       camera.updateProjectionMatrix();
       renderer.setSize(W, H);
