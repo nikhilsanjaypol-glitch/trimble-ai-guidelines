@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ModusWcButton,
   ModusWcIcon,
@@ -8,14 +8,17 @@ import {
 /* ─────────────────────────────────────────────────────────────────
  * Pro 4 — SUPPORT INTERVENTION
  *
- * The professional must remain the ultimate authority. The AI can
- * propose — but the value is not "yours" until you deliberately
- * take ownership. This card uses a slide-to-confirm gesture as the
- * single intervention mechanic: dragging the thumb across the
- * authority track moves the artefact from AI authorship to YOUR
- * authorship. Once taken, the value becomes editable, an undo
- * (hand-back) is always one click away, and a tiny audit line
- * stamps accountability.
+ * "The professional must remain the ultimate authority. Provide
+ *  tools to MODIFY, REVERT, or OVERRIDE the final output. By
+ *  integrating results with UNDO/REDO and AUDIT capabilities,
+ *  users can take full accountability for the work as its owner."
+ *
+ * One focused card. Every clause of the principle has a visible
+ * surface:
+ *   · The author chip names who currently owns the value (AI / YOU)
+ *   · Three tile buttons expose Modify · Revert · Override directly
+ *   · Header icons offer Undo / Redo across the version stack
+ *   · Footer ribbon shows the version count and opens the audit log
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
@@ -23,13 +26,40 @@ const TRIMBLE_RAINBOW =
 
 const AI_VALUE = '65';
 const UNIT = 'Nm';
-const COMMIT_THRESHOLD = 0.92;
 
-type Phase = 'ai' | 'taken';
+type Author = 'ai' | 'you';
+type Mode = 'idle' | 'modifying' | 'overriding';
 
-function TrimbleAiLogo({ size = 18 }: { size?: number }) {
+interface Version {
+  value: string;
+  author: Author;
+  reason?: string;
+  label: string;
+  time: string;
+}
+
+const INITIAL_VERSION: Version = {
+  value: AI_VALUE,
+  author: 'ai',
+  label: 'AI proposal',
+  time: '09:42',
+};
+
+function nowLabel(): string {
+  const d = new Date();
+  return `${d.getHours().toString().padStart(2, '0')}:${d
+    .getMinutes()
+    .toString()
+    .padStart(2, '0')}`;
+}
+
+/* ── Mini Trimble AI logo ───────────────────────────────────────── */
+function TrimbleAiLogo({ size = 16 }: { size?: number }) {
   return (
-    <span className="flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <span
+      className="flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
       <svg viewBox="0 0 30.002 32.6797" width="100%" height="100%" fill="none">
         <defs>
           <linearGradient
@@ -54,131 +84,310 @@ function TrimbleAiLogo({ size = 18 }: { size?: number }) {
   );
 }
 
-function YouAvatar({ size = 18 }: { size?: number }) {
+/* ── Author chip on the right of the value ─────────────────────── */
+function AuthorChip({ author }: { author: Author }) {
+  if (author === 'ai') {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5"
+        style={{
+          height: '24px',
+          padding: '0 10px 0 6px',
+          borderRadius: '1000px',
+          backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+          fontWeight: 700,
+          letterSpacing: '0.4px',
+          textTransform: 'uppercase',
+        }}
+      >
+        <TrimbleAiLogo size={14} />
+        AI authored
+      </span>
+    );
+  }
   return (
     <span
-      className="flex items-center justify-center rounded-full shrink-0"
+      className="inline-flex items-center gap-1.5"
       style={{
-        width: size,
-        height: size,
+        height: '24px',
+        padding: '2px',
+        borderRadius: '1000px',
         background: TRIMBLE_RAINBOW,
-        color: '#ffffff',
-        fontSize: '9px',
-        fontWeight: 800,
-        letterSpacing: '0.4px',
       }}
     >
-      YOU
+      <span
+        className="inline-flex items-center gap-1.5"
+        style={{
+          height: '20px',
+          padding: '0 10px',
+          borderRadius: '1000px',
+          backgroundColor: '#ffffff',
+          color: 'var(--modus-wc-color-base-content, #171c1e)',
+          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+          fontWeight: 700,
+          letterSpacing: '0.4px',
+          textTransform: 'uppercase',
+        }}
+      >
+        Authored by you
+      </span>
     </span>
   );
 }
 
+/* ── Tile button (one per intervention tool) ────────────────────── */
+type Tone = 'primary' | 'neutral' | 'warning';
+
+const TONE_TOKENS: Record<
+  Tone,
+  { fg: string; bg: string; border: string; bgHover: string }
+> = {
+  primary: {
+    fg: 'var(--modus-wc-color-primary, #0063a3)',
+    bg: 'rgba(0, 99, 163, 0.06)',
+    border: 'rgba(0, 99, 163, 0.30)',
+    bgHover: 'rgba(0, 99, 163, 0.12)',
+  },
+  neutral: {
+    fg: 'var(--modus-wc-color-base-content, #171c1e)',
+    bg: 'var(--modus-wc-color-base-100, #f1f1f6)',
+    border: 'var(--modus-wc-color-base-200, #e0e1e9)',
+    bgHover: 'var(--modus-wc-color-base-200, #e0e1e9)',
+  },
+  warning: {
+    fg: 'var(--modus-wc-color-status-warning, #985200)',
+    bg: 'rgba(152, 82, 0, 0.06)',
+    border: 'rgba(152, 82, 0, 0.30)',
+    bgHover: 'rgba(152, 82, 0, 0.12)',
+  },
+};
+
+function InterventionTile({
+  icon,
+  label,
+  helper,
+  tone,
+  disabled,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  helper: string;
+  tone: Tone;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const t = TONE_TOKENS[tone];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex flex-col items-start gap-1 text-left transition-colors"
+      style={{
+        flex: 1,
+        padding: '10px',
+        borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
+        border: `1px solid ${t.border}`,
+        backgroundColor: t.bg,
+        color: t.fg,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.backgroundColor = t.bgHover;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = t.bg;
+      }}
+    >
+      <span
+        className="flex items-center justify-center rounded-md"
+        style={{
+          width: '24px',
+          height: '24px',
+          backgroundColor: '#ffffff',
+        }}
+      >
+        <ModusWcIcon name={icon} size="xs" decorative style={{ color: t.fg }} />
+      </span>
+      <span
+        className="font-semibold"
+        style={{
+          fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+          color: 'var(--modus-wc-color-base-content, #171c1e)',
+          marginTop: '2px',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          lineHeight: '14px',
+        }}
+      >
+        {helper}
+      </span>
+    </button>
+  );
+}
+
+/* ── Header icon button (undo / redo) ───────────────────────────── */
+function HeaderIconButton({
+  icon,
+  label,
+  disabled,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex items-center justify-center transition-colors"
+      style={{
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: disabled
+          ? 'var(--modus-wc-color-base-content-low-contrast, #b0b3bd)'
+          : 'var(--modus-wc-color-base-content, #171c1e)',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.backgroundColor =
+          'var(--modus-wc-color-base-100, #f1f1f6)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+      }}
+    >
+      <ModusWcIcon name={icon} size="sm" decorative />
+    </button>
+  );
+}
+
+/* ── Pro 4 — Support Intervention ───────────────────────────────── */
 export default function Pro4() {
-  const [phase, setPhase] = useState<Phase>('ai');
-  const [progress, setProgress] = useState(0);
-  const [value, setValue] = useState(AI_VALUE);
-  const [draftValue, setDraftValue] = useState(AI_VALUE);
-  const [hint, setHint] = useState(false);
-  // State mirror of draggingRef for use in render (refs cannot be read during render).
-  const [isDragging, setIsDragging] = useState(false);
+  const [history, setHistory] = useState<Version[]>([INITIAL_VERSION]);
+  const [pointer, setPointer] = useState(0);
+  const [mode, setMode] = useState<Mode>('idle');
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [reason, setReason] = useState('');
 
-  const trackRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
-  const startXRef = useRef(0);
-  const startProgressRef = useRef(0);
-  const settledRef = useRef(false);
+  const current = history[pointer];
+  const canUndo = pointer > 0;
+  const canRedo = pointer < history.length - 1;
 
-  /* Subtle attention pulse on the thumb when idle */
-  useEffect(() => {
-    if (phase !== 'ai') return;
-    const id = window.setInterval(() => {
-      setHint((h) => !h);
-    }, 1600);
-    return () => window.clearInterval(id);
-  }, [phase]);
+  const totalEdits = useMemo(
+    () => history.filter((v) => v.author === 'you').length,
+    [history],
+  );
 
-  function getUsableWidth() {
-    const track = trackRef.current;
-    if (!track) return 1;
-    const TRACK_PADDING = 4;
-    const THUMB_SIZE = 48;
-    return Math.max(1, track.clientWidth - TRACK_PADDING * 2 - THUMB_SIZE);
+  function pushVersion(version: Version) {
+    const next = [...history.slice(0, pointer + 1), version];
+    setHistory(next);
+    setPointer(next.length - 1);
   }
 
-  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (phase !== 'ai') return;
-    e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    draggingRef.current = true;
-    setIsDragging(true);
-    settledRef.current = false;
-    startXRef.current = e.clientX;
-    startProgressRef.current = progress;
+  function startModify() {
+    setDraft(current.value);
+    setMode('modifying');
   }
 
-  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!draggingRef.current) return;
-    const dx = e.clientX - startXRef.current;
-    const next = Math.max(
-      0,
-      Math.min(1, startProgressRef.current + dx / getUsableWidth()),
-    );
-    setProgress(next);
+  function startOverride() {
+    setDraft(current.value);
+    setReason('');
+    setMode('overriding');
   }
 
-  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    setIsDragging(false);
-    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
-    if (progress >= COMMIT_THRESHOLD && !settledRef.current) {
-      settledRef.current = true;
-      setProgress(1);
-      window.setTimeout(() => {
-        setPhase('taken');
-        setDraftValue(value);
-      }, 220);
-    } else {
-      setProgress(0);
-    }
-  }
-
-  function handBack() {
-    setPhase('ai');
-    setProgress(0);
-    setValue(AI_VALUE);
-    setDraftValue(AI_VALUE);
-  }
-
-  function commitEdit(next: string) {
-    const v = next.trim();
+  function commitModify() {
+    const v = draft.trim();
     if (v === '') return;
-    setValue(v);
+    pushVersion({
+      value: v,
+      author: 'you',
+      label: 'Modified',
+      time: nowLabel(),
+    });
+    setMode('idle');
   }
 
-  const valueChanged = phase === 'taken' && value !== AI_VALUE;
+  function commitOverride() {
+    const v = draft.trim();
+    const r = reason.trim();
+    if (v === '' || r === '') return;
+    pushVersion({
+      value: v,
+      author: 'you',
+      label: 'Override',
+      reason: r,
+      time: nowLabel(),
+    });
+    setMode('idle');
+  }
+
+  function revertToAi() {
+    pushVersion({
+      value: AI_VALUE,
+      author: 'you',
+      label: 'Reverted to AI',
+      time: nowLabel(),
+    });
+  }
+
+  function undo() {
+    if (!canUndo) return;
+    setPointer((p) => p - 1);
+  }
+
+  function redo() {
+    if (!canRedo) return;
+    setPointer((p) => p + 1);
+  }
 
   return (
     <div
       className="bg-white shrink-0 flex flex-col"
       style={{
         width: '380px',
-        borderRadius: '20px',
-        padding: '20px',
+        borderRadius: '16px',
         border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 8px 28px -10px rgba(0,0,0,0.10)',
+        boxShadow:
+          '0 1px 2px rgba(0,0,0,0.04), 0 8px 24px -10px rgba(0,0,0,0.10)',
       }}
     >
-      {/* ── Header strip with author chip ──────────────────────── */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-col">
+      {/* ── Header: spec context + undo/redo ───────────────────── */}
+      <div
+        className="flex items-center justify-between gap-2"
+        style={{ padding: '14px 16px 8px' }}
+      >
+        <div className="flex flex-col min-w-0">
           <span
             style={{
               fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
               fontWeight: 700,
               letterSpacing: '0.6px',
               textTransform: 'uppercase',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              color:
+                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             }}
           >
             Bolt M16 · grade 8.8
@@ -194,295 +403,372 @@ export default function Pro4() {
             Torque spec
           </span>
         </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <HeaderIconButton
+            icon="undo"
+            label="Undo"
+            disabled={!canUndo}
+            onClick={undo}
+          />
+          <HeaderIconButton
+            icon="redo"
+            label="Redo"
+            disabled={!canRedo}
+            onClick={redo}
+          />
+        </div>
+      </div>
 
+      {/* ── Value + author chip ─────────────────────────────────── */}
+      <div
+        className="flex items-end justify-between gap-3"
+        style={{ padding: '0 16px 4px' }}
+      >
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span
+            className="font-semibold tabular-nums"
+            style={{
+              fontSize: '38px',
+              lineHeight: '40px',
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '-0.6px',
+            }}
+          >
+            {current.value}
+          </span>
+          <span
+            className="font-semibold"
+            style={{
+              fontSize: 'var(--modus-wc-font-size-md, 16px)',
+              color:
+                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          >
+            {UNIT}
+          </span>
+        </div>
+        <AuthorChip author={current.author} />
+      </div>
+
+      {/* ── Reason (AI rationale or override note) ──────────────── */}
+      <p
+        style={{
+          margin: 0,
+          padding: '4px 16px 14px',
+          fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+          lineHeight: '18px',
+        }}
+      >
+        {current.reason ? (
+          <>
+            <span style={{ fontWeight: 700, color: 'var(--modus-wc-color-status-warning, #985200)' }}>
+              Override reason:
+            </span>{' '}
+            {current.reason}
+          </>
+        ) : current.author === 'ai' ? (
+          'AI lowered torque after detecting fastener-fatigue risk in the updated load case.'
+        ) : (
+          'Your value owns this spec.'
+        )}
+      </p>
+
+      {/* ── Inline state: Modify / Override / 3 tools ───────────── */}
+      {mode === 'modifying' && (
+        <div
+          className="flex flex-col gap-2"
+          style={{
+            margin: '0 16px',
+            padding: '12px',
+            borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
+            backgroundColor: 'rgba(0, 99, 163, 0.05)',
+            border: '1px solid rgba(0, 99, 163, 0.25)',
+          }}
+        >
+          <ModusWcTextInput
+            label="Your value"
+            value={draft}
+            size="sm"
+            onInputChange={(e: CustomEvent) =>
+              setDraft(e.detail?.target?.value ?? '')
+            }
+          />
+          <div className="flex items-center justify-end gap-2">
+            <ModusWcButton
+              size="sm"
+              color="tertiary"
+              variant="outlined"
+              onButtonClick={() => setMode('idle')}
+            >
+              Cancel
+            </ModusWcButton>
+            <ModusWcButton
+              size="sm"
+              color="primary"
+              disabled={draft.trim() === '' || undefined}
+              onButtonClick={commitModify}
+            >
+              Save my value
+            </ModusWcButton>
+          </div>
+        </div>
+      )}
+
+      {mode === 'overriding' && (
+        <div
+          className="flex flex-col gap-2"
+          style={{
+            margin: '0 16px',
+            padding: '12px',
+            borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
+            backgroundColor: 'rgba(152, 82, 0, 0.06)',
+            border: '1px solid rgba(152, 82, 0, 0.30)',
+          }}
+        >
+          <ModusWcTextInput
+            label="Forced value"
+            value={draft}
+            size="sm"
+            onInputChange={(e: CustomEvent) =>
+              setDraft(e.detail?.target?.value ?? '')
+            }
+          />
+          <ModusWcTextInput
+            label="Reason (recorded)"
+            value={reason}
+            size="sm"
+            placeholder="e.g. Site standard supersedes AI"
+            onInputChange={(e: CustomEvent) =>
+              setReason(e.detail?.target?.value ?? '')
+            }
+          />
+          <div className="flex items-center justify-end gap-2">
+            <ModusWcButton
+              size="sm"
+              color="tertiary"
+              variant="outlined"
+              onButtonClick={() => setMode('idle')}
+            >
+              Cancel
+            </ModusWcButton>
+            <ModusWcButton
+              size="sm"
+              color="warning"
+              disabled={
+                draft.trim() === '' || reason.trim() === '' || undefined
+              }
+              onButtonClick={commitOverride}
+            >
+              <span className="flex items-center gap-1">
+                <ModusWcIcon name="block" size="xs" decorative />
+                Override AI
+              </span>
+            </ModusWcButton>
+          </div>
+        </div>
+      )}
+
+      {mode === 'idle' && (
+        <div
+          className="flex items-stretch gap-2"
+          style={{ padding: '0 16px' }}
+        >
+          <InterventionTile
+            icon="edit_combination"
+            label="Modify"
+            helper="Edit the value"
+            tone="primary"
+            onClick={startModify}
+          />
+          <InterventionTile
+            icon="refresh"
+            label="Revert"
+            helper="Restore AI value"
+            tone="neutral"
+            disabled={current.value === AI_VALUE && current.author === 'ai'}
+            onClick={revertToAi}
+          />
+          <InterventionTile
+            icon="block"
+            label="Override"
+            helper="Force with reason"
+            tone="warning"
+            onClick={startOverride}
+          />
+        </div>
+      )}
+
+      {/* ── Footer: audit ribbon ────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-2"
+        style={{
+          marginTop: '14px',
+          padding: '10px 16px',
+          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          backgroundColor: 'var(--modus-wc-color-base-100, #f8f9fa)',
+          borderBottomLeftRadius: '16px',
+          borderBottomRightRadius: '16px',
+        }}
+      >
         <span
           className="inline-flex items-center gap-1.5"
           style={{
-            height: '24px',
-            padding: '0 10px 0 6px',
-            borderRadius: '1000px',
-            backgroundColor:
-              phase === 'ai'
-                ? 'var(--modus-wc-color-base-100, #f1f1f6)'
-                : 'rgba(74, 0, 255, 0.08)',
-            color:
-              phase === 'ai'
-                ? 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)'
-                : '#4A00FF',
             fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            fontWeight: 700,
-            letterSpacing: '0.4px',
-            textTransform: 'uppercase',
-          }}
-        >
-          {phase === 'ai' ? <TrimbleAiLogo size={16} /> : <YouAvatar size={16} />}
-          {phase === 'ai' ? 'Authored by AI' : 'Authored by you'}
-        </span>
-      </div>
-
-      {/* ── Value display / inline editor ──────────────────────── */}
-      <div className="flex items-end gap-2" style={{ marginTop: '14px', minHeight: '54px' }}>
-        {phase === 'ai' ? (
-          <>
-            <span
-              className="font-semibold tabular-nums"
-              style={{
-                fontSize: '40px',
-                lineHeight: '44px',
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '-0.5px',
-              }}
-            >
-              {value}
-            </span>
-            <span
-              className="font-semibold"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                marginBottom: '6px',
-              }}
-            >
-              {UNIT}
-            </span>
-          </>
-        ) : (
-          <>
-            <div style={{ width: '110px' }}>
-              <ModusWcTextInput
-                value={draftValue}
-                size="md"
-                onInputChange={(e: CustomEvent) => {
-                  const v = e.detail?.target?.value ?? '';
-                  setDraftValue(v);
-                  commitEdit(v);
-                }}
-              />
-            </div>
-            <span
-              className="font-semibold"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                marginBottom: '12px',
-              }}
-            >
-              {UNIT}
-            </span>
-            {valueChanged && (
-              <span
-                className="ml-auto inline-flex items-center gap-1"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                  fontWeight: 700,
-                  color: '#4A00FF',
-                  letterSpacing: '0.3px',
-                  textTransform: 'uppercase',
-                  marginBottom: '14px',
-                }}
-              >
-                <ModusWcIcon name="edit_combination" size="xs" decorative style={{ color: '#4A00FF' }} />
-                Modified
-              </span>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* ── AI rationale (only while AI is the author) ──────────── */}
-      {phase === 'ai' && (
-        <p
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-            lineHeight: '18px',
-            marginBottom: 0,
-            marginTop: '6px',
-          }}
-        >
-          AI lowered torque after detecting fastener-fatigue risk in the
-          updated load case.
-        </p>
-      )}
-
-      {/* ── Authority track ─────────────────────────────────────── */}
-      <div
-        ref={trackRef}
-        className="relative select-none"
-        style={{
-          height: '56px',
-          borderRadius: '1000px',
-          marginTop: '18px',
-          padding: '4px',
-          background:
-            phase === 'taken'
-              ? TRIMBLE_RAINBOW
-              : 'var(--modus-wc-color-base-100, #f1f1f6)',
-          border:
-            phase === 'taken'
-              ? 'none'
-              : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Filled progress (rainbow grows from left) */}
-        {phase === 'ai' && (
-          <div
-            className="absolute top-0 left-0 h-full"
-            style={{
-              width: `${Math.max(progress * 100, 0)}%`,
-              background: TRIMBLE_RAINBOW,
-              borderRadius: '1000px',
-              transition: isDragging ? 'none' : 'width 220ms ease',
-              opacity: progress > 0.02 ? 1 : 0,
-            }}
-          />
-        )}
-
-        {/* Static label */}
-        <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          style={{ paddingLeft: '52px', paddingRight: '20px' }}
-        >
-          {phase === 'ai' ? (
-            <span
-              className="flex items-center gap-2"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                fontWeight: 600,
-                color:
-                  progress > 0.4
-                    ? '#ffffff'
-                    : 'var(--modus-wc-color-base-content, #171c1e)',
-                opacity: 1 - progress * 0.6,
-                transition: 'color 200ms ease, opacity 200ms ease',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Slide to take authority
-              <ModusWcIcon
-                name="arrow_right"
-                size="xs"
-                decorative
-                style={{
-                  color:
-                    progress > 0.4
-                      ? '#ffffff'
-                      : 'var(--modus-wc-color-base-content, #171c1e)',
-                  transform: hint ? 'translateX(2px)' : 'translateX(0)',
-                  transition: 'transform 600ms ease',
-                }}
-              />
-            </span>
-          ) : (
-            <span
-              className="flex items-center gap-2"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                fontWeight: 700,
-                color: '#ffffff',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <ModusWcIcon name="check" size="sm" decorative style={{ color: '#ffffff' }} />
-              You hold authority
-            </span>
-          )}
-        </div>
-
-        {/* Draggable thumb */}
-        <div
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          className="absolute flex items-center justify-center rounded-full"
-          role="slider"
-          aria-label="Slide to take authority"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(progress * 100)}
-          style={{
-            top: '4px',
-            left: `calc(4px + ${progress * 100}% * 1)`,
-            transform: `translateX(${-progress * 48}px)`,
-            width: '48px',
-            height: '48px',
-            backgroundColor: '#ffffff',
-            boxShadow:
-              phase === 'ai'
-                ? '0 1px 2px rgba(0,0,0,0.10), 0 4px 12px -2px rgba(0,0,0,0.18)'
-                : '0 1px 2px rgba(0,0,0,0.06)',
-            cursor: phase === 'ai' ? 'grab' : 'default',
-            transition: isDragging
-              ? 'none'
-              : 'left 220ms ease, transform 220ms ease',
-            touchAction: 'none',
-          }}
-        >
-          {phase === 'ai' ? (
-            <TrimbleAiLogo size={22} />
-          ) : (
-            <YouAvatar size={28} />
-          )}
-        </div>
-      </div>
-
-      {/* ── Footer: actions / audit ─────────────────────────────── */}
-      {phase === 'ai' ? (
-        <div
-          className="flex items-center gap-1.5"
-          style={{
-            marginTop: '14px',
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             fontWeight: 600,
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             letterSpacing: '0.2px',
           }}
         >
           <ModusWcIcon
-            name="info"
+            name="lock"
             size="xs"
             decorative
             style={{
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              color:
+                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             }}
           />
-          The AI can propose. Only you can decide.
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-2" style={{ marginTop: '14px' }}>
-          <span
-            className="inline-flex items-center gap-1"
-            style={{
-              fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-              fontWeight: 600,
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              letterSpacing: '0.2px',
-            }}
-          >
-            <ModusWcIcon
-              name="lock"
-              size="xs"
-              decorative
-              style={{
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            />
-            Logged · v2 · attributed to you
-          </span>
-          <ModusWcButton
-            size="sm"
-            color="tertiary"
-            variant="outlined"
-            onButtonClick={handBack}
-          >
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="undo" size="xs" decorative />
-              Hand back to AI
-            </span>
-          </ModusWcButton>
+          v{pointer + 1} · {totalEdits} of your edits
+        </span>
+        <button
+          type="button"
+          onClick={() => setAuditOpen((v) => !v)}
+          className="inline-flex items-center gap-1"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            color: 'var(--modus-wc-color-primary, #0063a3)',
+            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+            fontWeight: 700,
+            letterSpacing: '0.2px',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}
+        >
+          {auditOpen ? 'Hide audit' : 'View audit'}
+          <ModusWcIcon
+            name={auditOpen ? 'chevron_up' : 'chevron_down'}
+            size="xs"
+            decorative
+            style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
+          />
+        </button>
+      </div>
+
+      {/* ── Audit log (collapsible) ─────────────────────────────── */}
+      {auditOpen && (
+        <div
+          className="flex flex-col"
+          style={{
+            maxHeight: '160px',
+            overflowY: 'auto',
+            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            backgroundColor: '#ffffff',
+            borderBottomLeftRadius: '16px',
+            borderBottomRightRadius: '16px',
+          }}
+        >
+          {history
+            .slice()
+            .reverse()
+            .map((v, i, arr) => {
+              const idx = arr.length - 1 - i;
+              const isCurrent = idx === pointer;
+              return (
+                <div
+                  key={`v-${idx}`}
+                  className="flex items-start gap-2"
+                  style={{
+                    padding: '8px 16px',
+                    borderTop:
+                      i === 0
+                        ? 'none'
+                        : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                    backgroundColor: isCurrent
+                      ? 'rgba(0, 99, 163, 0.04)'
+                      : 'transparent',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+                      fontWeight: 600,
+                      color:
+                        'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                      width: '40px',
+                      flexShrink: 0,
+                      paddingTop: '2px',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {v.time}
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1 shrink-0"
+                    style={{
+                      height: '18px',
+                      padding: '0 6px',
+                      borderRadius: '1000px',
+                      backgroundColor:
+                        v.author === 'ai'
+                          ? 'var(--modus-wc-color-base-100, #f1f1f6)'
+                          : 'rgba(0, 99, 163, 0.10)',
+                      color:
+                        v.author === 'ai'
+                          ? 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)'
+                          : 'var(--modus-wc-color-primary, #0063a3)',
+                      fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+                      fontWeight: 700,
+                      letterSpacing: '0.3px',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {v.author === 'ai' ? 'AI' : 'YOU'}
+                  </span>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span
+                      style={{
+                        fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+                        fontWeight: 600,
+                        color: 'var(--modus-wc-color-base-content, #171c1e)',
+                        lineHeight: '18px',
+                      }}
+                    >
+                      {v.label} · {v.value} {UNIT}
+                    </span>
+                    {v.reason && (
+                      <span
+                        style={{
+                          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+                          color:
+                            'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                          lineHeight: '14px',
+                          marginTop: '2px',
+                        }}
+                      >
+                        {v.reason}
+                      </span>
+                    )}
+                  </div>
+                  {isCurrent && (
+                    <span
+                      style={{
+                        fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+                        fontWeight: 700,
+                        color: 'var(--modus-wc-color-primary, #0063a3)',
+                        letterSpacing: '0.3px',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Current
+                    </span>
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>

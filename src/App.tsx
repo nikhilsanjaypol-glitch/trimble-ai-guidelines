@@ -49,10 +49,10 @@ const routes: RouteDef[] = [
   { path: '/expert6', label: 'Expert 6 — Highlight Further Investigation', Component: Expert6 },
   { path: '/pro1', label: 'Pro 1 — Integrate with Professional Tools', Component: Pro1 },
   { path: '/pro2', label: 'Pro 2 — Perform Bite-Sized Tasks', Component: Pro2 },
-  { path: '/pro3', label: 'Pro 3 — Be Trainable, Context and Domain Aware', Component: Pro3 },
+  { path: '/pro3', label: 'Pro 3 — Be Trainable, Context and Domain Aware', Component: Pro3, fullBleed: true },
   { path: '/pro4', label: 'Pro 4 — Support Intervention', Component: Pro4 },
   { path: '/pro5', label: 'Pro 5 — Provide Context and Citations', Component: Pro5 },
-  { path: '/pro6', label: 'Pro 6 — Visualize Work Done for Acceptance', Component: Pro6 },
+  { path: '/pro6', label: 'Pro 6 — Visualize Work Done for Acceptance', Component: Pro6, fullBleed: true },
   { path: '/pro7', label: 'Pro 7 — Defer to the Professional', Component: Pro7, fullBleed: true },
 ];
 
@@ -71,23 +71,31 @@ const categories: {
   id: string;
   title: string;
   color: string;
+  tint: string;
   match: (path: string) => boolean;
 }[] = [
-  { id: 'creative', title: 'Creative', color: '#FF2092', match: (p) => p.startsWith('/creative') },
-  { id: 'expert', title: 'Expert', color: '#009AFE', match: (p) => p.startsWith('/expert') },
-  { id: 'pro', title: 'Pro', color: '#4A00FF', match: (p) => p.startsWith('/pro') },
+  {
+    id: 'creative',
+    title: 'Creative',
+    color: '#FF2092',
+    tint: '#FFE6F2',
+    match: (p) => p.startsWith('/creative'),
+  },
+  {
+    id: 'expert',
+    title: 'Expert',
+    color: '#009AFE',
+    tint: '#E5F3FF',
+    match: (p) => p.startsWith('/expert'),
+  },
+  {
+    id: 'pro',
+    title: 'Pro',
+    color: '#4A00FF',
+    tint: '#ECE5FF',
+    match: (p) => p.startsWith('/pro'),
+  },
 ];
-
-const IN_PROGRESS_SLUGS = new Set([
-  'creative1',
-  'creative2',
-  'expert2',
-  'expert6',
-  'pro1',
-  'pro2',
-  'pro3',
-  'pro4',
-]);
 
 /* Per-guideline content for the top-left overlay shown when viewing
  * an individual guideline. `purpose` is the short "To …" sub-line;
@@ -98,6 +106,14 @@ interface GuidelineInfo {
 }
 
 const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
+  creative1: {
+    purpose: "To keep the professional in control of the result.",
+    body: "AI outputs should be returned in formats the professional can directly edit and refine, so they can shape the work to their standards rather than starting over.",
+  },
+  creative2: {
+    purpose: "To respect the work already done.",
+    body: "The AI should treat the professional\u2019s in-progress work as the starting point, extending and building on it instead of replacing it with something generated from scratch.",
+  },
   creative3: {
     purpose: "To support the creative process.",
     body: "The AI should provide multiple divergent options which allow for the professional to provide creative direction, and retain a sense of creative control.",
@@ -130,6 +146,10 @@ const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
     purpose: "To guide user requests.",
     body: "Don\u2019t force the user to guess how to talk to the expert. Use clarifying questions to help the user formulate their request, especially if the initial prompt is vague or lacks technical detail.",
   },
+  expert2: {
+    purpose: "To make the AI\u2019s process transparent.",
+    body: "The AI should narrate what it is doing, what it has found, and what remains, so the user can follow along, build confidence, and intervene if needed.",
+  },
   expert3: {
     purpose: "To provide digestible information.",
     body: "Because the user is not an expert, AI must deliver that information concisely while presenting information in a digestible way. This could involve using a casual, conversational, human tone and avoiding technical jargon or acronyms unless clearly defined.",
@@ -141,6 +161,26 @@ const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
   expert5: {
     purpose: "To identify knowledge gaps.",
     body: "When AI doesn\u2019t know how to address a request, customers need it to explicitly mention this rather than hallucinating or providing generic or incorrect filler.",
+  },
+  expert6: {
+    purpose: "To direct attention to what needs a closer look.",
+    body: "The AI should call out anything that warrants additional human review \u2014 gaps in evidence, conflicting signals, or low-confidence findings \u2014 rather than presenting every output with the same weight.",
+  },
+  pro1: {
+    purpose: "To allow professionals to work with AI as equals.",
+    body: "AI should live inside the tools professionals already use, performing the same actions they can perform and producing outputs that flow naturally back into their established workflows.",
+  },
+  pro2: {
+    purpose: "To support professional oversight.",
+    body: "AI should take on small, well-scoped tasks the professional can quickly verify, rather than long, opaque chains of work that are hard to audit or correct.",
+  },
+  pro3: {
+    purpose: "To ensure relevance & usefulness.",
+    body: "AI should learn from the professional\u2019s context \u2014 their project, their domain, their conventions \u2014 so its suggestions are grounded in the specifics of the work, not generic best practice.",
+  },
+  pro4: {
+    purpose: "To preserve professional authority.",
+    body: "Professionals must be able to step in at any moment to adjust, override, or stop the AI. Their judgement always takes priority over the AI\u2019s output.",
   },
   pro5: {
     purpose: "To ensure traceability & integrity.",
@@ -318,14 +358,16 @@ function Index() {
           </h1>
           <p
             className="text-sm"
-            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
+            style={{
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
           >
             22 reference UIs exploring AI design guidelines. Click a card to open the
             guideline in a new tab.
           </p>
         </header>
 
-        {categories.map(({ id, title, color, match }) => {
+        {categories.map(({ id, title, color, tint, match }) => {
           const items = routes.filter((r) => match(r.path));
           if (items.length === 0) return null;
           return (
@@ -363,8 +405,7 @@ function Index() {
                       rel="noreferrer"
                       className="thumb-card thumb-card--highlight block overflow-hidden rounded-md"
                       style={{
-                        backgroundColor:
-                          'var(--modus-wc-color-base-100, #ffffff)',
+                        backgroundColor: tint,
                         color:
                           'var(--modus-wc-color-base-content, #1a1a1a)',
                         textDecoration: 'none',
@@ -372,31 +413,18 @@ function Index() {
                       }}
                     >
                       <div
-                        className="overflow-hidden flex items-center justify-center"
+                        className="overflow-hidden"
                         style={{
                           aspectRatio: '16 / 10',
-                          backgroundColor:
-                            'var(--modus-wc-color-base-200, #eef0f4)',
+                          backgroundColor: tint,
                         }}
                       >
-                        {IN_PROGRESS_SLUGS.has(slug) ? (
-                          <span
-                            className="text-[11px] uppercase tracking-[0.25em] font-semibold"
-                            style={{
-                              color:
-                                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                            }}
-                          >
-                            In progress
-                          </span>
-                        ) : (
-                          <img
-                            src={`/thumbnails/${slug}.png`}
-                            alt={`${pre} preview`}
-                            loading="lazy"
-                            className="thumb-img w-full h-full object-cover object-top"
-                          />
-                        )}
+                        <img
+                          src={`/thumbnails/${slug}.png`}
+                          alt={`${pre} preview`}
+                          loading="lazy"
+                          className="thumb-img w-full h-full object-cover object-top"
+                        />
                       </div>
                       <div className="px-2.5 py-2">
                         <div
