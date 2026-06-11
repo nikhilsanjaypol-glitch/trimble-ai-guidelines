@@ -92,8 +92,8 @@ const OPTIONS: SiteOption[] = [
     num: 3,
     title: 'Cable-stayed (single pylon)',
     subtitle: 'Asymmetric · 130 m pylon',
-    accent: 'var(--modus-wc-color-status-info, #004f83)',
-    accentSoft: 'rgba(0, 79, 131, 0.14)',
+    accent: '#9F1239',
+    accentSoft: 'rgba(159, 18, 57, 0.14)',
     metrics: [
       { label: 'Main span', value: '380 m' },
       { label: 'Pylon H',   value: '130 m' },
@@ -111,8 +111,8 @@ const OPTIONS: SiteOption[] = [
     num: 4,
     title: 'Steel Warren truss',
     subtitle: 'Through-truss · two in-river piers',
-    accent: 'var(--modus-wc-color-status-warning, #856404)',
-    accentSoft: 'rgba(133, 100, 4, 0.14)',
+    accent: '#D97706',
+    accentSoft: 'rgba(217, 119, 6, 0.14)',
     metrics: [
       { label: 'Main span', value: '140 m' },
       { label: 'Spans',     value: '3' },
@@ -185,20 +185,22 @@ function HaloText({ haloColor = PAPER, haloWidth = 1.8, children, ...rest }: Hal
 
 function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: boolean }) {
   const W = 320;
-  const H = 180;
+  const H = 140;
   const id = option.id;
   const uid = `${id}-${large ? 'lg' : 'sm'}`;
   const hatchId = `hatch-${uid}`;
   const waterId = `water-${uid}`;
 
-  // Shared elevation geometry
-  const DECK_Y = 80;           // top of deck
+  // Shared elevation geometry (landscape canvas — 16:7)
+  const DECK_Y = 58;           // top of deck
   const DECK_T = 4;            // deck thickness
   const DECK_BOT = DECK_Y + DECK_T;
-  const GROUND_Y = 144;        // water level / ground line
+  const GROUND_Y = 108;        // water level / ground line
   const BANK_L = 38;           // left abutment edge
   const BANK_R = 282;          // right abutment edge
   const SPAN = BANK_R - BANK_L;
+  const ARCH_PEAK = 9;         // top of arch / pylon area
+  const TRUSS_TOP = 32;        // top chord of through-truss
 
   return (
     <svg
@@ -287,7 +289,7 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           ))}
           {/* Arch — parabolic curve above deck */}
           <path
-            d={`M ${BANK_L} ${DECK_Y} Q ${BANK_L + SPAN / 2} 14 ${BANK_R} ${DECK_Y}`}
+            d={`M ${BANK_L} ${DECK_Y} Q ${BANK_L + SPAN / 2} ${ARCH_PEAK} ${BANK_R} ${DECK_Y}`}
             fill="none"
             stroke={option.accent}
             strokeWidth={3.2}
@@ -296,18 +298,18 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           {/* Hangers from arch down to deck */}
           {Array.from({ length: 11 }, (_, i) => BANK_L + ((i + 1) * SPAN) / 12).map((x, i) => {
             const t = (x - BANK_L) / SPAN;
-            const archY = DECK_Y - (DECK_Y - 14) * 4 * t * (1 - t);
+            const archY = DECK_Y - (DECK_Y - ARCH_PEAK) * 4 * t * (1 - t);
             return <line key={i} x1={x} y1={archY + 0.5} x2={x} y2={DECK_Y} stroke={option.accent} strokeWidth={0.7} />;
           })}
           {/* Deck */}
           <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
           {/* Caption */}
-          <HaloText x={W / 2} y={20} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={ARCH_PEAK + 6} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             STEEL TIED ARCH · SINGLE SPAN
           </HaloText>
           {/* Arch-rise dimension */}
-          <line x1={BANK_L + SPAN / 2 - 2} y1={14} x2={BANK_L + SPAN / 2 - 2} y2={DECK_Y} stroke={DIM} strokeWidth={0.5} strokeDasharray="2 1.5" />
-          <HaloText x={BANK_L + SPAN / 2 + 2} y={(14 + DECK_Y) / 2} fontSize={4.2} fontWeight={700} fill={DIM} fontFamily="ui-monospace, monospace">RISE 60 m</HaloText>
+          <line x1={BANK_L + SPAN / 2 - 2} y1={ARCH_PEAK} x2={BANK_L + SPAN / 2 - 2} y2={DECK_Y} stroke={DIM} strokeWidth={0.5} strokeDasharray="2 1.5" />
+          <HaloText x={BANK_L + SPAN / 2 + 2} y={(ARCH_PEAK + DECK_Y) / 2} fontSize={4.2} fontWeight={700} fill={DIM} fontFamily="ui-monospace, monospace">RISE 60 m</HaloText>
         </g>
       )}
 
@@ -321,7 +323,7 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           {/* Single pylon at ~1/3 of span (off-centre = asymmetric) */}
           {(() => {
             const px = BANK_L + SPAN * 0.36;
-            const pTop = 12;
+            const pTop = ARCH_PEAK - 1; // 8 — slightly above arch peak height
             return (
               <g>
                 {/* Pylon (slight A-frame in elevation: tapered) */}
@@ -342,11 +344,11 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
           {/* Deck */}
           <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
           {/* Caption */}
-          <HaloText x={W / 2} y={20} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={ARCH_PEAK + 6} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             SINGLE-PYLON CABLE-STAY · ASYMMETRIC
           </HaloText>
           {/* Pylon-height dimension */}
-          <HaloText x={BANK_L + SPAN * 0.36 + 5} y={28} fontSize={4.2} fontWeight={700} fill={DIM} fontFamily="ui-monospace, monospace">PYLON 130 m</HaloText>
+          <HaloText x={BANK_L + SPAN * 0.36 + 5} y={ARCH_PEAK + 13} fontSize={4.2} fontWeight={700} fill={DIM} fontFamily="ui-monospace, monospace">PYLON 130 m</HaloText>
         </g>
       )}
 
@@ -355,7 +357,7 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
         <g>
           {/* Abutments */}
           {[BANK_L - 6, BANK_R].map((x, i) => (
-            <rect key={i} x={x} y={42} width={6} height={GROUND_Y - 42 + 6} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.8} />
+            <rect key={i} x={x} y={TRUSS_TOP} width={6} height={GROUND_Y - TRUSS_TOP + 6} fill={`url(#${hatchId})`} stroke={INK} strokeWidth={0.8} />
           ))}
           {/* Two in-river piers (smaller than girder version) */}
           {[BANK_L + SPAN / 3, BANK_L + (2 * SPAN) / 3].map((x, i) => (
@@ -365,23 +367,23 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
             </g>
           ))}
           {/* Top chord */}
-          <line x1={BANK_L} y1={42} x2={BANK_R} y2={42} stroke={option.accent} strokeWidth={1.6} />
+          <line x1={BANK_L} y1={TRUSS_TOP} x2={BANK_R} y2={TRUSS_TOP} stroke={option.accent} strokeWidth={1.6} />
           {/* Bottom chord (above deck level) */}
           <line x1={BANK_L} y1={DECK_Y} x2={BANK_R} y2={DECK_Y} stroke={option.accent} strokeWidth={1.6} />
           {/* Vertical posts every 30 units */}
           {Array.from({ length: 9 }, (_, i) => BANK_L + i * 30).map((x) => (
-            <line key={`v-${x}`} x1={x} y1={42} x2={x} y2={DECK_Y} stroke={option.accent} strokeWidth={1} />
+            <line key={`v-${x}`} x1={x} y1={TRUSS_TOP} x2={x} y2={DECK_Y} stroke={option.accent} strokeWidth={1} />
           ))}
           {/* Diagonal bracing — Warren pattern (alternating triangles) */}
           {Array.from({ length: 8 }, (_, i) => BANK_L + i * 30).map((x, i) => (
             i % 2 === 0
-              ? <line key={`d-${i}`} x1={x} y1={42} x2={x + 30} y2={DECK_Y} stroke={option.accent} strokeWidth={1} />
-              : <line key={`d-${i}`} x1={x} y1={DECK_Y} x2={x + 30} y2={42} stroke={option.accent} strokeWidth={1} />
+              ? <line key={`d-${i}`} x1={x} y1={TRUSS_TOP} x2={x + 30} y2={DECK_Y} stroke={option.accent} strokeWidth={1} />
+              : <line key={`d-${i}`} x1={x} y1={DECK_Y} x2={x + 30} y2={TRUSS_TOP} stroke={option.accent} strokeWidth={1} />
           ))}
           {/* Deck */}
           <rect x={BANK_L} y={DECK_Y} width={SPAN} height={DECK_T} fill={option.accentSoft} stroke={option.accent} strokeWidth={1.2} />
           {/* Caption */}
-          <HaloText x={W / 2} y={36} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
+          <HaloText x={W / 2} y={TRUSS_TOP - 6} fontSize={4.4} fontWeight={700} fill={option.accent} textAnchor="middle" fontFamily="ui-monospace, monospace" letterSpacing={0.5}>
             STEEL WARREN THROUGH-TRUSS
           </HaloText>
         </g>
@@ -488,7 +490,7 @@ function DetailModal({
           style={{
             backgroundColor: PAPER,
             borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            aspectRatio: '16 / 9',
+            aspectRatio: '16 / 7',
           }}
         >
           <SitePlanSVG option={option} large />
@@ -646,7 +648,7 @@ function OptionCard({
       <div
         style={{
           width: '100%',
-          aspectRatio: '16 / 9',
+          aspectRatio: '16 / 7',
           backgroundColor: PAPER,
           position: 'relative',
           overflow: 'hidden',
@@ -689,11 +691,11 @@ function OptionCard({
 
       </div>
 
-      <div className="flex flex-col px-3 py-2.5">
+      <div className="flex flex-col px-3 py-1.5">
         <span
           className="font-semibold truncate"
           style={{
-            fontSize: 'var(--modus-wc-font-size-md, 16px)',
+            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
             color: 'var(--modus-wc-color-base-content, #101828)',
             lineHeight: 1.25,
           }}
@@ -784,10 +786,10 @@ function SuggestionPopup({
         style={{ backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 px-4 py-2">
           <div className="flex items-center gap-2 min-w-0">
             {/* Trimble AI logo */}
-            <span className="flex items-center justify-center shrink-0" style={{ width: '34px', height: '34px' }}>
+            <span className="flex items-center justify-center shrink-0" style={{ width: '30px', height: '30px' }}>
               <svg viewBox="0 0 30.002 32.6797" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="tlogo-5popup" x1="3.7558" y1="10.5251" x2="20.4332" y2="30.2565" gradientUnits="userSpaceOnUse">
@@ -824,7 +826,7 @@ function SuggestionPopup({
 
         {/* Instruction strip — sits between header and grid */}
         <div
-          className="flex items-center gap-2 px-4 py-2"
+          className="flex items-center gap-2 px-4 py-1.5"
           style={{
             borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
             backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
@@ -851,9 +853,9 @@ function SuggestionPopup({
 
         {/* Body — option grid */}
         <div
-          className="grid grid-cols-2 gap-3 px-4 py-4"
+          className="grid grid-cols-2 gap-2 px-4 py-3"
           style={{
-            maxHeight: '620px',
+            maxHeight: '440px',
             overflowY: 'auto',
           }}
         >
@@ -868,7 +870,7 @@ function SuggestionPopup({
 
         {/* Footer */}
         <div
-          className="flex items-center gap-2 px-4 py-3"
+          className="flex items-center gap-2 px-4 py-2.5"
           style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
         >
           <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={() => undefined}>

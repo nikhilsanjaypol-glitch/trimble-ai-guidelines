@@ -7,7 +7,9 @@ const CARD_WIDTH = 300;
 const CARD_MARGIN = 16;
 const CARD_GAP = 96;
 
-const ANCHOR = new THREE.Vector3(-4, 15.5, -4);
+// Anchor sits just above the top of the retaining wall on the north edge of
+// the central dig — that's the slope the Creative 6 strategies are about.
+const ANCHOR = new THREE.Vector3(0, 4.5, -12.4);
 
 export default function SiteScene() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -110,10 +112,10 @@ export default function SiteScene() {
       return box(x, 0, z, w, thickness, d, color);
     }
 
-    /* Ground */
+    /* Ground — earth tone */
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(160, 160),
-      new THREE.MeshLambertMaterial({ color: 0x7c8088 }),
+      new THREE.MeshLambertMaterial({ color: 0x8a7560 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -125,92 +127,669 @@ export default function SiteScene() {
     grid.position.y = 0.02;
     scene.add(grid);
 
-    /* Site slab */
-    slab(0, 0, 48, 38, 0x9096a0);
+    /* Disturbed earth pad — site working area surrounding the central dig */
+    slab(0, 0, 64, 48, 0x9a8268);
 
-    /* Roads */
-    slab(0, 24, 80, 5, 0x525659, 0.15);
-    slab(-30, 0, 5, 60, 0x525659, 0.15);
-    slab(12, 12, 16, 3, 0x5c6065, 0.12);
+    /* Compacted haul roads (dirt/gravel) */
+    slab(0, 26, 80, 6, 0x5e5448, 0.12);
+    slab(-32, 0, 6, 64, 0x5e5448, 0.12);
 
+    /* Tire tracks down the south haul road */
     for (let i = -5; i <= 5; i++) {
       const mark = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.3, 1.6),
-        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }),
+        new THREE.PlaneGeometry(0.25, 1.5),
+        new THREE.MeshBasicMaterial({ color: 0x3a3024, transparent: true, opacity: 0.45 }),
       );
       mark.rotation.x = -Math.PI / 2;
-      mark.position.set(i * 6, 0.16, 24);
+      mark.position.set(i * 5.5, 0.16, 26);
       scene.add(mark);
     }
 
-    /* Main tower */
-    box(-4, 0, -4, 10, 14, 10, 0xcdd1da, 0xb8bcc6);
-    for (let f = 1; f <= 4; f++) {
-      box(-4, f * 2.8 - 0.25, -4, 10.05, 0.6, 10.05, 0x5a7ea0);
+    /* ── Pit helpers ─────────────────────────────────────────── */
+    function pitFloor(cx: number, y: number, cz: number, w: number, d: number, color: number) {
+      const geo = new THREE.BoxGeometry(w, 0.3, d);
+      const mat = new THREE.MeshLambertMaterial({ color });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(cx, y - 0.15, cz);
+      m.receiveShadow = true;
+      m.castShadow = true;
+      scene.add(m);
+      const edges = new THREE.EdgesGeometry(geo);
+      const lines = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: 0x3a2a1a, transparent: true, opacity: 0.35 }),
+      );
+      lines.position.copy(m.position);
+      scene.add(lines);
     }
 
-    /* North wing */
-    box(-4, 0, 9, 14, 5, 7, 0xbdc2cb, 0xa8adb8);
-    box(-4, 1.6, 9, 14.05, 0.5, 7.05, 0x607d96);
-    box(-4, 3.2, 9, 14.05, 0.5, 7.05, 0x607d96);
-
-    /* Connector bridge */
-    box(-4, 4, 3, 6, 1.5, 5, 0xc5c9d2, 0xb0b4be);
-
-    /* East annex */
-    box(11, 0, -2, 7, 8, 9, 0xc0c4cc, 0xacb0ba);
-    box(11, 2.2, -2, 7.05, 0.5, 9.05, 0x5a7ea0);
-    box(11, 5.0, -2, 7.05, 0.5, 9.05, 0x5a7ea0);
-
-    /* Parking */
-    box(4, 0, -15, 18, 3.5, 10, 0xb0b5be, 0xa0a5ae);
-    for (let i = -2; i <= 2; i++) {
-      box(i * 3.8 + 4, 3.5, -15, 0.2, 1.1, 10, 0x90959e);
+    function pitWalls(
+      cx: number, cz: number, w: number, d: number,
+      bottomY: number, h: number, thick: number, color: number,
+    ) {
+      box(cx, bottomY, cz - d / 2 - thick / 2, w + thick * 2, h, thick, color);
+      box(cx, bottomY, cz + d / 2 + thick / 2, w + thick * 2, h, thick, color);
+      box(cx - w / 2 - thick / 2, bottomY, cz, thick, h, d, color);
+      box(cx + w / 2 + thick / 2, bottomY, cz, thick, h, d, color);
     }
 
-    /* Excavation pit */
-    const pit = new THREE.Mesh(
-      new THREE.PlaneGeometry(10, 8),
-      new THREE.MeshLambertMaterial({ color: 0x6a5d50 }),
+    /* ──★ THE DIG — single big terraced excavation centred under the camera
+       target so it reads as the unmistakable focal point of the scene.
+       Three terraces step down to the lowest excavated floor: -2, -5, -9. */
+    pitFloor(0, -2, 0, 32, 22, 0x8b7050);
+    pitFloor(0, -5, 0, 22, 13, 0x7a604a);
+    pitFloor(0, -9, 0, 12, 6, 0x5e4530);
+
+    pitWalls(0, 0, 32, 22, -2, 2, 0.3, 0x7d6347); // ground → L1
+    pitWalls(0, 0, 22, 13, -5, 3, 0.3, 0x6e5340); // L1 → L2
+    pitWalls(0, 0, 12, 6, -9, 4, 0.3, 0x5e4530);  // L2 → L3
+
+    /* Earth ramp on the east side so trucks can drive down into the dig */
+    const ramp = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 0.4, 4),
+      new THREE.MeshLambertMaterial({ color: 0x6a5040 }),
     );
-    pit.rotation.x = -Math.PI / 2;
-    pit.position.set(-17, 0.03, -4);
-    pit.receiveShadow = true;
-    scene.add(pit);
-    box(-17, -0.5, -4, 10, 1, 8, 0x7a6e60);
+    ramp.position.set(15, -1, 0);
+    ramp.rotation.z = Math.PI * 0.07;
+    ramp.castShadow = true;
+    ramp.receiveShadow = true;
+    scene.add(ramp);
 
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 3; j++) {
-        box(-20 + i * 2.5, 0, -6 + j * 2.5, 0.1, 2.2, 0.1, 0x8a7060);
+    /* ──★ Concrete foundation for the building going up in the dig ──
+       A mat (raft) slab covers the bottom-terrace floor, with a 2×3
+       grid of footing pads and tall concrete columns rising to ground
+       level. Vertical rebar protrudes from each column top, ready for
+       the next pour. Column lines are at x = ±4 (NOT x = 0) so the
+       line of sight from the camera to the AI pulse on the wall behind
+       stays clear. */
+    const concreteMat = new THREE.MeshLambertMaterial({ color: 0xc8c2b8 });
+    const concreteAccent = new THREE.MeshLambertMaterial({ color: 0xb6b0a8 });
+    const rebarMat = new THREE.MeshLambertMaterial({ color: 0x8a5a3a });
+
+    // Mat / raft foundation slab — covers the entire bottom-terrace floor
+    const matSlabH = 0.5;
+    const matSlabTopY = -9 + matSlabH; // mat top ≈ y = -8.5
+    const matSlab = new THREE.Mesh(
+      new THREE.BoxGeometry(11.6, matSlabH, 5.6),
+      concreteMat,
+    );
+    matSlab.position.set(0, -9 + matSlabH / 2, 0);
+    matSlab.castShadow = true;
+    matSlab.receiveShadow = true;
+    scene.add(matSlab);
+
+    // Slightly lighter top to read as a fresh-troweled finish
+    const matSlabTop = new THREE.Mesh(
+      new THREE.PlaneGeometry(11.6, 5.6),
+      concreteAccent,
+    );
+    matSlabTop.rotation.x = -Math.PI / 2;
+    matSlabTop.position.set(0, matSlabTopY + 0.01, 0);
+    matSlabTop.receiveShadow = true;
+    scene.add(matSlabTop);
+
+    // Footing pads + columns + rebar dowels at each grid location
+    const columnTopY = -1.6;
+    const columnPositions: [number, number][] = [
+      [-4, -2], [-4, 0], [-4, 2],
+      [ 4, -2], [ 4, 0], [ 4, 2],
+    ];
+
+    for (const [cx, cz] of columnPositions) {
+      // Footing pad (sits on top of mat slab)
+      const footingH = 0.5;
+      const footingY = matSlabTopY + footingH / 2;
+      const footing = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, footingH, 1.4),
+        concreteMat,
+      );
+      footing.position.set(cx, footingY, cz);
+      footing.castShadow = true;
+      footing.receiveShadow = true;
+      scene.add(footing);
+
+      // Column rising from footing top to ground level
+      const columnBaseY = matSlabTopY + footingH;
+      const columnH = columnTopY - columnBaseY;
+      const column = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7, columnH, 0.7),
+        concreteMat,
+      );
+      column.position.set(cx, columnBaseY + columnH / 2, cz);
+      column.castShadow = true;
+      column.receiveShadow = true;
+      scene.add(column);
+
+      // Edge accent on each column to give it form-mark texture
+      const colCap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.78, 0.08, 0.78),
+        concreteAccent,
+      );
+      colCap.position.set(cx, columnTopY + 0.04, cz);
+      colCap.castShadow = true;
+      scene.add(colCap);
+
+      // Vertical rebar protruding from column top — 4 dowels, ~0.7m
+      for (const [rx, rz] of [
+        [-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22],
+      ]) {
+        const rod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 0.7, 8),
+          rebarMat,
+        );
+        rod.position.set(cx + rx, columnTopY + 0.35, cz + rz);
+        rod.castShadow = true;
+        scene.add(rod);
       }
     }
 
-    /* Crane */
-    box(-17, 0, 4, 0.5, 22, 0.5, 0xe8c840);
-    box(-11, 22, 4, 12, 0.4, 0.4, 0xe8c840);
-    box(-21, 22, 4, 6, 0.4, 0.4, 0xe8c840);
-    box(-13, 21.2, 4, 0.6, 0.6, 0.6, 0xcc3333);
-    box(-13, 18.5, 4, 0.08, 5.5, 0.08, 0x555555);
-    box(-17, 18, 4, 1.2, 1.2, 1.2, 0xe0b820);
+    // Strip footings around the perimeter of the bottom pit, sitting on
+    // the middle-terrace ledge (y = -5). Reads as a perimeter foundation
+    // wall waiting for the next concrete pour.
+    function stripFooting(cx: number, cz: number, w: number, d: number) {
+      const f = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.4, d),
+        concreteMat,
+      );
+      f.position.set(cx, -5 + 0.2, cz);
+      f.castShadow = true;
+      f.receiveShadow = true;
+      scene.add(f);
+    }
+    stripFooting(-7.4, 0, 0.9, 6.6);   // west strip
+    stripFooting( 7.4, 0, 0.9, 6.6);   // east strip
+    stripFooting(0, -3.4, 14.9, 0.9);  // north strip
+    stripFooting(0,  3.4, 14.9, 0.9);  // south strip
 
-    /* Material staging */
-    box(19, 0, -4, 2, 0.8, 6, 0x8090a0);
-    box(19, 0.8, -4, 2, 0.6, 5.5, 0x7080a0);
+    // Stack of plywood formwork waiting on the middle-terrace ledge
+    const plywoodGroup = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const sheet = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 0.045, 1.2),
+        new THREE.MeshLambertMaterial({ color: 0xd4a268 }),
+      );
+      sheet.position.set(0, -5 + 0.025 + i * 0.05, 0);
+      sheet.castShadow = true;
+      sheet.receiveShadow = true;
+      plywoodGroup.add(sheet);
+    }
+    plywoodGroup.position.set(-9, 0, -4.2);
+    scene.add(plywoodGroup);
 
-    const mound = new THREE.Mesh(
-      new THREE.ConeGeometry(2.5, 1.8, 6),
-      new THREE.MeshLambertMaterial({ color: 0x9a8a70 }),
+    // Bundle of vertical rebar staged on the middle ledge for the
+    // next column / wall pour
+    const stagedRebar = new THREE.Group();
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 4; c++) {
+        const rod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.05, 0.05, 3.5, 8),
+          rebarMat,
+        );
+        rod.rotation.z = Math.PI / 2;
+        rod.position.set(0, -5 + 0.06 + r * 0.1, c * 0.12 - 0.18);
+        rod.castShadow = true;
+        stagedRebar.add(rod);
+      }
+    }
+    stagedRebar.position.set(8.5, 0, -4);
+    scene.add(stagedRebar);
+
+    /* ── North embankment + retaining wall (Creative 6 anchor reference)
+       Sits just behind the dig on the north edge so the AI insight pulse
+       has something concrete to point at, but kept smaller and lower than
+       the dig so it doesn't compete with the central feature. */
+    const embankW = 22;
+    const embankD = 13;
+    const embankH = 3;
+    const embankCx = 0;
+    const embankCz = -19;
+
+    const embankBody = new THREE.Mesh(
+      new THREE.BoxGeometry(embankW, embankH, embankD),
+      new THREE.MeshLambertMaterial({ color: 0x856a4d }),
     );
-    mound.position.set(21, 0.9, 7);
-    mound.rotation.y = Math.PI / 6;
-    mound.castShadow = true;
-    scene.add(mound);
-    const mound2 = mound.clone();
-    mound2.scale.set(0.6, 0.6, 0.6);
-    mound2.position.set(23, 0.55, 9);
-    scene.add(mound2);
+    embankBody.position.set(embankCx, embankH / 2, embankCz);
+    embankBody.castShadow = true;
+    embankBody.receiveShadow = true;
+    scene.add(embankBody);
 
-    /* Trees */
+    const embankTop = new THREE.Mesh(
+      new THREE.PlaneGeometry(embankW, embankD),
+      new THREE.MeshLambertMaterial({ color: 0x7a6244 }),
+    );
+    embankTop.rotation.x = -Math.PI / 2;
+    embankTop.position.set(embankCx, embankH + 0.01, embankCz);
+    embankTop.receiveShadow = true;
+    scene.add(embankTop);
+
+    /* Poured concrete retaining wall on the embankment's south face.
+       Slightly narrower and taller than the embankment, with the back
+       embedded a hair into the embankment so no two faces are coplanar
+       (no z-fighting). */
+    const retainColor = 0xb6b0a8;
+    const retainAccent = 0xa8a298;
+    const wallW = 21.5;
+    const wallH = 3.6;
+    const wallD = 0.6;
+    const wallCx = 0;
+    const wallCz = -12.4;
+
+    box(wallCx, 0, wallCz, wallW, wallH, wallD, retainColor, retainAccent);
+
+    box(
+      wallCx, wallH + 0.01, wallCz,
+      wallW + 0.4, 0.25, wallD + 0.3,
+      retainAccent, retainAccent,
+    );
+
+    const wallFaceZ = wallCz + wallD / 2;
+    const detailOffset = 0.04;
+
+    for (let i = 1; i <= 4; i++) {
+      const jointX = wallCx - wallW / 2 + (i * wallW) / 5;
+      const jointDepth = 0.05;
+      const joint = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, wallH - 0.2, jointDepth),
+        new THREE.MeshLambertMaterial({ color: 0x8a8278 }),
+      );
+      joint.position.set(
+        jointX,
+        wallH / 2 - 0.1,
+        wallFaceZ + detailOffset + jointDepth / 2,
+      );
+      scene.add(joint);
+    }
+
+    const tieDepth = 0.04;
+    const tieGeo = new THREE.BoxGeometry(0.12, 0.12, tieDepth);
+    const tieMat = new THREE.MeshLambertMaterial({ color: 0x6a6660 });
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 5; col++) {
+        const tx = wallCx - wallW / 2 + 1.5 + (col * (wallW - 3)) / 4;
+        const ty = 0.8 + row * 1.4;
+        const tie = new THREE.Mesh(tieGeo, tieMat);
+        tie.position.set(tx, ty, wallFaceZ + detailOffset + tieDepth / 2);
+        scene.add(tie);
+      }
+    }
+
+    /* ── Stockpile mounds (cut material set aside on the east side) ── */
+    function stockpile(x: number, z: number, scale = 1, color = 0x9a8060) {
+      const mound = new THREE.Mesh(
+        new THREE.ConeGeometry(2.4 * scale, 1.8 * scale, 6),
+        new THREE.MeshLambertMaterial({ color }),
+      );
+      mound.position.set(x, 0.9 * scale, z);
+      mound.rotation.y = Math.PI / 6;
+      mound.castShadow = true;
+      mound.receiveShadow = true;
+      scene.add(mound);
+    }
+    stockpile(22, -10, 1.0, 0x9a8060);
+    stockpile(24, -2, 1.2, 0x8e7456);
+    stockpile(22, 8, 0.85, 0x826a4d);
+
+    /* ── Excavator working at the east edge of the dig ─────────
+       Geometry is computed so the boom pivots up off the body, the stick
+       hangs forward-down from the boom end, and the bucket lands on the
+       ground at the stick end (no floating parts). */
+    function excavator(x: number, z: number, rot = 0) {
+      const yellow = 0xe8c840;
+      const dark = 0x2a2a2a;
+      const accent = 0xcca830;
+      const group = new THREE.Group();
+
+      // Tracks
+      const trackL = new THREE.Mesh(
+        new THREE.BoxGeometry(4.4, 0.7, 0.9),
+        new THREE.MeshLambertMaterial({ color: dark }),
+      );
+      trackL.position.set(0, 0.35, -1.1);
+      trackL.castShadow = true;
+      trackL.receiveShadow = true;
+      group.add(trackL);
+      const trackR = trackL.clone();
+      trackR.position.z = 1.1;
+      group.add(trackR);
+
+      // Body / undercarriage of the rotating house
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 0.6, 2.6),
+        new THREE.MeshLambertMaterial({ color: yellow }),
+      );
+      body.position.set(0, 1.0, 0);
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      // Engine cover (back of body)
+      const engine = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 0.9, 2.0),
+        new THREE.MeshLambertMaterial({ color: accent }),
+      );
+      engine.position.set(0.8, 1.75, 0);
+      engine.castShadow = true;
+      engine.receiveShadow = true;
+      group.add(engine);
+
+      // Cab
+      const cab = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 1.4, 1.4),
+        new THREE.MeshLambertMaterial({ color: yellow }),
+      );
+      cab.position.set(-0.6, 2.0, 0);
+      cab.castShadow = true;
+      cab.receiveShadow = true;
+      group.add(cab);
+
+      const cabRoof = new THREE.Mesh(
+        new THREE.BoxGeometry(1.45, 0.12, 1.45),
+        new THREE.MeshLambertMaterial({ color: accent }),
+      );
+      cabRoof.position.set(-0.6, 2.76, 0);
+      cabRoof.castShadow = true;
+      group.add(cabRoof);
+
+      // Boom — pivots from the front-top of the body, angled UP and forward.
+      const pivotX = 1.4;
+      const pivotY = 1.3;
+      const boomLen = 3.5;
+      const boomAngle = Math.PI / 5; // +36°  (up and forward)
+      const boom = new THREE.Mesh(
+        new THREE.BoxGeometry(boomLen, 0.5, 0.5),
+        new THREE.MeshLambertMaterial({ color: yellow }),
+      );
+      boom.position.set(
+        pivotX + (boomLen / 2) * Math.cos(boomAngle),
+        pivotY + (boomLen / 2) * Math.sin(boomAngle),
+        0,
+      );
+      boom.rotation.z = boomAngle;
+      boom.castShadow = true;
+      group.add(boom);
+
+      // Stick — extends down-and-forward from boom end.
+      const boomEndX = pivotX + boomLen * Math.cos(boomAngle);
+      const boomEndY = pivotY + boomLen * Math.sin(boomAngle);
+      const stickLen = 2.8;
+      const stickAngle = -Math.PI * 0.43; // -77°  (mostly down)
+      const stick = new THREE.Mesh(
+        new THREE.BoxGeometry(stickLen, 0.4, 0.4),
+        new THREE.MeshLambertMaterial({ color: yellow }),
+      );
+      stick.position.set(
+        boomEndX + (stickLen / 2) * Math.cos(stickAngle),
+        boomEndY + (stickLen / 2) * Math.sin(stickAngle),
+        0,
+      );
+      stick.rotation.z = stickAngle;
+      stick.castShadow = true;
+      group.add(stick);
+
+      // Bucket — sits at stick end, planted on the ground.
+      const stickEndX = boomEndX + stickLen * Math.cos(stickAngle);
+      const bucket = new THREE.Mesh(
+        new THREE.BoxGeometry(0.9, 0.8, 1.3),
+        new THREE.MeshLambertMaterial({ color: dark }),
+      );
+      bucket.position.set(stickEndX, 0.4, 0);
+      bucket.castShadow = true;
+      group.add(bucket);
+
+      group.position.set(x, 0, z);
+      group.rotation.y = rot;
+      scene.add(group);
+    }
+    // Position the excavator at the east edge of the dig, facing west into
+    // it so its bucket reaches over the rim into the pit.
+    excavator(18, -3, Math.PI);
+
+    /* ── Dump trucks ───────────────────────────────────────── */
+    function dumpTruck(x: number, z: number, rot = 0) {
+      const yellow = 0xe8c840;
+      const dark = 0x2a2a2a;
+      const bedColor = 0x4a4036;
+      const group = new THREE.Group();
+
+      const cab = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 2, 2.2),
+        new THREE.MeshLambertMaterial({ color: yellow }),
+      );
+      cab.position.set(0, 1.2, 0);
+      cab.castShadow = true;
+      cab.receiveShadow = true;
+      group.add(cab);
+
+      const hood = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 1, 2.2),
+        new THREE.MeshLambertMaterial({ color: yellow }),
+      );
+      hood.position.set(1.6, 0.7, 0);
+      hood.castShadow = true;
+      group.add(hood);
+
+      const bed = new THREE.Mesh(
+        new THREE.BoxGeometry(4, 1.5, 2.4),
+        new THREE.MeshLambertMaterial({ color: bedColor }),
+      );
+      bed.position.set(-1.8, 1.5, 0);
+      bed.castShadow = true;
+      bed.receiveShadow = true;
+      group.add(bed);
+
+      const dirtLoad = new THREE.Mesh(
+        new THREE.ConeGeometry(1.2, 0.7, 6),
+        new THREE.MeshLambertMaterial({ color: 0x8a6e50 }),
+      );
+      dirtLoad.position.set(-1.8, 2.5, 0);
+      dirtLoad.rotation.y = Math.PI / 6;
+      dirtLoad.castShadow = true;
+      group.add(dirtLoad);
+
+      for (let i = 0; i < 6; i++) {
+        const wheel = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.55, 0.55, 0.55, 16),
+          new THREE.MeshLambertMaterial({ color: dark }),
+        );
+        wheel.rotation.x = Math.PI / 2;
+        const wxIdx = Math.floor(i / 2);
+        wheel.position.set(1 - wxIdx * 1.6, 0.55, i % 2 === 0 ? -1.3 : 1.3);
+        wheel.castShadow = true;
+        group.add(wheel);
+      }
+
+      group.position.set(x, 0, z);
+      group.rotation.y = rot;
+      scene.add(group);
+    }
+    dumpTruck(8, 26, Math.PI / 2);
+    dumpTruck(-32, 6, 0);
+
+    /* ── Traffic cone (reused in two zones below) ───────────── */
+    function cone(x: number, z: number, scale = 1) {
+      const c = new THREE.Mesh(
+        new THREE.ConeGeometry(0.22 * scale, 0.7 * scale, 12),
+        new THREE.MeshLambertMaterial({ color: 0xe85a18 }),
+      );
+      c.position.set(x, 0.35 * scale, z);
+      c.castShadow = true;
+      scene.add(c);
+      const band = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.16 * scale, 0.18 * scale, 0.07 * scale, 12),
+        new THREE.MeshBasicMaterial({ color: 0xf2f2f2 }),
+      );
+      band.position.set(x, 0.42 * scale, z);
+      scene.add(band);
+    }
+
+    /* ── Materials staged in front of the retaining wall ─────────
+       Fills the strip between the wall (z ≈ -12.1) and the pit rim
+       (z = -11) with realistic site detail: cones, rebar bundles,
+       precast block stacks, and pipe sections. */
+
+    // Safety line of cones along the base of the wall
+    for (let i = 0; i < 6; i++) {
+      cone(-9 + i * 3.6, -11.5);
+    }
+
+    // Rebar bundle — rust-coloured rods laid lengthwise along the wall
+    function rebarBundle(x: number, z: number) {
+      const group = new THREE.Group();
+      const rodMat = new THREE.MeshLambertMaterial({ color: 0x8a5a3a });
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 5; c++) {
+          const rod = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, 4, 8),
+            rodMat,
+          );
+          rod.rotation.z = Math.PI / 2;
+          rod.position.set(c * 0.115 - 0.23, 0.06 + r * 0.1, 0);
+          rod.castShadow = true;
+          group.add(rod);
+        }
+      }
+      group.position.set(x, 0, z);
+      scene.add(group);
+    }
+    rebarBundle(-6, -11.4);
+    rebarBundle(-6, -11.75);
+
+    // Precast concrete blocks — stacked like form-work / barrier blocks
+    function blockStack(x: number, z: number) {
+      const group = new THREE.Group();
+      const blockMat = new THREE.MeshLambertMaterial({ color: 0xb6b0a8 });
+      const accentMat = new THREE.MeshLambertMaterial({ color: 0xa8a298 });
+      for (let i = 0; i < 3; i++) {
+        const b = new THREE.Mesh(
+          new THREE.BoxGeometry(0.6, 0.45, 0.5),
+          i % 2 === 0 ? blockMat : accentMat,
+        );
+        b.position.set(i * 0.62, 0.225, 0);
+        b.castShadow = true;
+        b.receiveShadow = true;
+        group.add(b);
+      }
+      for (let i = 0; i < 2; i++) {
+        const b = new THREE.Mesh(
+          new THREE.BoxGeometry(0.6, 0.45, 0.5),
+          accentMat,
+        );
+        b.position.set(0.31 + i * 0.62, 0.675, 0);
+        b.castShadow = true;
+        group.add(b);
+      }
+      group.position.set(x, 0, z);
+      scene.add(group);
+    }
+    blockStack(2, -11.6);
+    blockStack(5.6, -11.6);
+
+    // Pipe sections — metal cylinders laid on the ground
+    function pipe(x: number, z: number, color = 0x505860) {
+      const p = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.28, 0.28, 2.4, 14),
+        new THREE.MeshLambertMaterial({ color }),
+      );
+      p.rotation.z = Math.PI / 2;
+      p.position.set(x, 0.28, z);
+      p.castShadow = true;
+      p.receiveShadow = true;
+      scene.add(p);
+    }
+    pipe(8.6, -11.4);
+    pipe(8.6, -11.95);
+    pipe(8.6, -11.7, 0x6a6e76);
+
+    /* ── Spoil, boulders, and cones around the working excavator ──
+       Detail in front of the excavator showing freshly excavated material
+       and a marked-out work zone. */
+
+    // Fresh spoil mound east of the excavator (newly dug dirt staged
+    // for hauling)
+    const freshSpoil = new THREE.Mesh(
+      new THREE.ConeGeometry(1.4, 0.95, 6),
+      new THREE.MeshLambertMaterial({ color: 0x9a7a55 }),
+    );
+    freshSpoil.position.set(20.5, 0.475, -3);
+    freshSpoil.rotation.y = Math.PI / 5;
+    freshSpoil.castShadow = true;
+    freshSpoil.receiveShadow = true;
+    scene.add(freshSpoil);
+
+    const freshSpoilSmall = new THREE.Mesh(
+      new THREE.ConeGeometry(0.8, 0.55, 6),
+      new THREE.MeshLambertMaterial({ color: 0x8e6e4d }),
+    );
+    freshSpoilSmall.position.set(19.4, 0.275, -5.4);
+    freshSpoilSmall.rotation.y = Math.PI / 7;
+    freshSpoilSmall.castShadow = true;
+    scene.add(freshSpoilSmall);
+
+    // Boulders kicked up by the excavation — some on the rim, some
+    // sitting on the top terrace floor of the pit.
+    function boulder(x: number, y: number, z: number, r = 0.4) {
+      const b = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(r),
+        new THREE.MeshLambertMaterial({ color: 0x6a5a48, flatShading: true }),
+      );
+      b.position.set(x, y + r * 0.6, z);
+      b.rotation.set(0.6, 0.9, 0.3);
+      b.castShadow = true;
+      b.receiveShadow = true;
+      scene.add(b);
+    }
+    boulder(15.4, 0, -1.4, 0.42);
+    boulder(14.7, 0, -4.6, 0.35);
+    boulder(15.6, 0, -5.6, 0.3);
+    boulder(13.8, -1.7, -3, 0.4);   // sitting on the top terrace floor
+    boulder(12.9, -1.7, -2.2, 0.32);
+
+    // Cones marking the excavator's exclusion zone
+    cone(13.5, -0.4, 0.9);
+    cone(13.5, -5.6, 0.9);
+    cone(16.6, -6.6, 0.9);
+    cone(16.6, 0.4, 0.9);
+
+    /* ── Site office trailer (east side, well clear of the dig) ── */
+    box(28, 0, 14, 4.5, 2.4, 2.6, 0xc8ccd4, 0xb0b4bc);
+    // Door — full height from ground up to ~1.9m so it doesn't float.
+    box(28, 0, 15.34, 0.7, 1.9, 0.05, 0x4a4a4a);
+    for (let i = 0; i < 3; i++) {
+      box(26.4 + i * 0.9, 1.4, 12.66, 0.5, 0.5, 0.05, 0x6a8aa8);
+    }
+
+    /* ── Survey stakes with red flags — only around the dig rim and
+       on the embankment plateau, to keep the central pit the clear
+       focus of the scene. */
+    function surveyStake(x: number, z: number, y = 0) {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 1, 0.08),
+        new THREE.MeshLambertMaterial({ color: 0x4a3a2a }),
+      );
+      post.position.set(x, y + 0.5, z);
+      post.castShadow = true;
+      scene.add(post);
+      const flag = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.32, 0.02),
+        new THREE.MeshBasicMaterial({ color: 0xe83828 }),
+      );
+      flag.position.set(x + 0.28, y + 0.85, z);
+      scene.add(flag);
+    }
+    // Pit rim — corners + mid-edge stakes mark the cut footprint.
+    surveyStake(-16, -11);
+    surveyStake(0, -11);
+    surveyStake(16, -11);
+    surveyStake(-16, 11);
+    surveyStake(0, 11);
+    surveyStake(16, 11);
+    surveyStake(-16, 0);
+    surveyStake(16, 0);
+    // On top of the embankment plateau (the ground the wall is retaining)
+    surveyStake(-8, -22, embankH);
+    surveyStake(8, -22, embankH);
+
+    /* ── Trees on the outer perimeter ────────────────────────── */
     function tree(x: number, z: number, h = 4) {
       box(x, 0, z, 0.3, h * 0.35, 0.3, 0x6a5a40);
       const foliage = new THREE.Mesh(
@@ -221,13 +800,14 @@ export default function SiteScene() {
       foliage.castShadow = true;
       scene.add(foliage);
     }
-    tree(-24, 14, 5);
-    tree(-22, 18, 4);
-    tree(-26, 10, 6);
-    tree(23, -15, 4.5);
-    tree(25, -11, 3.5);
-    tree(-8, 18, 4);
-    tree(2, 18, 5);
+    tree(-30, 18, 5);
+    tree(-26, 22, 4);
+    tree(-32, -24, 5);
+    tree(-26, -28, 4);
+    tree(28, 22, 4.5);
+    tree(32, 16, 4);
+    tree(32, -10, 5);
+    tree(28, -22, 4);
 
     /* ── Project anchor → screen, update marker + line ─────────── */
     const tmp = new THREE.Vector3();

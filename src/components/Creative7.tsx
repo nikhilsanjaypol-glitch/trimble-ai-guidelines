@@ -1,5 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import { ModusWcButton, ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-react';
+import {
+  useCreative7Variant,
+  type Creative7Variant,
+} from '../context/Creative7VariantContext';
 
 /* ─────────────────────────────────────────────────────────────────
  * Guideline: REITERATE THE PLAN
@@ -708,9 +712,73 @@ function SideNav() {
   );
 }
 
-/* ── Chat shell ─────────────────────────────────────────────────── */
+/* ── Chat thread (shared between variants) ──────────────────────── */
 
-export default function Creative7() {
+function ChatThread() {
+  return (
+    <div className="flex flex-col gap-6" style={{ width: '100%', maxWidth: '464px' }}>
+      {/* User turn */}
+      <div className="flex flex-col items-end gap-1">
+        <div
+          className="rounded-2xl rounded-tr-md px-3 py-2"
+          style={{
+            maxWidth: '78%',
+            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+            color: 'var(--modus-wc-color-base-content, #171c1e)',
+            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+            lineHeight: 1.5,
+          }}
+        >
+          {USER_REQUEST}
+        </div>
+        <span
+          style={{
+            fontSize: '10px',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          }}
+        >
+          You · just now
+        </span>
+      </div>
+
+      {/* AI turn */}
+      <div className="flex items-start gap-3">
+        <div className="shrink-0" style={{ marginTop: '-2px' }}>
+          <TrimbleAiLogo size={28} />
+        </div>
+        <div className="flex flex-col gap-2 min-w-0 flex-1">
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              lineHeight: 1.55,
+            }}
+          >
+            Before I dig in, here&apos;s how I&apos;m planning to approach it — confirm
+            or reshape it and I&apos;ll get started.
+          </span>
+
+          {/* The plan card sits inline as the AI's structured response */}
+          <PlanCard />
+
+          <span
+            style={{
+              fontSize: '11px',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              lineHeight: 1.5,
+            }}
+          >
+            I&apos;ll only start once you confirm.
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Tablet shell — full chat surface (side nav + avatar + prompt bar) */
+
+function TabletShell() {
   return (
     <div
       className="rounded-2xl overflow-hidden flex flex-row relative"
@@ -755,63 +823,7 @@ export default function Creative7() {
           className="creative7-chat-scroll flex-1 flex flex-col justify-center items-center min-h-0 overflow-y-auto"
           style={{ paddingLeft: '24px', paddingRight: '24px', paddingTop: '64px', paddingBottom: '24px' }}
         >
-          <div className="flex flex-col gap-6" style={{ width: '100%', maxWidth: '464px' }}>
-            {/* User turn */}
-            <div className="flex flex-col items-end gap-1">
-              <div
-                className="rounded-2xl rounded-tr-md px-3 py-2"
-                style={{
-                  maxWidth: '78%',
-                  backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  lineHeight: 1.5,
-                }}
-              >
-                {USER_REQUEST}
-              </div>
-              <span
-                style={{
-                  fontSize: '10px',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                }}
-              >
-                You · just now
-              </span>
-            </div>
-
-            {/* AI turn */}
-            <div className="flex items-start gap-3">
-              <div className="shrink-0" style={{ marginTop: '-2px' }}>
-                <TrimbleAiLogo size={28} />
-              </div>
-              <div className="flex flex-col gap-2 min-w-0 flex-1">
-                <span
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                    color: 'var(--modus-wc-color-base-content, #171c1e)',
-                    lineHeight: 1.55,
-                  }}
-                >
-                  Before I dig in, here&apos;s how I&apos;m planning to approach it — confirm
-                  or reshape it and I&apos;ll get started.
-                </span>
-
-                {/* The plan card sits inline as the AI's structured response */}
-                <PlanCard />
-
-                <span
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  I&apos;ll only start once you confirm.
-                </span>
-              </div>
-            </div>
-          </div>
+          <ChatThread />
         </div>
 
         {/* Composer — centered, sits at the bottom of the right canvas */}
@@ -826,6 +838,25 @@ export default function Creative7() {
       </div>
     </div>
   );
+}
+
+/* ── Plan-only shell — just the centered chat thread, no chrome ─── */
+
+function PlanOnlyShell() {
+  return (
+    <div className="w-full flex justify-center">
+      <ChatThread />
+    </div>
+  );
+}
+
+/* ── Top-level: pick variant from context (default: tablet) ─────── */
+
+export default function Creative7() {
+  const variantCtx = useCreative7Variant();
+  const variant: Creative7Variant = variantCtx?.variant ?? 'plan-only';
+
+  return variant === 'tablet' ? <TabletShell /> : <PlanOnlyShell />;
 }
 
 /* ── prompt bar (Figma node 549:61090, copy-pasted from Creative 3) ─ */

@@ -78,6 +78,15 @@ async function main() {
 
   console.log(`Capturing ${ROUTES.length} thumbnails to ${OUT_DIR}\n`);
 
+  /* Hide the top-right info-overlay (dot + expanded card) so it
+     doesn't appear in the captured thumbnails. */
+  await context.addInitScript(() => {
+    const style = document.createElement('style');
+    style.textContent =
+      'button[aria-label="Show guideline info"], button[aria-label="Hide guideline info"] { display: none !important; }';
+    document.documentElement.appendChild(style);
+  });
+
   for (const slug of ROUTES) {
     const page = await context.newPage();
     const url = `${BASE}/${slug}`;

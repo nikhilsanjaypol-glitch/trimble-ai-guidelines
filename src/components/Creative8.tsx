@@ -150,7 +150,7 @@ function SeverityPills({
   value,
   onChange,
 }: {
-  value: Severity;
+  value: Severity | null;
   onChange: (v: Severity) => void;
 }) {
   const options: Severity[] = ['low', 'medium', 'high'];
@@ -165,7 +165,7 @@ function SeverityPills({
             onClick={() => onChange(opt)}
             style={{
               flex: 1,
-              padding: '7px 10px',
+              padding: '5px 10px',
               borderRadius: '6px',
               border: selected
                 ? '1px solid var(--modus-wc-color-primary, #0063A7)'
@@ -193,18 +193,18 @@ function SeverityPills({
    top, AI-prefilled form below. Surveyor reviews / edits / files. */
 function FieldObservation({ onClose }: { onClose: () => void }) {
   // Two-state card: collapsed shows just the photo + a single CTA;
-  // expanding reveals the AI-prefilled form inline below the photo.
+  // expanding reveals an empty form inline below the photo.
   const [showForm, setShowForm] = useState(false);
-  const [project, setProject] = useState(AI_OBSERVATION.fields.project);
-  const [issueType, setIssueType] = useState(AI_OBSERVATION.fields.issueType);
-  const [responsible, setResponsible] = useState(AI_OBSERVATION.fields.responsible);
-  const [severity, setSeverity] = useState<Severity>(AI_OBSERVATION.fields.severity);
-  const [description, setDescription] = useState(AI_OBSERVATION.fields.description);
+  const [project, setProject] = useState('');
+  const [issueType, setIssueType] = useState('');
+  const [responsible, setResponsible] = useState('');
+  const [severity, setSeverity] = useState<Severity | null>(null);
+  const [description, setDescription] = useState('');
   const [filed, setFiled] = useState(false);
 
   const inputBase: React.CSSProperties = {
     width: '100%',
-    padding: '8px 10px',
+    padding: '6px 10px',
     border: '1px solid var(--modus-wc-color-base-200, #cbd2d9)',
     borderRadius: '6px',
     fontSize: '13px',
@@ -284,7 +284,7 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
 
       {/* Photo */}
       <div style={{ position: 'relative', backgroundColor: '#1a1f24' }}>
-        <div style={{ height: '180px', width: '100%' }}>
+        <div style={{ height: '140px', width: '100%' }}>
           <CapturedPhoto />
         </div>
         <div
@@ -308,36 +308,17 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* AI banner + form — only after the user opens the draft */}
+      {/* Form — only after the user opens the draft */}
       {showForm && (
         <div
           style={{ animation: 'creative8-form-in 0.22s ease-out' }}
         >
-          <div
-            className="flex items-center gap-2"
-            style={{
-              padding: '10px 16px',
-              backgroundColor: 'rgba(74, 0, 255, 0.04)',
-              borderBottom: '1px solid var(--modus-wc-color-base-200, #eef0f4)',
-            }}
-          >
-            <TrimbleAiLogo size={16} />
-            <span
-              style={{
-                fontSize: '12px',
-                color: 'var(--modus-wc-color-base-content, #101828)',
-                lineHeight: 1.4,
-              }}
-            >
-              AI prefilled <strong>{AI_FIELD_COUNT}</strong> fields — review before filing.
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-3" style={{ padding: '14px 16px' }}>
+          <div className="flex flex-col gap-2" style={{ padding: '12px 16px' }}>
             <FormRow label="Project">
               <input
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
+                placeholder="Select or type project name"
                 style={inputBase}
               />
             </FormRow>
@@ -345,6 +326,7 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
               <input
                 value={issueType}
                 onChange={(e) => setIssueType(e.target.value)}
+                placeholder="e.g. Damaged monument"
                 style={inputBase}
               />
             </FormRow>
@@ -352,6 +334,7 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
               <input
                 value={responsible}
                 onChange={(e) => setResponsible(e.target.value)}
+                placeholder="Assign team or person"
                 style={inputBase}
               />
             </FormRow>
@@ -362,11 +345,12 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                rows={2}
+                placeholder="Describe what you observed in the field…"
                 style={{
                   ...inputBase,
                   resize: 'vertical',
-                  lineHeight: 1.45,
+                  lineHeight: 1.4,
                 }}
               />
             </FormRow>
@@ -377,7 +361,7 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
       {/* Footer — single CTA when collapsed, commit actions when expanded */}
       <div
         style={{
-          padding: '12px 16px 14px',
+          padding: '10px 16px 12px',
           borderTop: '1px solid var(--modus-wc-color-base-200, #eef0f4)',
         }}
       >
@@ -467,6 +451,7 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
    Rendered inside the pulsing marker's white core.
    ───────────────────────────────────────────────────────────────── */
 
+// @ts-expect-error — kept for future use; remove when wired up
 function TrimbleAiLogo({
   size = 22,
   mono = false,
@@ -1359,6 +1344,20 @@ export default function Creative8() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    h: typeof window !== 'undefined' ? window.innerHeight : 800,
+  }));
+
+  // Track viewport size so the FieldObservation card can clamp its
+  // position — it has to fit on-screen even when expanded so the user
+  // never has to scroll to reach the form or the commit buttons.
+  useEffect(() => {
+    const onResize = () =>
+      setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Center on BM-104 on first mount.
   useEffect(() => {
@@ -1376,6 +1375,38 @@ export default function Creative8() {
     x: PRIMARY_CONTROL_WORLD.x * zoom + pan.x,
     y: PRIMARY_CONTROL_WORLD.y * zoom + pan.y,
   };
+
+  /* FieldObservation card position (clamped to viewport).
+     ── Expanded height ≈ 500px (header + 140px photo + 5-row tight
+        form + footer). Reserving that on first open so the form
+        slides in with no scroll required. */
+  const CARD_EXPANDED_HEIGHT = 500;
+  const CARD_WIDTH = 360;
+  const VIEWPORT_PADDING = 24;
+  const idealCardLeft = markerScreen.x + 38;
+  // Open well above the marker so the expanded form has plenty of
+  // room below — no scrolling required to reach the commit buttons.
+  const idealCardTop = markerScreen.y - 280;
+  const maxCardLeft = Math.max(
+    VIEWPORT_PADDING,
+    viewport.w - CARD_WIDTH - VIEWPORT_PADDING,
+  );
+  const maxCardTop = Math.max(
+    VIEWPORT_PADDING,
+    viewport.h - CARD_EXPANDED_HEIGHT - VIEWPORT_PADDING,
+  );
+  const cardLeft = Math.max(
+    VIEWPORT_PADDING,
+    Math.min(idealCardLeft, maxCardLeft),
+  );
+  const cardTop = Math.max(
+    VIEWPORT_PADDING,
+    Math.min(idealCardTop, maxCardTop),
+  );
+  // Endpoint for the rainbow connector line — anchor at the vertical
+  // middle of the card's left edge so the line draws as a clear
+  // leader from the marker into the card.
+  const connectorEndY = cardTop + CARD_EXPANDED_HEIGHT / 2;
 
   function handlePointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return;
@@ -1477,7 +1508,10 @@ export default function Creative8() {
         <SitePlan />
       </div>
 
-      {/* Connector line from marker to opened note */}
+      {/* Connector line from marker to opened card. Sits below the
+          marker (zIndex 5) so the orb covers the line origin — the
+          line reads as trailing out of the marker and landing near
+          the card's top-left corner. */}
       {open && (
         <svg
           style={{
@@ -1498,16 +1532,27 @@ export default function Creative8() {
               <stop offset="100%" stopColor="#FF00D3" />
             </linearGradient>
           </defs>
+          {/* Faint white underlay so the line stays legible over busy
+              terrain without becoming its own visual element. */}
           <line
             x1={markerScreen.x}
             y1={markerScreen.y}
-            x2={markerScreen.x + 60}
-            y2={markerScreen.y + 30}
+            x2={cardLeft}
+            y2={connectorEndY}
+            stroke="#ffffff"
+            strokeWidth="4"
+            strokeLinecap="round"
+            opacity="0.45"
+          />
+          <line
+            x1={markerScreen.x}
+            y1={markerScreen.y}
+            x2={cardLeft}
+            y2={connectorEndY}
             stroke="url(#rainbowLine8)"
             strokeWidth="2"
-            strokeDasharray="6 4"
             strokeLinecap="round"
-            opacity="0.85"
+            opacity="0.95"
           />
         </svg>
       )}
@@ -1534,13 +1579,15 @@ export default function Creative8() {
         <Marker open={open} onClick={() => setOpen((o) => !o)} />
       </div>
 
-      {/* Methodology note — opens beside the marker, fixed size in screen space */}
+      {/* Field observation card — opens beside the marker, but is
+          clamped within the viewport so the expanded form never
+          requires the user to scroll. */}
       {open && (
         <div
           style={{
             position: 'absolute',
-            left: markerScreen.x + 38,
-            top: markerScreen.y - 20,
+            left: cardLeft,
+            top: cardTop,
             zIndex: 20,
             animation: 'creative8-fade-in 0.2s ease-out',
           }}

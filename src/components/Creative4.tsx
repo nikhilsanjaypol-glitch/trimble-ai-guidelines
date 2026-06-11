@@ -230,14 +230,22 @@ function PlanSVG({ option }: { option: Option }) {
 /* Column widths are shared between the carousel row and the matrix
  * row so each option column sits exactly under its thumbnail. */
 const LABELS_W   = 140;
-const SMALL_W    = 180;
-const LARGE_W    = 230;
-const SUMMARY_W  = 140; // mirrors LABELS_W on the right side
+const SMALL_W    = 180;  // matrix column width (small / inactive option)
+const LARGE_W    = 230;  // matrix column width (large / active option)
+const SUMMARY_W  = 140;  // mirrors LABELS_W on the right side
 const GAP        = 12;
-const SMALL_H    = 130;
-const LARGE_H    = 170;
 const HOST_W     =
   LABELS_W + GAP + SMALL_W + GAP + LARGE_W + GAP + SMALL_W + GAP + SUMMARY_W;
+
+/* Thumbnail dimensions are LARGER than the matrix column widths above.
+ * Thumbs overflow their grid cells (centred horizontally) and we use
+ * z-index stacking so the active (large) thumb sits above the side
+ * thumbs, and the arrows sit above both. The matrix below is not
+ * affected because it uses the column widths, not these. */
+const THUMB_SMALL_W = 230;
+const THUMB_SMALL_H = 165;
+const THUMB_LARGE_W = 310;
+const THUMB_LARGE_H = 220;
 
 /* ── Carousel thumb ─────────────────────────────────────────────── */
 
@@ -251,8 +259,8 @@ function CarouselThumb({
   onClick: () => void;
 }) {
   const isLarge = size === 'large';
-  const w = isLarge ? LARGE_W : SMALL_W;
-  const h = isLarge ? LARGE_H : SMALL_H;
+  const w = isLarge ? THUMB_LARGE_W : THUMB_SMALL_W;
+  const h = isLarge ? THUMB_LARGE_H : THUMB_SMALL_H;
 
   return (
     <button
@@ -687,54 +695,51 @@ export default function Creative4() {
 
   const rowWinners = useMemo(() => computeRowWinners(), []);
 
-  /* 5-column shared grid (carousel + caption + matrix all participate)
-   *   col 1 — LABELS_W  : row 1 → LEFT  arrow (right-aligned inside the col)
-   *                       row 3 → labels card
-   *   col 2 — SMALL_W   : left small thumb / opt-left card
-   *   col 3 — LARGE_W   : centre large thumb (active) / opt-centre card
-   *   col 4 — SMALL_W   : right small thumb / opt-right card
-   *   col 5 — SUMMARY_W : row 1 → RIGHT arrow (left-aligned inside the col)
-   *                       row 3 → summary card (mirrors labels card)
+  /* Layout
+   *   ┌─────────────────────────────────────────────────────────────┐
+   *   │   ◄  ▢ small   ▢▢▢ LARGE   ▢ small  ►   <- carousel (flex)  │
+   *   │                  caption                                    │
+   *   │   ┌labels┐ ┌opt-L┐ ┌  opt-C  ┐ ┌opt-R┐ ┌summary┐ <- matrix  │
+   *   └─────────────────────────────────────────────────────────────┘
+   *
+   * The carousel is its own centred flex row so each thumb has real
+   * breathing room (gap between thumbs = `GAP`). The matrix below uses
+   * the unchanged 5-column grid. The carousel's centre aligns with the
+   * matrix's centre column; the side thumbs sit roughly above the side
+   * option columns.
    */
   return (
     <div
+      className="flex flex-col items-center"
       style={{
-        display: 'grid',
-        gridTemplateColumns:
-          `${LABELS_W}px ${SMALL_W}px ${LARGE_W}px ${SMALL_W}px ${SUMMARY_W}px`,
-        columnGap: `${GAP}px`,
-        rowGap: 'var(--modus-wc-spacing-xl, 24px)',
-        alignItems: 'center',
         width: `${HOST_W}px`,
+        rowGap: 'var(--modus-wc-spacing-xl, 24px)',
       }}
     >
-      {/* ── Row 1 — carousel ─────────────────────────────────────── */}
-      <div style={{ gridRow: 1, gridColumn: 1, display: 'flex', justifyContent: 'flex-end' }}>
-        <CarouselArrow direction="left" onClick={() => setActiveIdx(leftIdx)} />
-      </div>
-      <div style={{ gridRow: 1, gridColumn: 2, display: 'flex', justifyContent: 'center' }}>
-        <CarouselThumb option={leftOpt}   size="small" onClick={() => setActiveIdx(leftIdx)} />
-      </div>
-      <div style={{ gridRow: 1, gridColumn: 3, display: 'flex', justifyContent: 'center' }}>
+      {/* ── Carousel ─────────────────────────────────────────────── */}
+      <div className="flex items-center" style={{ gap: `${GAP}px` }}>
+        <CarouselArrow direction="left"  onClick={() => setActiveIdx(leftIdx)} />
+        <CarouselThumb option={leftOpt}   size="small" onClick={() => setActiveIdx(leftIdx)}  />
         <CarouselThumb option={centerOpt} size="large" onClick={() => { /* already active */ }} />
-      </div>
-      <div style={{ gridRow: 1, gridColumn: 4, display: 'flex', justifyContent: 'center' }}>
         <CarouselThumb option={rightOpt}  size="small" onClick={() => setActiveIdx(rightIdx)} />
-      </div>
-      <div style={{ gridRow: 1, gridColumn: 5, display: 'flex', justifyContent: 'flex-start' }}>
         <CarouselArrow direction="right" onClick={() => setActiveIdx(rightIdx)} />
       </div>
 
-      {/* ── Row 2 — active caption (spans the 3 thumb columns) ───── */}
-      <div style={{ gridRow: 2, gridColumn: '2 / 5', display: 'flex', justifyContent: 'center' }}>
-        <ActiveCaption option={centerOpt} />
-      </div>
+      {/* ── Active caption ───────────────────────────────────────── */}
+      <ActiveCaption option={centerOpt} />
 
-      {/* ── Row 3 — matrix: labels + 3 option cards in carousel order ── */}
-      <div style={{ gridRow: 3, gridColumn: 1, alignSelf: 'stretch' }}>
+      {/* ── Matrix (unchanged 5-column grid) ─────────────────────── */}
+      <div
+        className="grid"
+        style={{
+          width: '100%',
+          gridTemplateColumns:
+            `${LABELS_W}px ${SMALL_W}px ${LARGE_W}px ${SMALL_W}px ${SUMMARY_W}px`,
+          columnGap: `${GAP}px`,
+          alignItems: 'stretch',
+        }}
+      >
         <LabelsCard />
-      </div>
-      <div style={{ gridRow: 3, gridColumn: 2, alignSelf: 'stretch' }}>
         <OptionCard
           option={leftOpt}
           optIdx={leftIdx}
@@ -743,8 +748,6 @@ export default function Creative4() {
           rowWinners={rowWinners}
           onChoose={() => setChosenIdx(leftIdx)}
         />
-      </div>
-      <div style={{ gridRow: 3, gridColumn: 3, alignSelf: 'stretch' }}>
         <OptionCard
           option={centerOpt}
           optIdx={activeIdx}
@@ -753,8 +756,6 @@ export default function Creative4() {
           rowWinners={rowWinners}
           onChoose={() => setChosenIdx(activeIdx)}
         />
-      </div>
-      <div style={{ gridRow: 3, gridColumn: 4, alignSelf: 'stretch' }}>
         <OptionCard
           option={rightOpt}
           optIdx={rightIdx}
@@ -763,8 +764,6 @@ export default function Creative4() {
           rowWinners={rowWinners}
           onChoose={() => setChosenIdx(rightIdx)}
         />
-      </div>
-      <div style={{ gridRow: 3, gridColumn: 5, alignSelf: 'stretch' }}>
         <SummaryCard rowWinners={rowWinners} />
       </div>
     </div>

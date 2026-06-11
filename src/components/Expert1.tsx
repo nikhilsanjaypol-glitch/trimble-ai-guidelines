@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ModusWcButton, ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-react';
+import { useExpert1Variant } from '../context/Expert1VariantContext';
 
 /* ─────────────────────────────────────────────────────────────────
  * Expert 1 — LEAD THE CONVERSATION  (Troubleshooting variant)
@@ -62,7 +63,6 @@ const POWER_CHECKS = [
   'Power cable is seated at both ends',
   'Power LED is on (steady green)',
   'Outlet delivers power (try a different one)',
-  'Device has been power-cycled (off 30s, on)',
 ];
 
 interface ContactMethod {
@@ -99,53 +99,6 @@ function TrimbleAiLogo({ size = 24 }: { size?: number }) {
         />
       </svg>
     </span>
-  );
-}
-
-/* ── Toolbar icon button (thumbs, refresh, share, copy) ─────────── */
-function ActionIconButton({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex items-center justify-center rounded-md transition-colors"
-      style={{
-        width: '24px',
-        height: '24px',
-        backgroundColor: active
-          ? 'var(--modus-wc-color-base-200, #e0e1e9)'
-          : 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-      }}
-      onMouseEnter={(e) => {
-        if (active) return;
-        e.currentTarget.style.backgroundColor = 'var(--modus-wc-color-base-100, #f1f1f6)';
-      }}
-      onMouseLeave={(e) => {
-        if (active) return;
-        e.currentTarget.style.backgroundColor = 'transparent';
-      }}
-    >
-      <ModusWcIcon
-        name={icon}
-        size="xs"
-        decorative
-        style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-      />
-    </button>
   );
 }
 
@@ -647,11 +600,26 @@ function ContactSupportCard({
   );
 }
 
-/* ── Expert 1 — Lead the Conversation (Troubleshooting card) ───── */
-function TroubleshootCard() {
+/* ── Expert 1 — Lead the Conversation (Troubleshooting card)
+ *    `showPromptBar` toggles the sticky bottom (rainbow prompt input
+ *    + disclaimer). The "screen-only" variant turns it off so we can
+ *    showcase just the conversation itself.
+ *    `logoSize` lets the screen-only landscape variant scale the
+ *    agent avatar up so it reads at the bigger width.               */
+function TroubleshootCard({
+  showPromptBar = true,
+  logoSize = 24,
+  logoOffsetLeft = 0,
+}: {
+  showPromptBar?: boolean;
+  logoSize?: number;
+  logoOffsetLeft?: number;
+} = {}) {
   const [activeStep, setActiveStep] = useState<StepId | null>(null);
   const [triedSteps, setTriedSteps] = useState<StepId[]>([]);
-  const [powerChecks, setPowerChecks] = useState<boolean[]>([false, false, false, false]);
+  const [powerChecks, setPowerChecks] = useState<boolean[]>(() =>
+    POWER_CHECKS.map(() => false),
+  );
   const [appAnswer, setAppAnswer] = useState<'yes' | 'no' | 'unknown' | null>(null);
   const [contactMethod, setContactMethod] = useState<ContactMethod['id'] | null>(null);
   const [includeContext, setIncludeContext] = useState(true);
@@ -662,8 +630,6 @@ function TroubleshootCard() {
   >(null);
   const [showWhy, setShowWhy] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
-  const [copied, setCopied] = useState(false);
   const [draft, setDraft] = useState('');
   const [freeMessages, setFreeMessages] = useState<
     { kind: 'user' | 'agent'; text: string }[]
@@ -727,42 +693,14 @@ function TroubleshootCard() {
   function startOver() {
     setActiveStep(null);
     setTriedSteps([]);
-    setPowerChecks([false, false, false, false]);
+    setPowerChecks(POWER_CHECKS.map(() => false));
     setAppAnswer(null);
     setContactMethod(null);
     setIncludeContext(true);
     setResolution(null);
     setShowWhy(false);
     setIsThinking(false);
-    setFeedback(null);
-    setCopied(false);
     setFreeMessages([]);
-  }
-
-  function handleCopy() {
-    const lines: string[] = ['Error Code C0342'];
-    lines.push('Diagnosis: hardware fault (likely power or connection).');
-    triedSteps.forEach((id) => {
-      const step = TROUBLE_STEPS.find((s) => s.id === id);
-      if (step) lines.push(`· Tried: ${step.label}`);
-    });
-    if (resolution?.kind === 'resolved') {
-      const s = TROUBLE_STEPS.find((s) => s.id === resolution.via);
-      lines.push(`· Resolved by: ${s?.label}`);
-    }
-    if (resolution?.kind === 'escalated') {
-      const m = CONTACT_METHODS.find((m) => m.id === resolution.via);
-      lines.push(`· Escalated via: ${m?.label}`);
-    }
-    if (freeMessages.length) {
-      lines.push('');
-      freeMessages.forEach((m) =>
-        lines.push(`${m.kind === 'user' ? 'You' : 'Agent'}: ${m.text}`),
-      );
-    }
-    navigator.clipboard?.writeText(lines.join('\n')).catch(() => {});
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
   }
 
   function handleSend(textOverride?: string) {
@@ -812,8 +750,22 @@ function TroubleshootCard() {
 
       {/* Agent — diagnosis + ordered next-step stack */}
       <div className="flex gap-2 items-start">
-        <div className="shrink-0">
-          <TrimbleAiLogo size={24} />
+        {/* Logo column. With items-start the logo's top hugs the column,
+            but visually we want its vertical center to sit on the first
+            line of "C0342 normally means…" (line-height: 24px). Shift
+            it up by half the difference so the centers line up.
+            `logoOffsetLeft` lets each variant tune the horizontal
+            placement — phone-shell uses 0 so the avatar aligns with
+            the hamburger above it, screen-only tugs the bigger logo
+            left so it reads as the agent's column gutter.            */}
+        <div
+          className="shrink-0"
+          style={{
+            marginTop: `${(24 - logoSize) / 2}px`,
+            marginLeft: `${-logoOffsetLeft}px`,
+          }}
+        >
+          <TrimbleAiLogo size={logoSize} />
         </div>
 
         <div className="flex flex-col gap-3 flex-1 min-w-0">
@@ -905,51 +857,62 @@ function TroubleshootCard() {
             </div>
           )}
 
-          {/* Stacked action cards — only render while there's no final resolution */}
+          {/* Stacked action cards — only render while there's no final
+              resolution. The active step's sub-flow renders inline,
+              directly under the button that was clicked, so the user
+              doesn't have to look elsewhere for what just opened. */}
           {showActionStack && (
             <div className="flex flex-col gap-2">
-              {TROUBLE_STEPS.map((step) => (
-                <ActionCard
-                  key={step.id}
-                  step={step}
-                  state={cardState[step.id]}
-                  onClick={() => openStep(step.id)}
-                />
-              ))}
+              {TROUBLE_STEPS.map((step) => {
+                const isActive = activeStep === step.id;
+                return (
+                  <div key={step.id} className="flex flex-col gap-2">
+                    <ActionCard
+                      step={step}
+                      state={cardState[step.id]}
+                      onClick={() => openStep(step.id)}
+                    />
+
+                    {isActive && isThinking && <TypingIndicator />}
+
+                    {isActive && !isThinking && step.id === 'power' && (
+                      <PowerCheckCard
+                        checks={powerChecks}
+                        onToggle={(i) =>
+                          setPowerChecks((prev) =>
+                            prev.map((v, idx) => (idx === i ? !v : v)),
+                          )
+                        }
+                        onResolved={() => markResolved('power')}
+                        onUnresolved={() => markUnresolvedAndAdvance('power')}
+                      />
+                    )}
+
+                    {isActive && !isThinking && step.id === 'app' && (
+                      <AppIsolationCard
+                        answer={appAnswer}
+                        onAnswer={setAppAnswer}
+                        onResolved={() => markResolved('app')}
+                        onUnresolved={() => markUnresolvedAndAdvance('app')}
+                      />
+                    )}
+
+                    {isActive && !isThinking && step.id === 'support' && (
+                      <ContactSupportCard
+                        selected={contactMethod}
+                        onSelect={setContactMethod}
+                        onConnect={connectSupport}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Brief thinking pause between steps */}
-          {isThinking && <TypingIndicator />}
-
-          {/* Sub-flow for the active step */}
-          {!isThinking && activeStep === 'power' && (
-            <PowerCheckCard
-              checks={powerChecks}
-              onToggle={(i) =>
-                setPowerChecks((prev) => prev.map((v, idx) => (idx === i ? !v : v)))
-              }
-              onResolved={() => markResolved('power')}
-              onUnresolved={() => markUnresolvedAndAdvance('power')}
-            />
-          )}
-
-          {!isThinking && activeStep === 'app' && (
-            <AppIsolationCard
-              answer={appAnswer}
-              onAnswer={setAppAnswer}
-              onResolved={() => markResolved('app')}
-              onUnresolved={() => markUnresolvedAndAdvance('app')}
-            />
-          )}
-
-          {!isThinking && activeStep === 'support' && (
-            <ContactSupportCard
-              selected={contactMethod}
-              onSelect={setContactMethod}
-              onConnect={connectSupport}
-            />
-          )}
+          {/* Typing indicator while advancing between steps (no
+              activeStep yet so we can't dock it under any one card). */}
+          {isThinking && !activeStep && <TypingIndicator />}
 
           {/* Final resolution card */}
           {!isThinking && resolution?.kind === 'resolved' && resolvedStep && (
@@ -1111,33 +1074,12 @@ function TroubleshootCard() {
             </div>
           )}
 
-          {/* Toolbar */}
-          <div className="flex gap-1 items-center pt-1">
-            <ActionIconButton
-              icon="thumbs_up"
-              label="Helpful"
-              active={feedback === 'up'}
-              onClick={() => setFeedback((p) => (p === 'up' ? null : 'up'))}
-            />
-            <ActionIconButton
-              icon="thumbs_down"
-              label="Not helpful"
-              active={feedback === 'down'}
-              onClick={() => setFeedback((p) => (p === 'down' ? null : 'down'))}
-            />
-            <ActionIconButton icon="refresh" label="Start over" onClick={startOver} />
-            <ActionIconButton icon="share" label="Share" />
-            <ActionIconButton
-              icon={copied ? 'check' : 'content_copy'}
-              label={copied ? 'Copied' : 'Copy conversation'}
-              onClick={handleCopy}
-            />
-          </div>
         </div>
       </div>
       </div>
 
-      {/* Sticky bottom — rainbow prompt + disclaimer, pinned to the bottom of the phone */}
+      {showPromptBar && (
+      /* Sticky bottom — rainbow prompt + disclaimer, pinned to the bottom of the phone */
       <div
         className="shrink-0 flex flex-col"
         style={{
@@ -1286,6 +1228,7 @@ function TroubleshootCard() {
         </button>
       </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1301,6 +1244,10 @@ function TroubleshootCard() {
 
 const MOBILE_WIDTH = 375;
 const MOBILE_HEIGHT = 720;
+/* Landscape width for the "Screen only" variant — wider than the
+ * 375px phone so it clearly reads as landscape, but not the full
+ * 720px rotation (that felt too stretched for a chat thread).       */
+const BARE_LANDSCAPE_WIDTH = 560;
 
 /* ── Mobile top bar — hamburger + circular avatar ───────────────── */
 function MobileTopBar() {
@@ -1381,7 +1328,41 @@ function TiM2Mobile() {
   );
 }
 
-/* ── Expert 1 — page export ────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+ * TiM2Bare — option 2. Landscape conversation card. No phone chrome
+ * at all: the MobileTopBar (hamburger + avatar) and the sticky
+ * bottom prompt bar + disclaimer are both stripped. No bezel, no
+ * border, no shadow, no rounded corners. The card is laid out
+ * landscape (720px wide — same as the phone's height) so it reads
+ * as the rotated device, and it grows naturally with its content.
+ * ───────────────────────────────────────────────────────────────── */
+function TiM2Bare() {
+  return (
+    <div
+      className="flex flex-col shrink-0"
+      style={{ width: `${BARE_LANDSCAPE_WIDTH}px` }}
+    >
+      <TroubleshootCard showPromptBar={false} logoSize={30} logoOffsetLeft={10} />
+    </div>
+  );
+}
+
+/* Visual scale factor applied to the whole guideline. `zoom` (rather
+ * than `transform: scale`) is used so the layout box grows too — that
+ * way the parent Shell still centers cleanly with no overflow clip
+ * and no subpixel blurriness. Bump this constant to taste.          */
+const UI_SCALE = 1.1;
+
+/* ── Expert 1 — page export.
+ *    Reads the variant from Expert1VariantContext, which is driven by
+ *    the Expert1VariantPicker inside the top-right GuidelineOverlay
+ *    info button (App.tsx). Defaults to the full phone shell.       */
 export default function Expert1() {
-  return <TiM2Mobile />;
+  const ctx = useExpert1Variant();
+  const variant = ctx?.variant ?? 'phone';
+  return (
+    <div style={{ zoom: UI_SCALE }}>
+      {variant === 'phone' ? <TiM2Mobile /> : <TiM2Bare />}
+    </div>
+  );
 }

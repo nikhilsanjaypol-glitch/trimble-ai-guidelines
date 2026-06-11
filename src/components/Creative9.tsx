@@ -271,11 +271,11 @@ function InteriorViewport({
     sideWall.receiveShadow = true;
     scene.add(sideWall);
 
-    /* Sofa (always visible) */
-    addBox(3.4, 0.45, 1.3, 0, 0.4, -3.2, materials.sofa);
-    addBox(3.4, 0.95, 0.28, 0, 0.85, -3.78, materials.sofa);
-    addBox(0.28, 0.65, 1.3, -1.56, 0.85, -3.2, materials.sofa);
-    addBox(0.28, 0.65, 1.3, 1.56, 0.85, -3.2, materials.sofa);
+    /* Sofa (always visible) — seated flat on the floor */
+    addBox(3.4, 0.45, 1.3, 0, 0,    -3.2, materials.sofa);
+    addBox(3.4, 0.95, 0.28, 0, 0.45, -3.78, materials.sofa);
+    addBox(0.28, 0.65, 1.3, -1.56, 0.45, -3.2, materials.sofa);
+    addBox(0.28, 0.65, 1.3, 1.56, 0.45, -3.2, materials.sofa);
 
     /* Coffee table (always visible) */
     addBox(1.6, 0.08, 0.9, 0, 0.42, -1.4, materials.table);
@@ -828,10 +828,10 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-colors"
+      className="flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-colors h-full"
       style={{
         flex: isPrimary ? 1.4 : 1,
-        padding: '13px 10px',
+        padding: '0 10px',
         fontSize: 'var(--modus-wc-font-size-xs, 12px)',
         backgroundColor: flash
           ? 'var(--modus-wc-color-status-success, #1e7e34)'
@@ -946,163 +946,168 @@ export default function Creative9() {
 
   return (
     <div
-      className="flex gap-5 p-5 rounded-2xl"
+      className="grid p-5 rounded-2xl"
       style={{
         backgroundColor: 'var(--modus-wc-color-base-100, #f5f6f8)',
         width: '1040px',
+        gridTemplateColumns: '1fr 320px',
+        gridTemplateRows: '1fr auto',
+        columnGap: '20px',
+        rowGap: '12px',
       }}
     >
-      {/* ── LEFT: 3D viewport + chat bar ─────────────────────── */}
-      <div className="flex-1 flex flex-col gap-3 min-w-0">
-        {/* Viewport grows to fill — that's what pushes the chat
-            bar down to the column's true bottom, so it lines up
-            with the action buttons on the right. */}
+      {/* ── ROW 1 · COL 1 — 3D viewport ──────────────────────── */}
+      {/* CSS Grid forces both row-1 cells to render at the SAME
+          height regardless of which side's content is taller or
+          when icons / Three.js finish loading — that's what stops
+          the gap from reappearing on reload. */}
+      <div
+        className="relative rounded-2xl overflow-hidden"
+        style={{
+          minHeight: '420px',
+          backgroundColor: '#1d1f24',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.10)',
+        }}
+      >
+        <InteriorViewport
+          selectedSwatches={selectedSwatches}
+          lighting={lighting}
+          activeDecor={activeDecor}
+          atmosphere={atmosphere}
+        />
+
+        {/* Orbit hint */}
         <div
-          className="relative rounded-xl overflow-hidden flex-1"
+          className="absolute flex items-center gap-1.5 rounded-full"
           style={{
-            minHeight: '420px',
-            backgroundColor: '#1d1f24',
-            boxShadow: '0 6px 18px rgba(0,0,0,0.10)',
+            bottom: '14px',
+            right: '14px',
+            padding: '4px 10px',
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(4px)',
+            color: 'rgba(255,255,255,0.92)',
+            fontSize: '10px',
+            letterSpacing: '0.3px',
           }}
         >
-          <InteriorViewport
-            selectedSwatches={selectedSwatches}
-            lighting={lighting}
-            activeDecor={activeDecor}
-            atmosphere={atmosphere}
-          />
-
-          {/* Orbit hint */}
-          <div
-            className="absolute flex items-center gap-1.5 rounded-full"
-            style={{
-              bottom: '14px',
-              right: '14px',
-              padding: '4px 10px',
-              backgroundColor: 'rgba(0,0,0,0.55)',
-              backdropFilter: 'blur(4px)',
-              color: 'rgba(255,255,255,0.92)',
-              fontSize: '10px',
-              letterSpacing: '0.3px',
-            }}
-          >
-            <ModusWcIcon name="drag" size="xs" decorative style={{ color: '#fff' }} />
-            Drag to orbit · scroll to zoom
-          </div>
+          <ModusWcIcon name="drag" size="xs" decorative style={{ color: '#fff' }} />
+          Drag to orbit · scroll to zoom
         </div>
-
-        <ChatBar value={chat} onChange={setChat} onSubmit={() => setChat('')} />
       </div>
 
-      {/* ── RIGHT: possibility controls + bottom action row ───── */}
-      <div className="flex flex-col gap-3 shrink-0" style={{ width: '320px' }}>
-        {/* Panel card — grows to fill, leaving the button row to
-            land at the same y as the chat bar on the left. */}
-        <div
-          className="flex-1 flex flex-col gap-4 p-5 rounded-2xl"
-          style={{
-            backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}
-        >
-          {/* Title block */}
-          <div className="flex flex-col gap-0.5">
-            <span
-              className="font-medium"
-              style={{
-                fontSize: '10px',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                letterSpacing: '0.8px',
-              }}
-            >
-              AI POSSIBILITIES
-            </span>
-            <span
-              className="font-semibold"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-lg, 18px)',
-                color: 'var(--modus-wc-color-base-content, #101828)',
-                lineHeight: 1.3,
-              }}
-            >
-              Explore this scene
-            </span>
-          </div>
+      {/* ── ROW 1 · COL 2 — Possibility controls card ───────── */}
+      <div
+        className="flex flex-col gap-5 p-5 rounded-2xl"
+        style={{
+          backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}
+      >
+        {/* Title block */}
+        <div className="flex flex-col gap-0.5">
+          <span
+            className="font-medium"
+            style={{
+              fontSize: '10px',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              letterSpacing: '0.8px',
+            }}
+          >
+            AI POSSIBILITIES
+          </span>
+          <span
+            className="font-semibold"
+            style={{
+              fontSize: 'var(--modus-wc-font-size-lg, 18px)',
+              color: 'var(--modus-wc-color-base-content, #101828)',
+              lineHeight: 1.3,
+            }}
+          >
+            Explore this scene
+          </span>
+        </div>
 
-          {/* Lighting Mood */}
-          <div className="flex flex-col gap-1.5">
-            <SectionLabel icon="sun" label="Lighting mood" />
-            <LightingPicker value={lighting} onChange={setLighting} />
-          </div>
+        {/* Lighting Mood */}
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel icon="sun" label="Lighting mood" />
+          <LightingPicker value={lighting} onChange={setLighting} />
+        </div>
 
-          {/* Surface Materials */}
-          <div className="flex flex-col gap-1.5">
-            <SectionLabel icon="palette" label="Surface materials" />
-            <SwatchPicker
-              selectedIds={selectedSwatches}
-              onToggle={toggleSwatch}
+        {/* Surface Materials */}
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel icon="palette" label="Surface materials" />
+          <SwatchPicker
+            selectedIds={selectedSwatches}
+            onToggle={toggleSwatch}
+          />
+        </div>
+
+        {/* Decor */}
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel icon="sustainability" label="Decor elements" />
+          <DecorToggles active={activeDecor} onToggle={toggleDecor} />
+        </div>
+
+        {/* Atmosphere — wires into scene.fog in the 3D viewport */}
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel icon="moon" label="Atmosphere" />
+          <AtmospherePicker value={atmosphere} onChange={setAtmosphere} />
+        </div>
+      </div>
+
+      {/* ── ROW 2 · COL 1 — Chat bar ─────────────────────────── */}
+      <ChatBar value={chat} onChange={setChat} onSubmit={() => setChat('')} />
+
+      {/* ── ROW 2 · COL 2 — Action buttons ───────────────────── */}
+      {/* Grid forces row 2 to a single auto height; setting the
+          buttons to 42px keeps that row exactly as tall as the
+          chat-bar pill on the left. */}
+      <div
+        className="flex items-stretch gap-2"
+        style={{ height: '42px' }}
+      >
+        <ActionButton
+          variant="tertiary"
+          onClick={handleSurprise}
+          label="Surprise me"
+          icon={
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8L12 2z"
+                fill="var(--modus-wc-color-primary, #0063A7)"
+              />
+              <circle cx="19" cy="5" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
+              <circle cx="5" cy="19" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
+            </svg>
+          }
+        />
+        <ActionButton
+          variant="tertiary"
+          onClick={handleReset}
+          label="Reset"
+          icon={
+            <ModusWcIcon
+              name="refresh"
+              size="xs"
+              decorative
+              style={{ color: 'var(--modus-wc-color-base-content, #364153)' }}
             />
-          </div>
-
-          {/* Decor */}
-          <div className="flex flex-col gap-1.5">
-            <SectionLabel icon="sustainability" label="Decor elements" />
-            <DecorToggles active={activeDecor} onToggle={toggleDecor} />
-          </div>
-
-          {/* Atmosphere — wires into scene.fog in the 3D viewport */}
-          <div className="flex flex-col gap-1.5">
-            <SectionLabel icon="moon" label="Atmosphere" />
-            <AtmospherePicker value={atmosphere} onChange={setAtmosphere} />
-          </div>
-        </div>
-
-        {/* Bottom action row — sits OUTSIDE the panel so its
-            baseline aligns with the chat bar on the left. */}
-        <div className="flex items-center gap-2">
-          <ActionButton
-            variant="tertiary"
-            onClick={handleSurprise}
-            label="Surprise me"
-            icon={
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8L12 2z"
-                  fill="var(--modus-wc-color-primary, #0063A7)"
-                />
-                <circle cx="19" cy="5" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
-                <circle cx="5" cy="19" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
-              </svg>
-            }
-          />
-          <ActionButton
-            variant="tertiary"
-            onClick={handleReset}
-            label="Reset"
-            icon={
-              <ModusWcIcon
-                name="refresh"
-                size="xs"
-                decorative
-                style={{ color: 'var(--modus-wc-color-base-content, #364153)' }}
-              />
-            }
-          />
-          <ActionButton
-            variant="primary"
-            onClick={handleSave}
-            label="Apply to model"
-            flash={savedFlash}
-            icon={
-              <ModusWcIcon
-                name="check_circle"
-                size="xs"
-                decorative
-                style={{ color: '#fff' }}
-              />
-            }
-          />
-        </div>
+          }
+        />
+        <ActionButton
+          variant="primary"
+          onClick={handleSave}
+          label="Apply to model"
+          flash={savedFlash}
+          icon={
+            <ModusWcIcon
+              name="check_circle"
+              size="xs"
+              decorative
+              style={{ color: '#fff' }}
+            />
+          }
+        />
       </div>
     </div>
   );

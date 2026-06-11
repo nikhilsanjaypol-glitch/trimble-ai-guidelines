@@ -8,6 +8,10 @@ import {
   ModusWcIcon,
   ModusWcTextInput,
 } from '@trimble-oss/moduswebcomponents-react';
+import {
+  useCreative3Variant,
+  type Creative3Variant,
+} from '../context/Creative3VariantContext';
 
 /* ─────────────────────────────────────────────────────────────────
  * Guideline: PROVIDE OPTIONS
@@ -450,10 +454,12 @@ function ThumbnailCard({
   direction,
   chosen,
   onOpen,
+  showMoves,
 }: {
   direction: Direction;
   chosen: boolean;
   onOpen: () => void;
+  showMoves: boolean;
 }) {
   return (
     <button
@@ -579,14 +585,19 @@ function ThumbnailCard({
           borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
         }}
       >
-        <span
-          style={{
-            fontSize: '11px',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          }}
-        >
-          {direction.moves.length} moves
-        </span>
+        {showMoves ? (
+          <span
+            style={{
+              fontSize: '11px',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          >
+            {direction.moves.length} moves
+          </span>
+        ) : (
+          /* keep the row balanced when the moves counter is hidden */
+          <span aria-hidden="true" />
+        )}
         <span
           className="flex items-center gap-1"
           style={{
@@ -843,10 +854,23 @@ export default function Creative3() {
   const [enabled, setEnabled] = useState<Set<string>>(DEFAULT_ENABLED);
   const [chosenId, setChosenId] = useState<PlanId | null>(null);
 
+  /* The variant ('with-moves' | 'no-moves') is owned by the shared
+     Creative3VariantContext so the existing top-right "info" overlay
+     can render the picker. If the provider is missing (e.g. when this
+     component is rendered standalone) we fall back to 'no-moves' —
+     the same default used by the provider so first-open is consistent. */
+  const variantCtx = useCreative3Variant();
+  const variant: Creative3Variant = variantCtx?.variant ?? 'no-moves';
+
   const active = activeId
     ? DIRECTIONS.find((d) => d.id === activeId) ?? null
     : null;
   const chosen = DIRECTIONS.find((d) => d.id === chosenId) ?? null;
+
+  /* In the no-moves variant we always render every move as visible so the
+     LivePlan shows the complete plan without any toggle UI alongside it. */
+  const effectiveEnabled =
+    variant === 'no-moves' ? DEFAULT_ENABLED : enabled;
 
   const openDetail = (id: PlanId) => {
     setActiveId(id);
@@ -882,6 +906,28 @@ export default function Creative3() {
     setChosenId((prev) => (prev === active.id ? null : active.id));
   };
 
+  /* AI label copy is variant-aware: the interactive flavor invites the
+     user to toggle moves, the showcase flavor is purely browse-and-pick.*/
+  const labelText = (() => {
+    if (view === 'overview') {
+      if (chosen) {
+        return `${chosen.name} is locked in. Open another option to compare, or revisit your choice.`;
+      }
+      return variant === 'with-moves'
+        ? '5 divergent directions for your kitchen. Open any option to explore it in detail.'
+        : '5 divergent directions for your kitchen. Open any option to see the full plan.';
+    }
+    if (!active) return '';
+    if (chosenId === active.id) {
+      return variant === 'with-moves'
+        ? `${active.name} is locked in. Keep refining its moves or go back to compare.`
+        : `${active.name} is locked in. Go back to compare with the other directions.`;
+    }
+    return variant === 'with-moves'
+      ? `Exploring ${active.name}. Toggle moves below, then commit — or head back to all options.`
+      : `Exploring ${active.name}. Commit when you're ready — or head back to all options.`;
+  })();
+
   return (
     <div
       className="flex flex-col items-stretch gap-4"
@@ -916,26 +962,23 @@ export default function Creative3() {
             marginRight: '2px',
           }}
         >
-          {view === 'overview'
-            ? chosen
-              ? `${chosen.name} is locked in. Open another option to compare, or revisit your choice.`
-              : '5 divergent directions for your kitchen. Open any option to explore it in detail.'
-            : active
-              ? chosenId === active.id
-                ? `${active.name} is locked in. Keep refining its moves or go back to compare.`
-                : `Exploring ${active.name}. Toggle moves below, then commit — or head back to all options.`
-              : ''}
+          {labelText}
         </span>
       </div>
 
       {view === 'overview' && (
-        <OverviewScreen chosenId={chosenId} onOpen={openDetail} />
+        <OverviewScreen
+          chosenId={chosenId}
+          onOpen={openDetail}
+          showMoves={variant === 'with-moves'}
+        />
       )}
 
       {view === 'detail' && active && (
         <DetailScreen
+          variant={variant}
           active={active}
-          enabled={enabled}
+          enabled={effectiveEnabled}
           chosenId={chosenId}
           onToggleMove={toggleMove}
           onToggleChoice={toggleChoice}
@@ -962,8 +1005,10 @@ export default function Creative3() {
         />
       )}
 
-      {/* prompt bar — sits directly below the cards */}
-      <PromptBar />
+      {/* prompt bar — only in the interactive (with-moves) variant.
+          The showcase (no-moves) variant is a read-only browser, so the
+          prompt input is dropped to keep the surface focused.        */}
+      {variant === 'with-moves' && <PromptBar />}
     </div>
   );
 }
@@ -973,9 +1018,11 @@ export default function Creative3() {
 function OverviewScreen({
   chosenId,
   onOpen,
+  showMoves,
 }: {
   chosenId: PlanId | null;
   onOpen: (id: PlanId) => void;
+  showMoves: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -1008,6 +1055,7 @@ function OverviewScreen({
             direction={d}
             chosen={d.id === chosenId}
             onOpen={() => onOpen(d.id)}
+            showMoves={showMoves}
           />
         ))}
       </div>
@@ -1018,6 +1066,7 @@ function OverviewScreen({
 /* ── detail screen (zoom-in target) ─────────────────────────────── */
 
 function DetailScreen({
+  variant,
   active,
   enabled,
   chosenId,
@@ -1032,6 +1081,7 @@ function DetailScreen({
   position,
   total,
 }: {
+  variant: Creative3Variant;
   active: Direction;
   enabled: Set<string>;
   chosenId: PlanId | null;
@@ -1046,6 +1096,7 @@ function DetailScreen({
   position: number;
   total: number;
 }) {
+  const showMoves = variant === 'with-moves';
   const activeIsChosen = chosenId === active.id;
   const activeOnCount = active.moves.filter((m) =>
     enabled.has(moveKey(active.id, m.id))
@@ -1150,28 +1201,30 @@ function DetailScreen({
               {active.philosophy}
             </span>
           </div>
-          <div className="ml-auto flex items-center gap-1.5 shrink-0">
-            <span
-              className="rounded-full px-2.5 py-1"
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: active.accent,
-                backgroundColor: active.accentSoft,
-              }}
-            >
-              {activeOnCount} of {active.moves.length} moves on
-            </span>
-          </div>
+          {showMoves && (
+            <div className="ml-auto flex items-center gap-1.5 shrink-0">
+              <span
+                className="rounded-full px-2.5 py-1"
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: active.accent,
+                  backgroundColor: active.accentSoft,
+                }}
+              >
+                {activeOnCount} of {active.moves.length} moves on
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* body: SVG (left) + toggle stack (right) */}
+        {/* body: SVG (left) + toggle stack (right, only when with-moves) */}
         <div className="flex gap-4">
           <div
-            className="rounded-xl overflow-hidden shrink-0"
+            className="rounded-xl overflow-hidden"
             style={{
-              width: '440px',
-              height: '300px',
+              flex: showMoves ? '0 0 440px' : '1 1 auto',
+              height: showMoves ? '300px' : '360px',
               backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
               border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
               padding: '8px',
@@ -1180,60 +1233,65 @@ function DetailScreen({
             <LivePlan direction={active} enabled={enabled} />
           </div>
 
-          <div className="flex flex-col gap-2 flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <span
-                className="font-semibold"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xs, 11.5px)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  margin: 0,
-                }}
-              >
-                Signature moves
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  onSetEnabled((prev) => {
-                    const next = new Set(prev);
-                    const allOn = active.moves.every((m) =>
-                      next.has(moveKey(active.id, m.id))
-                    );
-                    active.moves.forEach((m) => {
-                      const k = moveKey(active.id, m.id);
-                      if (allOn) next.delete(k);
-                      else next.add(k);
+          {showMoves && (
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span
+                  className="font-semibold"
+                  style={{
+                    fontSize: 'var(--modus-wc-font-size-xs, 11.5px)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color:
+                      'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                    margin: 0,
+                  }}
+                >
+                  Signature moves
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSetEnabled((prev) => {
+                      const next = new Set(prev);
+                      const allOn = active.moves.every((m) =>
+                        next.has(moveKey(active.id, m.id))
+                      );
+                      active.moves.forEach((m) => {
+                        const k = moveKey(active.id, m.id);
+                        if (allOn) next.delete(k);
+                        else next.add(k);
+                      });
+                      return next;
                     });
-                    return next;
-                  });
-                }}
-                style={{
-                  fontSize: '11px',
-                  color: active.accent,
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontWeight: 600,
-                }}
-              >
-                {activeOnCount === active.moves.length ? 'Hide all' : 'Show all'}
-              </button>
+                  }}
+                  style={{
+                    fontSize: '11px',
+                    color: active.accent,
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontWeight: 600,
+                  }}
+                >
+                  {activeOnCount === active.moves.length
+                    ? 'Hide all'
+                    : 'Show all'}
+                </button>
+              </div>
+              {active.moves.map((m) => (
+                <MoveToggle
+                  key={m.id}
+                  move={m}
+                  enabled={enabled.has(moveKey(active.id, m.id))}
+                  accent={active.accent}
+                  accentSoft={active.accentSoft}
+                  onToggle={() => onToggleMove(active.id, m.id)}
+                />
+              ))}
             </div>
-            {active.moves.map((m) => (
-              <MoveToggle
-                key={m.id}
-                move={m}
-                enabled={enabled.has(moveKey(active.id, m.id))}
-                accent={active.accent}
-                accentSoft={active.accentSoft}
-                onToggle={() => onToggleMove(active.id, m.id)}
-              />
-            ))}
-          </div>
+          )}
         </div>
 
         {/* footer — single primary commit action */}
@@ -1264,8 +1322,9 @@ function DetailScreen({
                   <span style={{ fontWeight: 600, color: active.accent }}>
                     {active.name}
                   </span>{' '}
-                  is locked in with {activeOnCount} of {active.moves.length}{' '}
-                  signature moves.
+                  {showMoves
+                    ? `is locked in with ${activeOnCount} of ${active.moves.length} signature moves.`
+                    : 'is locked in.'}
                 </span>
               </>
             ) : (

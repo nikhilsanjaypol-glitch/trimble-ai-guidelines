@@ -1,5 +1,20 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import {
+  Creative3VariantProvider,
+  useCreative3Variant,
+  type Creative3Variant,
+} from './context/Creative3VariantContext';
+import {
+  Creative7VariantProvider,
+  useCreative7Variant,
+  type Creative7Variant,
+} from './context/Creative7VariantContext';
+import {
+  Expert1VariantProvider,
+  useExpert1Variant,
+  type Expert1Variant,
+} from './context/Expert1VariantContext';
 import Creative1 from './components/Creative1';
 import Creative2 from './components/Creative2';
 import Creative3 from './components/Creative3';
@@ -44,7 +59,7 @@ const routes: RouteDef[] = [
   { path: '/expert1', label: 'Expert 1 — Lead the Conversation', Component: Expert1 },
   { path: '/expert2', label: 'Expert 2 — Communicate the Work', Component: Expert2 },
   { path: '/expert3', label: 'Expert 3 — Prioritize Clarity Over Complexity', Component: Expert3 },
-  { path: '/expert4', label: 'Expert 4 — Explain Why', Component: Expert4 },
+  { path: '/expert4', label: 'Expert 4 — Explain Why', Component: Expert4, fullBleed: true },
   { path: '/expert5', label: 'Expert 5 — Be Honest About Limitations', Component: Expert5 },
   { path: '/expert6', label: 'Expert 6 — Highlight Further Investigation', Component: Expert6 },
   { path: '/pro1', label: 'Pro 1 — Integrate with Professional Tools', Component: Pro1 },
@@ -211,15 +226,17 @@ function categoryOf(slug: string): keyof typeof CATEGORY_COLORS | null {
 
 /* ── Top-left guideline overlay ────────────────────────────────── */
 function GuidelineOverlay({
+  slug,
   label,
   info,
   color,
 }: {
+  slug: string;
   label: string;
   info: GuidelineInfo;
   color: string;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const dashIdx = label.indexOf(' — ');
   const pre = dashIdx >= 0 ? label.slice(0, dashIdx) : label;
   const name = dashIdx >= 0 ? label.slice(dashIdx + 3) : '';
@@ -328,6 +345,355 @@ function GuidelineOverlay({
       >
         {info.body}
       </p>
+
+      {slug === 'creative3' && <Creative3VariantPicker color={color} />}
+      {slug === 'creative7' && <Creative7VariantPicker color={color} />}
+      {slug === 'expert1' && <Expert1VariantPicker color={color} />}
+    </div>
+  );
+}
+
+/* ── Creative-3 specific: pick between the two variants of the
+ *    "Provide options" guideline (with / without signature moves).
+ *    Renders inside the GuidelineOverlay only when on /creative3.
+ *    Reads + writes the variant via Creative3VariantContext.       */
+function Creative3VariantPicker({ color }: { color: string }) {
+  const ctx = useCreative3Variant();
+  if (!ctx) return null;
+  const { variant, setVariant } = ctx;
+
+  const options: { id: Creative3Variant; title: string; desc: string }[] = [
+    {
+      id: 'with-moves',
+      title: 'With signature moves',
+      desc: 'Toggle each move on/off to customize a direction.',
+    },
+    {
+      id: 'no-moves',
+      title: 'Without signature moves',
+      desc: 'See each direction as a complete plan — no toggles.',
+    },
+  ];
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Guideline version"
+      className="mt-3 pt-3"
+      style={{
+        borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+      }}
+    >
+      <div
+        className="uppercase font-semibold"
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.18em',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          marginBottom: 6,
+        }}
+      >
+        Guideline version
+      </div>
+
+      <div className="flex flex-col" style={{ gap: 4 }}>
+        {options.map((opt) => {
+          const isCurrent = variant === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="radio"
+              aria-checked={isCurrent}
+              onClick={() => setVariant(opt.id)}
+              className="flex items-start"
+              style={{
+                gap: 8,
+                padding: '6px 8px',
+                borderRadius: 6,
+                border: 'none',
+                background: isCurrent
+                  ? 'var(--modus-wc-color-base-100, #f1f1f6)'
+                  : 'transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+                color: 'var(--modus-wc-color-base-content, #1a1a1a)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background =
+                    'var(--modus-wc-color-base-100, #f1f1f6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  border: `2px solid ${isCurrent ? color : 'var(--modus-wc-color-base-200, #c8c9d2)'}`,
+                  background: isCurrent ? color : 'transparent',
+                  marginTop: 2,
+                  flexShrink: 0,
+                  boxShadow: isCurrent
+                    ? 'inset 0 0 0 2px #fff'
+                    : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              />
+              <span className="flex flex-col" style={{ gap: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
+                  {opt.title}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                    color:
+                      'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  }}
+                >
+                  {opt.desc}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Creative-7 specific: pick between the two variants of the
+ *    "Reiterate the plan" guideline (full tablet shell / plan-only).
+ *    Renders inside the GuidelineOverlay only when on /creative7.    */
+function Creative7VariantPicker({ color }: { color: string }) {
+  const ctx = useCreative7Variant();
+  if (!ctx) return null;
+  const { variant, setVariant } = ctx;
+
+  const options: { id: Creative7Variant; title: string; desc: string }[] = [
+    {
+      id: 'plan-only',
+      title: 'Plan card only',
+      desc: 'Just the centered chat thread — no shell, no prompt bar.',
+    },
+    {
+      id: 'tablet',
+      title: 'Full tablet view',
+      desc: 'Chat shell with side nav, avatar, plan card, and prompt bar.',
+    },
+  ];
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Guideline version"
+      className="mt-3 pt-3"
+      style={{
+        borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+      }}
+    >
+      <div
+        className="uppercase font-semibold"
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.18em',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          marginBottom: 6,
+        }}
+      >
+        Guideline version
+      </div>
+
+      <div className="flex flex-col" style={{ gap: 4 }}>
+        {options.map((opt) => {
+          const isCurrent = variant === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="radio"
+              aria-checked={isCurrent}
+              onClick={() => setVariant(opt.id)}
+              className="flex items-start"
+              style={{
+                gap: 8,
+                padding: '6px 8px',
+                borderRadius: 6,
+                border: 'none',
+                background: isCurrent
+                  ? 'var(--modus-wc-color-base-100, #f1f1f6)'
+                  : 'transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+                color: 'var(--modus-wc-color-base-content, #1a1a1a)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background =
+                    'var(--modus-wc-color-base-100, #f1f1f6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  border: `2px solid ${isCurrent ? color : 'var(--modus-wc-color-base-200, #c8c9d2)'}`,
+                  background: isCurrent ? color : 'transparent',
+                  marginTop: 2,
+                  flexShrink: 0,
+                  boxShadow: isCurrent ? 'inset 0 0 0 2px #fff' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              />
+              <span className="flex flex-col" style={{ gap: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
+                  {opt.title}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                    color:
+                      'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  }}
+                >
+                  {opt.desc}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Expert-1 specific: pick between the two variants of the
+ *    "Lead the conversation" guideline (phone shell / screen only).
+ *    Renders inside the GuidelineOverlay only when on /expert1.     */
+function Expert1VariantPicker({ color }: { color: string }) {
+  const ctx = useExpert1Variant();
+  if (!ctx) return null;
+  const { variant, setVariant } = ctx;
+
+  const options: { id: Expert1Variant; title: string; desc: string }[] = [
+    {
+      id: 'screen-only',
+      title: 'Screen only',
+      desc: 'Landscape conversation card — no phone bezel, top bar, or prompt bar.',
+    },
+    {
+      id: 'phone',
+      title: 'Phone shell',
+      desc: '375 × 720 mobile bezel — rounded corners, drop shadow, sticky prompt bar.',
+    },
+  ];
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Guideline version"
+      className="mt-3 pt-3"
+      style={{
+        borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+      }}
+    >
+      <div
+        className="uppercase font-semibold"
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.18em',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          marginBottom: 6,
+        }}
+      >
+        Guideline version
+      </div>
+
+      <div className="flex flex-col" style={{ gap: 4 }}>
+        {options.map((opt) => {
+          const isCurrent = variant === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="radio"
+              aria-checked={isCurrent}
+              onClick={() => setVariant(opt.id)}
+              className="flex items-start"
+              style={{
+                gap: 8,
+                padding: '6px 8px',
+                borderRadius: 6,
+                border: 'none',
+                background: isCurrent
+                  ? 'var(--modus-wc-color-base-100, #f1f1f6)'
+                  : 'transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+                color: 'var(--modus-wc-color-base-content, #1a1a1a)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background =
+                    'var(--modus-wc-color-base-100, #f1f1f6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isCurrent) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  border: `2px solid ${isCurrent ? color : 'var(--modus-wc-color-base-200, #c8c9d2)'}`,
+                  background: isCurrent ? color : 'transparent',
+                  marginTop: 2,
+                  flexShrink: 0,
+                  boxShadow: isCurrent ? 'inset 0 0 0 2px #fff' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              />
+              <span className="flex flex-col" style={{ gap: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
+                  {opt.title}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                    color:
+                      'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  }}
+                >
+                  {opt.desc}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -454,7 +820,10 @@ function Index() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <Creative3VariantProvider>
+        <Creative7VariantProvider>
+          <Expert1VariantProvider>
+          <Routes>
         <Route path="/" element={<Intro />} />
         <Route path="/guidelines" element={<Index />} />
         {routes.map(({ path, label, Component, fullBleed }) => {
@@ -464,6 +833,7 @@ export default function App() {
           const overlay =
             info && cat ? (
               <GuidelineOverlay
+                slug={slug}
                 label={label}
                 info={info}
                 color={CATEGORY_COLORS[cat]}
@@ -490,7 +860,10 @@ export default function App() {
             />
           );
         })}
-      </Routes>
+          </Routes>
+          </Expert1VariantProvider>
+        </Creative7VariantProvider>
+      </Creative3VariantProvider>
     </BrowserRouter>
   );
 }
