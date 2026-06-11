@@ -287,6 +287,100 @@ function ProjectPill({ name }: { name: string }) {
   );
 }
 
+/* ── Guideline info popover (explains the design pattern) ───────── */
+function GuidelineInfo() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span
+      className="relative inline-flex items-center"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label="About this guideline"
+        aria-expanded={open}
+        onClick={() => setOpen((p) => !p)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="flex items-center justify-center rounded-full transition-colors"
+        style={{
+          width: '16px',
+          height: '16px',
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        <ModusWcIcon
+          name="info"
+          size="xs"
+          decorative
+          style={{
+            color: open
+              ? 'var(--modus-wc-color-primary, #0063a3)'
+              : 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          }}
+        />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute z-20 flex flex-col"
+          style={{
+            top: '110%',
+            left: 0,
+            width: '280px',
+            padding: '12px 14px',
+            background: '#fff',
+            borderRadius: '8px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.08)',
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            gap: '6px',
+            textTransform: 'none',
+            letterSpacing: 'normal',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              fontWeight: 600,
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              lineHeight: '20px',
+            }}
+          >
+            Communicate the work
+          </span>
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+              fontStyle: 'italic',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              lineHeight: '18px',
+            }}
+          >
+            To create mutual understanding.
+          </span>
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+              fontWeight: 400,
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              lineHeight: '18px',
+            }}
+          >
+            Communicate the work done and decisions made, alongside any key
+            rationale. This builds trust in responses, while allowing users to
+            review, learn from and accept recommendations.
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 /* ── AI Insight header (gradient dot + label + confidence) ──────── */
 function InsightHeader({ confidence }: { confidence: number }) {
   return (
@@ -313,6 +407,7 @@ function InsightHeader({ confidence }: { confidence: number }) {
         >
           AI Insight
         </span>
+        <GuidelineInfo />
       </span>
       <span
         className="inline-flex items-center gap-1"

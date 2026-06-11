@@ -1,39 +1,32 @@
 import { useState } from 'react';
-import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
+import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 const TRIMBLE_RAINBOW =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
 
-interface InvestigationItem {
-  icon: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-}
+const CONTEXT = {
+  scope: 'Utility Model Alignment',
+  task: 'Locate the cause of the 6 ft horizontal offset',
+  reviewedAt: 'Today, 9:14 AM',
+  modelsReviewed: 2,
+};
 
-const investigations: InvestigationItem[] = [
-  {
-    icon: 'globe',
-    title: 'Coordinate System Mismatch',
-    description: 'Check if both the models are using different coordinate systems.',
-    actionLabel: 'Compare Systems',
-  },
-  {
-    icon: 'layers',
-    title: 'Reference Surface Misalignment',
-    description: 'Verify if both models are referencing the same base surface.',
-    actionLabel: 'Check Surface',
-  },
-  {
-    icon: 'document_outline',
-    title: 'Import / Conversion Errors',
-    description: 'Review if the utility model was transformed during import.',
-    actionLabel: 'Check Import',
-  },
+const possibleCauses = [
+  'Coordinate System Mismatch',
+  'Reference Surface Misalignment',
+  'Import / Conversion Errors',
+];
+
+const suggestedChecks = [
+  { icon: 'globe', label: 'Compare Systems' },
+  { icon: 'layers', label: 'Check Surface' },
+  { icon: 'document_outline', label: 'Check Import' },
 ];
 
 /* ── Expert 6 — Highlight Further Investigation ────────────────── */
 /**
+ * Hero / Branded header layout (ported from Expert 5 — Design 4).
+ *
  * Guides users to possible resolutions when the AI is not confident
  * of an outcome by clearly indicating approaches to investigate further.
  */
@@ -44,200 +37,171 @@ export default function Expert6() {
 
   return (
     <div
-      className="rounded-2xl p-[3px] w-[580px] shrink-0"
+      className="rounded-2xl w-[440px] shrink-0 flex flex-col overflow-hidden"
       style={{
-        background: TRIMBLE_RAINBOW,
-        boxShadow:
-          '0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)',
+        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        boxShadow: '0 12px 28px rgba(15, 23, 42, 0.10)',
       }}
     >
-      <div className="bg-white rounded-[14px] flex flex-col w-full overflow-hidden">
-        {/* Header */}
-        <div className="flex flex-col gap-2 px-6 pt-5 pb-4">
-          <div className="flex gap-3 items-center justify-between w-full">
-            <div className="flex gap-3 items-center min-w-0">
-              <div className="bg-[#fff9ef] flex items-center justify-center rounded-[10px] shrink-0 size-12">
-                <ModusWcIcon
-                  name="alert_outline"
-                  size="md"
-                  decorative
-                  style={{ color: '#b88217' }}
-                />
-              </div>
-              <span
-                className="font-semibold leading-9 truncate"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-2xl, 24px)',
-                  color: 'var(--modus-wc-color-base-content, #101828)',
-                }}
-              >
-                Explore possible causes
-              </span>
-            </div>
-
-            {/* Low Confidence Badge */}
-            <div
-              className="flex gap-1 items-center px-2.5 py-1 rounded-md shrink-0"
-              style={{
-                border: '1px solid #f3c870',
-                backgroundColor: '#fff9ef',
-              }}
-            >
-              <ModusWcIcon
-                name="add"
-                size="xs"
-                decorative
-                style={{ color: '#b88217' }}
-              />
-              <span
-                className="font-semibold whitespace-nowrap"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                  color: '#b88217',
-                }}
-              >
-                Low Confidence
-              </span>
-            </div>
-          </div>
-
-          <span
-            className="leading-6"
-            style={{
-              fontSize: 'var(--modus-wc-font-size-base, 16px)',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-            }}
-          >
-            I&apos;m not fully confident about the primary cause, but you can
-            investigate the following:
-          </span>
-        </div>
-
-        {/* Investigation cards */}
-        <div
-          className="flex flex-col gap-3 px-6 py-4"
+      {/* Hero header */}
+      <div
+        className="flex flex-col gap-1 px-6 py-5"
+        style={{
+          background: 'linear-gradient(135deg, #0A1733 0%, #122B5F 60%, #1E3A8A 100%)',
+          color: '#ffffff',
+        }}
+      >
+        <span
           style={{
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            fontSize: '10px',
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            opacity: 0.75,
           }}
         >
-          {investigations.map(({ icon, title, description, actionLabel }) => (
-            <div
-              key={title}
-              className="flex gap-3 items-start p-3 rounded-lg"
+          AI Suggestion · Further Investigation
+        </span>
+        <span className="font-semibold" style={{ fontSize: '22px', lineHeight: 1.15 }}>
+          Explore possible causes
+        </span>
+        <span style={{ fontSize: '13px', opacity: 0.85 }}>
+          {CONTEXT.scope} · {CONTEXT.modelsReviewed} models reviewed
+        </span>
+        <div
+          className="self-start flex items-center gap-1 px-2 py-1 rounded-md mt-2"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.14)', backdropFilter: 'blur(2px)' }}
+        >
+          <ModusWcIcon name="alert_outline" size="xs" decorative style={{ color: '#fff' }} />
+          <span className="font-semibold" style={{ fontSize: '11px' }}>
+            Low Confidence
+          </span>
+        </div>
+        <div
+          style={{
+            height: '2px',
+            background: TRIMBLE_RAINBOW,
+            borderRadius: '1px',
+            marginTop: '14px',
+          }}
+        />
+      </div>
+
+      {/* Intro */}
+      <div className="flex flex-col gap-1 px-6 py-4">
+        <span
+          className="font-semibold"
+          style={{ fontSize: '14px', color: 'var(--modus-wc-color-base-content, #101828)' }}
+        >
+          I&apos;m not fully confident about the primary cause
+        </span>
+        <span
+          style={{
+            fontSize: '12px',
+            lineHeight: 1.5,
+            color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+          }}
+        >
+          Investigate any of the candidates below to narrow the issue and
+          confirm a fix.
+        </span>
+      </div>
+
+      {/* 2-col body */}
+      <div className="grid grid-cols-2 gap-3 px-6 pb-4">
+        <div
+          className="flex flex-col gap-1 p-3 rounded-lg"
+          style={{
+            backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          }}
+        >
+          <span
+            className="font-semibold"
+            style={{
+              fontSize: '10px',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          >
+            Possible causes
+          </span>
+          {possibleCauses.map((cause) => (
+            <span
+              key={cause}
               style={{
-                backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+                fontSize: '12px',
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
               }}
             >
-              <div className="flex items-center justify-center size-8 shrink-0 mt-0.5">
-                <ModusWcIcon
-                  name={icon}
-                  size="md"
-                  decorative
-                  style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
-                />
-              </div>
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="font-semibold leading-6"
-                    style={{
-                      fontSize: 'var(--modus-wc-font-size-base, 16px)',
-                      color: 'var(--modus-wc-color-base-content, #171c1e)',
-                    }}
-                  >
-                    {title}
-                  </span>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 shrink-0 hover:underline transition-colors"
-                    style={{
-                      fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                      color: 'var(--modus-wc-color-status-info, #004f83)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {actionLabel}
-                    <ModusWcIcon name="chevron_right" size="xs" decorative />
-                  </button>
-                </div>
-                <span
-                  className="leading-5"
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  }}
-                >
-                  {description}
-                </span>
-              </div>
-            </div>
+              · {cause}
+            </span>
           ))}
         </div>
 
-        {/* View detailed analysis */}
-        <div className="flex items-center px-6 py-3">
-          <button
-            type="button"
-            className="flex items-center gap-1.5 hover:underline transition-colors"
-            style={{
-              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-              color: 'var(--modus-wc-color-status-info, #004f83)',
-              fontWeight: 600,
-            }}
-          >
-            View detailed analysis
-            <ModusWcIcon name="launch" size="xs" decorative />
-          </button>
-        </div>
-
-        {/* Footer disclaimer */}
         <div
-          className="flex flex-wrap gap-3 items-center px-6 pb-3"
+          className="flex flex-col gap-1 p-3 rounded-lg"
           style={{
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            paddingTop: '0.75rem',
+            backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
           }}
         >
-          <div className="flex gap-2 items-center">
-            <ModusWcIcon
-              name="alert_outline"
-              size="xs"
-              decorative
-              style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-            />
-            <span
-              className="leading-5"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            >
-              Results may vary depending on project data and model accuracy.
-            </span>
-          </div>
           <span
-            className="leading-5 cursor-pointer hover:underline whitespace-nowrap"
+            className="font-semibold"
             style={{
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-              color: 'var(--modus-wc-color-status-info, #004f83)',
-              fontWeight: 600,
+              fontSize: '10px',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             }}
           >
-            Learn more..
+            Try these checks
           </span>
-          <button
-            onClick={() => setDismissed(true)}
-            className="ml-auto flex items-center justify-center size-6 rounded hover:bg-[var(--modus-wc-color-base-200)] transition-colors"
-            aria-label="Dismiss"
+          {suggestedChecks.map(({ icon, label }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <ModusWcIcon
+                name={icon}
+                size="xs"
+                decorative
+                style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
+              />
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                }}
+              >
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div
+        className="flex gap-2 items-center px-6 py-3"
+        style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
+      >
+        <div className="flex-1">
+          <ModusWcButton size="sm" color="primary" style={{ width: '100%' }}>
+            <span className="flex items-center justify-center gap-1">
+              <ModusWcIcon name="launch" size="xs" decorative />
+              View detailed analysis
+            </span>
+          </ModusWcButton>
+        </div>
+        <div className="flex-1">
+          <ModusWcButton
+            size="sm"
+            color="tertiary"
+            variant="outlined"
+            style={{ width: '100%' }}
+            onButtonClick={() => setDismissed(true)}
           >
-            <ModusWcIcon
-              name="close"
-              size="sm"
-              decorative
-              style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-            />
-          </button>
+            Dismiss
+          </ModusWcButton>
         </div>
       </div>
     </div>

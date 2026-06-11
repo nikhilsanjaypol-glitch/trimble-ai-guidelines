@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 /* ─────────────────────────────────────────────────────────────────
  * Expert 3 — PRIORITIZE CLARITY OVER COMPLEXITY
@@ -11,14 +11,22 @@ import type { ReactNode } from 'react';
  * casual, conversational, human tone and avoiding technical jargon
  * or acronyms unless clearly defined.
  *
- * Layout (mirrors the guideline page's Avoid → Instead pattern, but
- * with full chat components side-by-side rather than abstract pulls):
+ * Layout — two pills act as tabs that drive a stacked card deck. The
+ * Avoid card animates first; once it's done typing, the Instead card
+ * smoothly slides on top of it and starts typing. The user can also
+ * click either pill (or the peeking corner of the back card) at any
+ * point to switch which card is on top.
  *
- *   ┌─────────────────────┐   ┌─────────────────────┐
- *   │ [Avoid]             │   │ [Instead]           │
- *   │  same chat shell    │   │  same chat shell    │
- *   │  jargon response    │   │  plain response     │
- *   └─────────────────────┘   └─────────────────────┘
+ *   [ Avoid ]  [ Instead ]    ← pills double as tabs
+ *
+ *   ┌────────────────────┐
+ *   │  back card peeks   │    ← inactive card offset down-right
+ *   │  ┌────────────────────┐
+ *   │  │                    │
+ *   │  │   active card on   │
+ *   │  │   top, full size   │
+ *   └──│                    │
+ *      └────────────────────┘
  *
  * Both cards ask the same question; only the AI's voice differs.
  * ───────────────────────────────────────────────────────────────── */
@@ -95,71 +103,49 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-/* ── Coloured pill label — "Avoid" / "Instead" ──────────────────────
-   `color` accepts a solid colour token OR a CSS gradient string.
-   • Solid colour → opaque pill, white wordmark.
-   • Gradient → white pill with a gradient border (padding-wrap) and the
-     wordmark rendered in the same gradient via `background-clip: text`. */
-function LabelPill({ label, color }: { label: string; color: string }) {
-  const isGradient = color.includes('gradient');
-
-  if (!isGradient) {
-    return (
-      <span
-        className="inline-flex items-center justify-center"
-        style={{
-          background: color,
-          color: '#ffffff',
-          height: '32px',
-          padding: '0 18px',
-          borderRadius: '1000px',
-          fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-          fontWeight: 700,
-          letterSpacing: '0.02em',
-          whiteSpace: 'nowrap',
-          alignSelf: 'flex-start',
-        }}
-      >
-        {label}
-      </span>
-    );
-  }
-
+/* ── PillTab — a coloured pill that doubles as a tab control ─────────
+   Solid colour pill with a white wordmark. Active reads "lifted": full
+   opacity, soft drop shadow, no scale-down. Inactive dims to 0.45 and
+   scales slightly. Click brings the matching card to the front of the
+   stack. */
+function PillTab({
+  label,
+  color,
+  active,
+  onClick,
+}: {
+  label: string;
+  color: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <span
-      className="inline-flex"
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
       style={{
         background: color,
-        padding: '2px',
+        color: '#ffffff',
+        height: '32px',
+        padding: '0 18px',
         borderRadius: '1000px',
-        alignSelf: 'flex-start',
+        border: 'none',
+        fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+        whiteSpace: 'nowrap',
+        cursor: active ? 'default' : 'pointer',
+        opacity: active ? 1 : 0.45,
+        transform: active ? 'scale(1)' : 'scale(0.96)',
+        boxShadow: active ? '0 6px 14px rgba(0,0,0,0.18)' : 'none',
+        transition:
+          'opacity 280ms ease, transform 280ms ease, box-shadow 280ms ease',
+        outline: 'none',
       }}
     >
-      <span
-        className="inline-flex items-center justify-center"
-        style={{
-          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-          height: '28px',
-          padding: '0 16px',
-          borderRadius: '1000px',
-        }}
-      >
-        <span
-          style={{
-            background: color,
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            color: 'transparent',
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            fontWeight: 800,
-            letterSpacing: '0.02em',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {label}
-        </span>
-      </span>
-    </span>
+      {label}
+    </button>
   );
 }
 
@@ -672,13 +658,51 @@ function InsteadResponse({ enabled }: { enabled: boolean }) {
   return <TypingResponse blocks={blocks} enabled={enabled} />;
 }
 
+/* ── Stack offset (how far the back card peeks down + right) ────── */
+const STACK_OFFSET = 24;
+/** Pause after Avoid finishes typing before Instead slides on top. */
+const HAND_OFF_DELAY_MS = 600;
+/** Smooth motion curve for the card slide + fade. */
+const STACK_TRANSITION =
+  'transform 600ms cubic-bezier(0.4, 0, 0.2, 1), opacity 400ms ease';
+
 /* ── Expert 3 — Prioritize Clarity Over Complexity ──────────────── */
 export default function Expert3() {
-  /** Instead starts typing only after Avoid finishes (+ a brief pause). */
+  /** Which card is on top of the stack. */
+  const [active, setActive] = useState<'avoid' | 'instead'>('avoid');
+  /** Instead starts typing only once it's been activated (either auto
+   *  after Avoid finishes, or manually via the pill / back-card click). */
   const [insteadEnabled, setInsteadEnabled] = useState(false);
 
+  const showInstead = () => {
+    setInsteadEnabled(true);
+    setActive('instead');
+  };
+  const showAvoid = () => setActive('avoid');
+
+  /** Avoid → Instead handoff: brief pause, then slide Instead on top
+   *  and start its typing animation. */
+  const handleAvoidComplete = () => {
+    window.setTimeout(showInstead, HAND_OFF_DELAY_MS);
+  };
+
+  /** Visual recipe for a card in the stack. Front card sits at origin,
+   *  back card is offset down-right with reduced opacity. */
+  const stackStyle = (isActive: boolean): CSSProperties => ({
+    gridArea: '1 / 1',
+    display: 'flex',
+    flexDirection: 'column',
+    transform: isActive
+      ? 'translate(0, 0)'
+      : `translate(${STACK_OFFSET}px, ${STACK_OFFSET}px)`,
+    opacity: isActive ? 1 : 0.85,
+    zIndex: isActive ? 2 : 1,
+    transition: STACK_TRANSITION,
+    cursor: isActive ? 'default' : 'pointer',
+  });
+
   return (
-    <div className="flex items-stretch" style={{ gap: '24px' }}>
+    <div className="flex flex-col" style={{ gap: '20px', width: 'fit-content' }}>
       {/* Keyframes for the Instead card's border-line glitter. Scoped by a
        *  prefixed animation name so it can't clash with other components. */}
       <style
@@ -686,39 +710,73 @@ export default function Expert3() {
           __html: `@keyframes expert3-rainbow-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }`,
         }}
       />
-      {/* AVOID — same question, jargon-heavy answer */}
-      <div className="flex flex-col" style={{ gap: '10px' }}>
-        <LabelPill label="Avoid" color={AVOID_ACCENT} />
-        <ChatCard
-          accent={AVOID_ACCENT}
-          shadow={false}
-          response={
-            <TypingResponse
-              onComplete={() =>
-                window.setTimeout(() => setInsteadEnabled(true), 300)
-              }
-              blocks={[
-                [
-                  'Subgrade bearing capacity exceeds 150 kPa across 92% of the parcel per SPT N-values (avg 18). Hydraulic conductivity ≥ 1×10⁻⁵ m/s supports adequate surface drainage. Differential settlement is projected below L/500 per ASCE 7-22.',
-                ],
-                [
-                  'The NE quadrant exhibits reduced N-values requiring spread-footing geometry per IBC 1808 — refer to boring logs BL-04 and BL-05.',
-                ],
-              ]}
-            />
-          }
+
+      {/* Tabs — both pills always visible, dimmed when inactive. */}
+      <div
+        role="tablist"
+        aria-label="Response style"
+        className="flex"
+        style={{ gap: '12px' }}
+      >
+        <PillTab
+          label="Avoid"
+          color={AVOID_ACCENT}
+          active={active === 'avoid'}
+          onClick={showAvoid}
+        />
+        <PillTab
+          label="Instead"
+          color={INSTEAD_PILL_COLOR}
+          active={active === 'instead'}
+          onClick={showInstead}
         />
       </div>
 
-      {/* INSTEAD — same question, plain-English answer */}
-      <div className="flex flex-col" style={{ gap: '10px' }}>
-        <LabelPill label="Instead" color={INSTEAD_PILL_COLOR} />
-        <ChatCard
-          accent={INSTEAD_ACCENT}
-          borderThickness={2}
-          glow={insteadEnabled}
-          response={<InsteadResponse enabled={insteadEnabled} />}
-        />
+      {/* Card deck — both cards share the same grid cell and swap z-order
+       *  + offset based on `active`. Padding reserves space for the back
+       *  card's peek so the parent layout never shifts. */}
+      <div
+        style={{
+          display: 'grid',
+          paddingRight: `${STACK_OFFSET}px`,
+          paddingBottom: `${STACK_OFFSET}px`,
+        }}
+      >
+        {/* AVOID — jargon-heavy answer (types first) */}
+        <div
+          onClick={active === 'avoid' ? undefined : showAvoid}
+          style={stackStyle(active === 'avoid')}
+        >
+          <ChatCard
+            accent={AVOID_ACCENT}
+            response={
+              <TypingResponse
+                onComplete={handleAvoidComplete}
+                blocks={[
+                  [
+                    'Subgrade bearing capacity exceeds 150 kPa across 92% of the parcel per SPT N-values (avg 18). Hydraulic conductivity ≥ 1×10⁻⁵ m/s supports adequate surface drainage. Differential settlement is projected below L/500 per ASCE 7-22.',
+                  ],
+                  [
+                    'The NE quadrant exhibits reduced N-values requiring spread-footing geometry per IBC 1808 — refer to boring logs BL-04 and BL-05.',
+                  ],
+                ]}
+              />
+            }
+          />
+        </div>
+
+        {/* INSTEAD — plain-English answer (types once it slides on top) */}
+        <div
+          onClick={active === 'instead' ? undefined : showInstead}
+          style={stackStyle(active === 'instead')}
+        >
+          <ChatCard
+            accent={INSTEAD_ACCENT}
+            borderThickness={2}
+            glow={insteadEnabled}
+            response={<InsteadResponse enabled={insteadEnabled} />}
+          />
+        </div>
       </div>
     </div>
   );

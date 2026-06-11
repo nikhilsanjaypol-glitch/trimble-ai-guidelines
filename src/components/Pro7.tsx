@@ -8,41 +8,222 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
  *
  * To verify high-impact sections.
  *
- * The AI presents a single high-impact value (the anchor-bolt
- * embedment under one specific column) as an e-signature request,
- * with a live 3D model of the structure behind it. The exact
- * foundation being asked about is pulsing red in the model — so the
- * professional can see WHERE the question lives — and turns green
- * the moment they confirm.
+ * The AI proactively recommends swapping one high-impact detail —
+ * the anchor under Column C-3 — from the current cast-in-place pad
+ * to a helical pile. The card presents BOTH options visually and
+ * defers the final call to the engineer. The 3D model swaps the
+ * actual geometry the moment they confirm, so the recommendation
+ * lands as a tangible change to the design.
  * ───────────────────────────────────────────────────────────────── */
 
-/* World position of the anchor bolt being verified */
-const ANCHOR = new THREE.Vector3(8, 0.3, 4);
+const ANCHOR_POS = new THREE.Vector3(8, 0.3, 4);
 
+/* ── Isometric SVG illustrations for the two anchor styles ─────── */
+function CurrentAnchorSvg({ accent }: { accent: string }) {
+  return (
+    <svg viewBox="0 0 96 96" width="100%" height="100%">
+      <defs>
+        <linearGradient id="pro7-pad-top" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e8ebef" />
+          <stop offset="100%" stopColor="#c5c9d1" />
+        </linearGradient>
+        <linearGradient id="pro7-pad-side" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#b8bcc5" />
+          <stop offset="100%" stopColor="#8b8f98" />
+        </linearGradient>
+      </defs>
+      {/* Ground shadow */}
+      <ellipse cx="48" cy="78" rx="36" ry="6" fill="#000" opacity="0.10" />
+      {/* Right face */}
+      <path
+        d="M72 38 L84 32 L84 64 L72 70 Z"
+        fill="url(#pro7-pad-side)"
+        stroke={accent}
+        strokeWidth="1.4"
+        opacity="0.95"
+      />
+      {/* Front face */}
+      <path
+        d="M12 38 L72 38 L72 70 L12 70 Z"
+        fill="url(#pro7-pad-side)"
+        stroke={accent}
+        strokeWidth="1.4"
+      />
+      {/* Top face */}
+      <path
+        d="M12 38 L24 32 L84 32 L72 38 Z"
+        fill="url(#pro7-pad-top)"
+        stroke={accent}
+        strokeWidth="1.4"
+      />
+      {/* Anchor bolts sticking up from the pad */}
+      {[
+        [30, 33.5],
+        [44, 32.5],
+        [58, 31.5],
+        [72, 30.5],
+      ].map(([cx, cy], i) => (
+        <g key={i}>
+          <line
+            x1={cx}
+            y1={cy}
+            x2={cx}
+            y2={cy - 8}
+            stroke="#3a3e44"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <circle
+            cx={cx}
+            cy={cy - 9}
+            r="1.8"
+            fill="#3a3e44"
+          />
+        </g>
+      ))}
+      {/* Depth dimension */}
+      <line
+        x1="6"
+        y1="38"
+        x2="6"
+        y2="70"
+        stroke={accent}
+        strokeWidth="1"
+        opacity="0.8"
+      />
+      <line
+        x1="3"
+        y1="38"
+        x2="9"
+        y2="38"
+        stroke={accent}
+        strokeWidth="1"
+        opacity="0.8"
+      />
+      <line
+        x1="3"
+        y1="70"
+        x2="9"
+        y2="70"
+        stroke={accent}
+        strokeWidth="1"
+        opacity="0.8"
+      />
+    </svg>
+  );
+}
+
+function SuggestedAnchorSvg({ accent }: { accent: string }) {
+  return (
+    <svg viewBox="0 0 96 96" width="100%" height="100%">
+      <defs>
+        <linearGradient id="pro7-pile-shaft" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#b8bcc5" />
+          <stop offset="50%" stopColor="#e8ebef" />
+          <stop offset="100%" stopColor="#8b8f98" />
+        </linearGradient>
+        <linearGradient id="pro7-pile-cap" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e8ebef" />
+          <stop offset="100%" stopColor="#c5c9d1" />
+        </linearGradient>
+      </defs>
+      {/* Ground shadow */}
+      <ellipse cx="48" cy="82" rx="22" ry="4" fill="#000" opacity="0.10" />
+      {/* Shaft */}
+      <rect
+        x="40"
+        y="22"
+        width="16"
+        height="58"
+        fill="url(#pro7-pile-shaft)"
+        stroke={accent}
+        strokeWidth="1.4"
+      />
+      {/* Helical flanges (three discs) */}
+      {[40, 56, 72].map((y, i) => (
+        <g key={i}>
+          <ellipse
+            cx="48"
+            cy={y}
+            rx="14"
+            ry="3.2"
+            fill="url(#pro7-pile-cap)"
+            stroke={accent}
+            strokeWidth="1.2"
+          />
+        </g>
+      ))}
+      {/* Pile cap on top */}
+      <ellipse
+        cx="48"
+        cy="22"
+        rx="14"
+        ry="4"
+        fill="url(#pro7-pile-cap)"
+        stroke={accent}
+        strokeWidth="1.4"
+      />
+      {/* Bolt circle on top cap */}
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const a = (i / 6) * Math.PI * 2;
+        const cx = 48 + Math.cos(a) * 9;
+        const cy = 22 + Math.sin(a) * 2.4;
+        return <circle key={i} cx={cx} cy={cy} r="1.2" fill="#3a3e44" />;
+      })}
+      {/* Depth dimension */}
+      <line
+        x1="22"
+        y1="22"
+        x2="22"
+        y2="80"
+        stroke={accent}
+        strokeWidth="1"
+        opacity="0.8"
+      />
+      <line x1="19" y1="22" x2="25" y2="22" stroke={accent} strokeWidth="1" />
+      <line x1="19" y1="80" x2="25" y2="80" stroke={accent} strokeWidth="1" />
+    </svg>
+  );
+}
+
+/* ── Pro 7 — Defer to the Professional ─────────────────────────── */
 export default function Pro7() {
   const mountRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<HTMLDivElement>(null);
+  const markerRef = useRef<HTMLButtonElement>(null);
   const lineRef = useRef<SVGLineElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const highlightRef = useRef<{
+
+  const padRef = useRef<{
     mesh: THREE.Mesh;
+    edges: THREE.LineSegments;
     material: THREE.MeshStandardMaterial;
     pulse: THREE.Mesh;
     pulseMaterial: THREE.MeshBasicMaterial;
   } | null>(null);
+  const pileRef = useRef<{
+    group: THREE.Group;
+    material: THREE.MeshStandardMaterial;
+  } | null>(null);
+
   const confirmedRef = useRef(false);
 
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
   const confirmed = Boolean(confirmedAt);
 
-  /* Keep the ref in sync so the animation loop can read it. */
+  /* Sync confirmed state with the 3D scene */
   useEffect(() => {
     confirmedRef.current = confirmed;
-    if (highlightRef.current) {
-      const target = confirmed ? 0x2bbf6a : 0xff3b58;
-      highlightRef.current.material.color.setHex(target);
-      highlightRef.current.material.emissive.setHex(target);
-      highlightRef.current.pulseMaterial.color.setHex(target);
+    if (padRef.current) {
+      padRef.current.mesh.visible = !confirmed;
+      padRef.current.edges.visible = !confirmed;
+      padRef.current.pulse.visible = !confirmed;
+    }
+    if (pileRef.current) {
+      pileRef.current.group.visible = confirmed;
+      pileRef.current.material.color.setHex(confirmed ? 0x2bbf6a : 0x9aa0aa);
+      pileRef.current.material.emissive.setHex(confirmed ? 0x2bbf6a : 0x000000);
+      pileRef.current.material.emissiveIntensity = confirmed ? 0.25 : 0;
     }
   }, [confirmed]);
 
@@ -77,10 +258,43 @@ export default function Pro7() {
     controls.maxPolarAngle = Math.PI / 2.05;
     controls.update();
 
+    /* Raycaster — click the anchor in 3D to open the card */
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let pointerDownAt = { x: 0, y: 0 };
+
+    function onPointerDown(e: PointerEvent) {
+      pointerDownAt = { x: e.clientX, y: e.clientY };
+    }
+    function onPointerUp(e: PointerEvent) {
+      const dx = e.clientX - pointerDownAt.x;
+      const dy = e.clientY - pointerDownAt.y;
+      /* Treat as a click only if pointer barely moved (so orbit drags don't trigger) */
+      if (dx * dx + dy * dy > 16) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+
+      const targets: THREE.Object3D[] = [];
+      if (padRef.current && padRef.current.mesh.visible) {
+        targets.push(padRef.current.mesh);
+      }
+      if (pileRef.current && pileRef.current.group.visible) {
+        targets.push(pileRef.current.group);
+      }
+      if (targets.length === 0) return;
+
+      const hits = raycaster.intersectObjects(targets, true);
+      if (hits.length > 0) setCardOpen(true);
+    }
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    renderer.domElement.addEventListener('pointerup', onPointerUp);
+
     /* Lighting */
     scene.add(new THREE.AmbientLight(0xffffff, 0.55));
     scene.add(new THREE.HemisphereLight(0xddeeff, 0x99a0aa, 0.5));
-
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.2);
     sun.position.set(18, 28, 14);
     sun.castShadow = true;
@@ -114,7 +328,7 @@ export default function Pro7() {
     grid.position.y = 0.02;
     scene.add(grid);
 
-    /* Steel material */
+    /* Steel materials */
     const steelMat = new THREE.MeshStandardMaterial({
       color: 0xe6e9ee,
       roughness: 0.55,
@@ -140,7 +354,6 @@ export default function Pro7() {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       scene.add(mesh);
-
       const edges = new THREE.EdgesGeometry(geo);
       const lines = new THREE.LineSegments(edges, edgeMat);
       lines.position.copy(mesh.position);
@@ -148,15 +361,13 @@ export default function Pro7() {
       return mesh;
     }
 
-    /* Foundation pad */
-    function pad(x: number, z: number, highlighted = false) {
+    /* Plain foundation pad (non-highlighted columns) */
+    function basicPad(x: number, z: number) {
       const w = 1.6;
       const h = 0.6;
       const geo = new THREE.BoxGeometry(w, h, w);
       const mat = new THREE.MeshStandardMaterial({
-        color: highlighted ? 0xff3b58 : 0x9aa0aa,
-        emissive: highlighted ? 0xff3b58 : 0x000000,
-        emissiveIntensity: highlighted ? 0.25 : 0,
+        color: 0x9aa0aa,
         roughness: 0.85,
         metalness: 0.1,
       });
@@ -165,37 +376,115 @@ export default function Pro7() {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       scene.add(mesh);
+      const edges = new THREE.EdgesGeometry(geo);
+      const lines = new THREE.LineSegments(edges, edgeMat);
+      lines.position.copy(mesh.position);
+      scene.add(lines);
+    }
 
+    /* The "current" highlighted anchor — a red cast-in-place pad */
+    function buildCurrentAnchor(x: number, z: number) {
+      const w = 1.6;
+      const h = 0.6;
+      const geo = new THREE.BoxGeometry(w, h, w);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xff3b58,
+        emissive: 0xff3b58,
+        emissiveIntensity: 0.25,
+        roughness: 0.85,
+        metalness: 0.1,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, h / 2, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
       const edges = new THREE.EdgesGeometry(geo);
       const lines = new THREE.LineSegments(edges, edgeMat);
       lines.position.copy(mesh.position);
       scene.add(lines);
 
-      if (highlighted) {
-        /* A flat pulse disc at the anchor for visual emphasis */
-        const pulseGeo = new THREE.RingGeometry(0.9, 1.2, 48);
-        const pulseMat = new THREE.MeshBasicMaterial({
-          color: 0xff3b58,
-          transparent: true,
-          opacity: 0.7,
-          side: THREE.DoubleSide,
-        });
-        const pulse = new THREE.Mesh(pulseGeo, pulseMat);
-        pulse.rotation.x = -Math.PI / 2;
-        pulse.position.set(x, 0.04, z);
-        scene.add(pulse);
+      /* Ground pulse */
+      const pulseGeo = new THREE.RingGeometry(0.9, 1.2, 48);
+      const pulseMat = new THREE.MeshBasicMaterial({
+        color: 0xff3b58,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
+      });
+      const pulse = new THREE.Mesh(pulseGeo, pulseMat);
+      pulse.rotation.x = -Math.PI / 2;
+      pulse.position.set(x, 0.04, z);
+      scene.add(pulse);
 
-        highlightRef.current = {
-          mesh,
-          material: mat,
-          pulse,
-          pulseMaterial: pulseMat,
-        };
-      }
-      return mesh;
+      padRef.current = {
+        mesh,
+        edges: lines,
+        material: mat,
+        pulse,
+        pulseMaterial: pulseMat,
+      };
     }
 
-    /* ── Build a 3-bay × 2-deep × 3-storey steel frame ──────────── */
+    /* The "suggested" helical pile — hidden until confirmed */
+    function buildSuggestedAnchor(x: number, z: number) {
+      const group = new THREE.Group();
+      group.visible = false;
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x2bbf6a,
+        emissive: 0x2bbf6a,
+        emissiveIntensity: 0.25,
+        roughness: 0.55,
+        metalness: 0.35,
+      });
+
+      /* Pile cap (short cylinder at grade) */
+      const capGeo = new THREE.CylinderGeometry(0.95, 0.95, 0.45, 32);
+      const cap = new THREE.Mesh(capGeo, mat);
+      cap.position.set(0, 0.225, 0);
+      cap.castShadow = true;
+      cap.receiveShadow = true;
+      group.add(cap);
+
+      /* Shaft going underground (peeks above ground a bit) */
+      const shaftGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.9, 16);
+      const shaft = new THREE.Mesh(shaftGeo, mat);
+      shaft.position.set(0, 0.7, 0);
+      group.add(shaft);
+
+      /* Bolt ring on top of the cap */
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8);
+        const bolt = new THREE.Mesh(
+          boltGeo,
+          new THREE.MeshStandardMaterial({
+            color: 0x3a3e44,
+            roughness: 0.5,
+            metalness: 0.6,
+          }),
+        );
+        bolt.position.set(Math.cos(ang) * 0.72, 0.54, Math.sin(ang) * 0.72);
+        group.add(bolt);
+      }
+
+      /* Outline ring on the cap for crispness */
+      const ringGeo = new THREE.TorusGeometry(0.95, 0.02, 8, 64);
+      const ring = new THREE.Mesh(
+        ringGeo,
+        new THREE.MeshBasicMaterial({ color: 0x1c7c4a }),
+      );
+      ring.position.set(0, 0.45, 0);
+      ring.rotation.x = Math.PI / 2;
+      group.add(ring);
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+
+      pileRef.current = { group, material: mat };
+    }
+
+    /* ── Steel frame: 3-bay × 2-deep × 3-storey ─────────────────── */
     const bay = 6;
     const depth = 5;
     const storey = 3.8;
@@ -207,11 +496,17 @@ export default function Pro7() {
     const colsZ = [-depth / 2, depth / 2];
     const heights = [0, storey, storey * 2, storey * 3];
 
-    /* Foundation pads — one is the highlighted "verify-me" anchor */
+    /* Foundations */
     for (const cx of colsX) {
       for (const cz of colsZ) {
-        const isAnchor = Math.abs(cx - bay) < 0.01 && Math.abs(cz - depth / 2) < 0.01;
-        pad(cx, cz, isAnchor);
+        const isAnchor =
+          Math.abs(cx - bay) < 0.01 && Math.abs(cz - depth / 2) < 0.01;
+        if (isAnchor) {
+          buildCurrentAnchor(cx, cz);
+          buildSuggestedAnchor(cx, cz);
+        } else {
+          basicPad(cx, cz);
+        }
       }
     }
 
@@ -222,7 +517,7 @@ export default function Pro7() {
       }
     }
 
-    /* Beams along X (between columns at each storey) */
+    /* Beams along X */
     for (let lvl = 1; lvl < heights.length; lvl++) {
       const y = 0.6 + heights[lvl] - beamH;
       for (let i = 0; i < colsX.length - 1; i++) {
@@ -233,7 +528,7 @@ export default function Pro7() {
       }
     }
 
-    /* Beams along Z (depth direction) */
+    /* Beams along Z */
     for (let lvl = 1; lvl < heights.length; lvl++) {
       const y = 0.6 + heights[lvl] - beamH;
       for (const cx of colsX) {
@@ -241,7 +536,7 @@ export default function Pro7() {
       }
     }
 
-    /* Floor slabs — translucent so the frame stays visible */
+    /* Translucent slabs */
     for (let lvl = 1; lvl < heights.length; lvl++) {
       const y = 0.6 + heights[lvl];
       const slabGeo = new THREE.BoxGeometry(bay * 2 + colW, 0.12, depth + colW);
@@ -259,7 +554,7 @@ export default function Pro7() {
       scene.add(slab);
     }
 
-    /* Diagonal bracing on the far back bay */
+    /* X-bracing on back bay */
     function brace(x1: number, y1: number, x2: number, y2: number, z: number) {
       const dx = x2 - x1;
       const dy = y2 - y1;
@@ -270,14 +565,12 @@ export default function Pro7() {
       mesh.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
       mesh.castShadow = true;
       scene.add(mesh);
-
       const edges = new THREE.EdgesGeometry(geo);
       const lines = new THREE.LineSegments(edges, edgeMat);
       lines.position.copy(mesh.position);
       lines.rotation.copy(mesh.rotation);
       scene.add(lines);
     }
-
     const braceZ = -depth / 2;
     for (let lvl = 0; lvl < heights.length - 1; lvl++) {
       const yLow = 0.6 + heights[lvl];
@@ -287,16 +580,16 @@ export default function Pro7() {
       }
     }
 
-    /* ── Anchor → screen overlay ─────────────────────────────── */
+    /* ── Overlay projection ─────────────────────────────────────── */
     const tmp = new THREE.Vector3();
-
     function updateOverlay() {
       const marker = markerRef.current;
       if (!marker) return;
-      tmp.copy(ANCHOR).project(camera);
+      tmp.copy(ANCHOR_POS).project(camera);
       const sx = (tmp.x * 0.5 + 0.5) * W;
       const sy = (-tmp.y * 0.5 + 0.5) * H;
-      const onScreen = tmp.z < 1 && tmp.x > -1 && tmp.x < 1 && tmp.y > -1 && tmp.y < 1;
+      const onScreen =
+        tmp.z < 1 && tmp.x > -1 && tmp.x < 1 && tmp.y > -1 && tmp.y < 1;
       marker.style.transform = `translate(-50%, -50%) translate3d(${sx}px, ${sy}px, 0)`;
       marker.style.opacity = onScreen ? '1' : '0';
 
@@ -322,15 +615,13 @@ export default function Pro7() {
       const t = clock.getElapsedTime();
       controls.update();
 
-      /* Pulse animation on the highlighted anchor */
-      if (highlightRef.current) {
+      /* Pulse on the highlighted anchor (only while pending) */
+      if (padRef.current && !confirmedRef.current) {
         const breathe = 0.5 + 0.5 * Math.sin(t * 3);
-        const baseEmissive = confirmedRef.current ? 0.25 : 0.45;
-        highlightRef.current.material.emissiveIntensity =
-          baseEmissive + breathe * 0.35;
+        padRef.current.material.emissiveIntensity = 0.45 + breathe * 0.35;
         const ringScale = 1 + ((t * 0.8) % 1) * 1.4;
-        highlightRef.current.pulse.scale.setScalar(ringScale);
-        highlightRef.current.pulseMaterial.opacity = 0.7 * (1 - ((t * 0.8) % 1));
+        padRef.current.pulse.scale.setScalar(ringScale);
+        padRef.current.pulseMaterial.opacity = 0.7 * (1 - ((t * 0.8) % 1));
       }
 
       renderer.render(scene, camera);
@@ -350,6 +641,8 @@ export default function Pro7() {
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener('resize', onResize);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      renderer.domElement.removeEventListener('pointerup', onPointerUp);
       controls.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
       renderer.dispose();
@@ -373,10 +666,9 @@ export default function Pro7() {
         backgroundColor: '#eef1f5',
       }}
     >
-      {/* 3D scene */}
       <div ref={mountRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
-      {/* Connector line from card → anchor */}
+      {/* Card → anchor dashed connector (only when card is open) */}
       <svg
         style={{
           position: 'absolute',
@@ -385,6 +677,8 @@ export default function Pro7() {
           height: '100%',
           pointerEvents: 'none',
           zIndex: 4,
+          opacity: cardOpen ? 1 : 0,
+          transition: 'opacity 200ms ease',
         }}
       >
         <line
@@ -397,16 +691,19 @@ export default function Pro7() {
         />
       </svg>
 
-      {/* Floating tag at the anchor */}
-      <div
+      {/* Floating world-anchored tag — click to open the card */}
+      <button
         ref={markerRef}
+        type="button"
+        onClick={() => setCardOpen((o) => !o)}
+        aria-label={cardOpen ? 'Close recommendation' : 'Open AI recommendation'}
+        aria-pressed={cardOpen}
         style={{
           position: 'absolute',
           left: 0,
           top: 0,
           zIndex: 5,
-          pointerEvents: 'none',
-          padding: '4px 10px',
+          padding: '5px 10px 5px 8px',
           borderRadius: '1000px',
           backgroundColor: confirmed ? '#2bbf6a' : '#ff3b58',
           color: '#ffffff',
@@ -417,64 +714,76 @@ export default function Pro7() {
           boxShadow: '0px 2px 6px rgba(0,0,0,0.25)',
           whiteSpace: 'nowrap',
           fontFamily: 'system-ui, -apple-system, sans-serif',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          transition: 'transform 160ms ease, box-shadow 160ms ease',
+        }}
+        onMouseEnter={(e) => {
+          if (cardOpen) return;
+          e.currentTarget.style.boxShadow = '0px 3px 12px rgba(0,0,0,0.35)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = '0px 2px 6px rgba(0,0,0,0.25)';
         }}
       >
-        Column C-3 · anchor
-      </div>
+        <span
+          aria-hidden
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '1000px',
+            backgroundColor: '#ffffff',
+            display: 'inline-block',
+            boxShadow: confirmed
+              ? '0 0 0 2px rgba(43,191,106,0.45)'
+              : '0 0 0 2px rgba(255,59,88,0.45)',
+          }}
+        />
+        Column C-3 · {confirmed ? 'helical pile' : 'review'}
+      </button>
 
-      {/* Verification card (overlay) */}
+      {/* Verification card */}
       <div
         ref={cardRef}
         style={{
           position: 'absolute',
           top: '50%',
           left: 56,
-          transform: 'translateY(-50%)',
+          transform: cardOpen
+            ? 'translateY(-50%) translateX(0)'
+            : 'translateY(-50%) translateX(-32px)',
+          opacity: cardOpen ? 1 : 0,
+          pointerEvents: cardOpen ? 'auto' : 'none',
           zIndex: 10,
+          transition:
+            'opacity 220ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
       >
-        <VerificationCard
+        <RecommendationCard
           confirmedAt={confirmedAt}
           onConfirm={() => setConfirmedAt(stamp())}
           onUndo={() => setConfirmedAt(null)}
+          onClose={() => setCardOpen(false)}
         />
-      </div>
-
-      {/* Camera-controls hint */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 18,
-          right: 18,
-          padding: '8px 12px',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(0,0,0,0.55)',
-          color: '#fff',
-          fontSize: '12px',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          zIndex: 6,
-          lineHeight: 1.5,
-          backdropFilter: 'blur(4px)',
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>Camera controls</div>
-        <div style={{ opacity: 0.85 }}>
-          Drag — orbit &nbsp;·&nbsp; Right-drag — pan &nbsp;·&nbsp; Scroll — zoom
-        </div>
       </div>
     </div>
   );
 }
 
-/* ── Verification card (e-signature for a single value) ────────── */
-function VerificationCard({
+/* ── Recommendation card (current → suggested anchor swap) ─────── */
+function RecommendationCard({
   confirmedAt,
   onConfirm,
   onUndo,
+  onClose,
 }: {
   confirmedAt: string | null;
   onConfirm: () => void;
   onUndo: () => void;
+  onClose: () => void;
 }) {
   const confirmed = Boolean(confirmedAt);
 
@@ -482,7 +791,7 @@ function VerificationCard({
     <div
       className="bg-white flex flex-col overflow-hidden"
       style={{
-        width: '360px',
+        width: '400px',
         borderRadius: 'var(--modus-wc-border-radius-lg, 16px)',
         border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
         boxShadow:
@@ -518,21 +827,47 @@ function VerificationCard({
           />
         </span>
         <span
-          className="font-semibold uppercase"
+          className="font-semibold uppercase flex-1"
           style={{
             fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
             letterSpacing: '0.10em',
             color: confirmed ? '#1d8b4d' : '#b3243a',
           }}
         >
-          {confirmed ? 'Confirmed by you' : "I'm deferring this to you"}
+          {confirmed
+            ? 'Replacement applied'
+            : "I'd recommend swapping this anchor"}
         </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="flex items-center justify-center transition-colors"
+          style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor =
+              'rgba(0,0,0,0.06)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          <ModusWcIcon name="close" size="sm" decorative />
+        </button>
       </div>
 
-      {/* Value */}
-      <div className="flex flex-col items-center text-center px-5 pt-6 pb-5">
+      {/* Context */}
+      <div className="px-5 pt-4 pb-2">
         <span
-          className="uppercase mb-2"
+          className="uppercase"
           style={{
             fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
             fontWeight: 600,
@@ -540,42 +875,62 @@ function VerificationCard({
             color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
           }}
         >
-          Column C-3 · Anchor bolt embedment
+          Column C-3 · Foundation anchor
         </span>
-        <span
-          style={{
-            fontSize: '40px',
-            lineHeight: '44px',
-            fontWeight: 600,
-            letterSpacing: '-0.02em',
-            color: 'var(--modus-wc-color-base-content, #101828)',
-          }}
-        >
-          350 <span style={{ fontSize: '22px', fontWeight: 500 }}>mm</span>
-        </span>
-        <span
-          className="mt-1"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            lineHeight: '18px',
-          }}
-        >
-          into pile cap · 4× M24 Grade 8.8
-        </span>
-        <div
-          className="mt-4 self-stretch"
-          style={{
-            height: '2px',
-            background: confirmed
-              ? '#2bbf6a'
-              : 'repeating-linear-gradient(90deg, var(--modus-wc-color-base-content-low-contrast, #6a6e79) 0 6px, transparent 6px 10px)',
-            transition: 'background 200ms ease',
-          }}
+      </div>
+
+      {/* Current → Suggested comparison */}
+      <div
+        className="flex items-stretch gap-2 px-4 pb-4"
+        style={{ minHeight: '160px' }}
+      >
+        <AnchorOption
+          tone="current"
+          dim={confirmed}
+          tag="Current"
+          title="Cast-in-place pad"
+          stats={[
+            { label: 'Depth', value: '350 mm' },
+            { label: 'Uplift', value: '220 kN' },
+          ]}
+          svg={<CurrentAnchorSvg accent="#b3243a" />}
+        />
+
+        <div className="flex flex-col items-center justify-center px-1">
+          <span
+            className="flex items-center justify-center"
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '1000px',
+              backgroundColor: confirmed ? '#2bbf6a' : '#ff3b58',
+              color: '#ffffff',
+            }}
+          >
+            <ModusWcIcon
+              name={confirmed ? 'check' : 'arrow_right_bold'}
+              size="xs"
+              decorative
+            />
+          </span>
+        </div>
+
+        <AnchorOption
+          tone="suggested"
+          highlight
+          tag={confirmed ? 'Applied' : 'AI suggests'}
+          title="Helical pile"
+          stats={[
+            { label: 'Depth', value: '1.2 m' },
+            { label: 'Uplift', value: '1100 kN' },
+          ]}
+          svg={
+            <SuggestedAnchorSvg accent={confirmed ? '#1d8b4d' : '#0063a3'} />
+          }
         />
       </div>
 
-      {/* Rationale / stamp */}
+      {/* Rationale or confirmation stamp */}
       {!confirmed ? (
         <div
           className="flex flex-col gap-2 px-5 pb-4"
@@ -587,63 +942,37 @@ function VerificationCard({
           <span
             className="font-semibold"
             style={{
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
               color: 'var(--modus-wc-color-base-content, #171c1e)',
             }}
           >
-            Why I&apos;m asking you, not deciding myself
+            Why I&apos;m asking
           </span>
           <ul
             className="flex flex-col gap-1.5"
             style={{
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
               color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              lineHeight: '18px',
+              lineHeight: '20px',
               margin: 0,
               padding: 0,
               listStyle: 'none',
             }}
           >
-            <li className="flex gap-2">
-              <span
-                aria-hidden
-                style={{
-                  marginTop: '7px',
-                  width: '4px',
-                  height: '4px',
-                  borderRadius: '1000px',
-                  backgroundColor: '#ff3b58',
-                  flexShrink: 0,
-                }}
-              />
-              <span>
-                Sets pull-out capacity for{' '}
-                <strong style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}>
-                  220 kN factored uplift
-                </strong>
-                .
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <span
-                aria-hidden
-                style={{
-                  marginTop: '7px',
-                  width: '4px',
-                  height: '4px',
-                  borderRadius: '1000px',
-                  backgroundColor: '#ff3b58',
-                  flexShrink: 0,
-                }}
-              />
-              <span>
-                A change here propagates to all{' '}
-                <strong style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}>
-                  18 perimeter columns
-                </strong>
-                .
-              </span>
-            </li>
+            <Bullet>
+              Current pad is at its{' '}
+              <strong style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}>
+                220 kN uplift limit
+              </strong>{' '}
+              — no margin.
+            </Bullet>
+            <Bullet>
+              Helical pile adds{' '}
+              <strong style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}>
+                ~5× safety
+              </strong>
+              , no redraws.
+            </Bullet>
           </ul>
         </div>
       ) : (
@@ -705,7 +1034,7 @@ function VerificationCard({
             }}
           >
             <ModusWcIcon name="refresh" size="xs" decorative />
-            Undo confirmation
+            Revert to original anchor
           </button>
         ) : (
           <>
@@ -731,8 +1060,7 @@ function VerificationCard({
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
             >
-              <ModusWcIcon name="edit" size="xs" decorative />
-              Edit value
+              Keep current
             </button>
             <button
               type="button"
@@ -750,10 +1078,128 @@ function VerificationCard({
               }}
             >
               <ModusWcIcon name="check" size="xs" decorative />
-              Confirm value
+              Apply suggestion
             </button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Bullet ────────────────────────────────────────────────────── */
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex gap-2">
+      <span
+        aria-hidden
+        style={{
+          marginTop: '7px',
+          width: '4px',
+          height: '4px',
+          borderRadius: '1000px',
+          backgroundColor: '#ff3b58',
+          flexShrink: 0,
+        }}
+      />
+      <span>{children}</span>
+    </li>
+  );
+}
+
+/* ── Anchor option block (one of the two side-by-side cards) ───── */
+function AnchorOption({
+  tone,
+  tag,
+  title,
+  stats,
+  svg,
+  highlight = false,
+  dim = false,
+}: {
+  tone: 'current' | 'suggested';
+  tag: string;
+  title: string;
+  stats: { label: string; value: string }[];
+  svg: React.ReactNode;
+  highlight?: boolean;
+  dim?: boolean;
+}) {
+  const isCurrent = tone === 'current';
+  return (
+    <div
+      className="flex flex-col items-center text-center flex-1 transition-opacity"
+      style={{
+        padding: '10px 8px 12px 8px',
+        borderRadius: 'var(--modus-wc-border-radius-md, 12px)',
+        border: highlight
+          ? '1.5px solid var(--modus-wc-color-primary, #0063a3)'
+          : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        backgroundColor: highlight
+          ? 'rgba(0,99,163,0.05)'
+          : 'var(--modus-wc-color-base-100, #f8f9fa)',
+        opacity: dim ? 0.55 : 1,
+        position: 'relative',
+      }}
+    >
+      <span
+        className="uppercase mb-1"
+        style={{
+          fontSize: '9px',
+          fontWeight: 700,
+          letterSpacing: '0.10em',
+          color: isCurrent
+            ? '#b3243a'
+            : 'var(--modus-wc-color-primary, #0063a3)',
+        }}
+      >
+        {tag}
+      </span>
+      <div
+        className="mb-1.5"
+        style={{
+          width: '78px',
+          height: '78px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {svg}
+      </div>
+      <span
+        className="font-semibold"
+        style={{
+          fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+          color: 'var(--modus-wc-color-base-content, #171c1e)',
+          lineHeight: '16px',
+        }}
+      >
+        {title}
+      </span>
+      <div
+        className="mt-1.5 flex flex-col gap-0.5 items-center"
+        style={{ fontSize: '10px' }}
+      >
+        {stats.map((s) => (
+          <span
+            key={s.label}
+            style={{
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              lineHeight: '14px',
+            }}
+          >
+            {s.label}:{' '}
+            <strong
+              style={{
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+                fontWeight: 600,
+              }}
+            >
+              {s.value}
+            </strong>
+          </span>
+        ))}
       </div>
     </div>
   );

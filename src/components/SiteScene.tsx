@@ -195,20 +195,23 @@ export default function SiteScene() {
     ramp.receiveShadow = true;
     scene.add(ramp);
 
-    /* ──★ Concrete foundation for the building going up in the dig ──
-       A mat (raft) slab covers the bottom-terrace floor, with a 2×3
-       grid of footing pads and tall concrete columns rising to ground
-       level. Vertical rebar protrudes from each column top, ready for
-       the next pour. Column lines are at x = ±4 (NOT x = 0) so the
-       line of sight from the camera to the AI pulse on the wall behind
-       stays clear. */
-    const concreteMat = new THREE.MeshLambertMaterial({ color: 0xc8c2b8 });
-    const concreteAccent = new THREE.MeshLambertMaterial({ color: 0xb6b0a8 });
+    /* ──★ Concrete foundation for the big building going up in the dig ──
+       Three layers of structure, all clearly visible from the default
+       camera angle:
+         1. Mat / raft slab on the bottom of the deep pit
+         2. Basement floor slab on the middle terrace
+         3. Tall concrete columns rising from the mat all the way up to
+            ~3 m ABOVE ground level, so they read as a building skeleton
+            instead of being lost down inside the pit
+       Column lines are at x = ±4 (NOT x = 0) so the line of sight from
+       the camera to the AI pulse on the wall behind stays clear. */
+    const concreteMat = new THREE.MeshLambertMaterial({ color: 0xd6d0c4 });
+    const concreteAccent = new THREE.MeshLambertMaterial({ color: 0xc0bab0 });
     const rebarMat = new THREE.MeshLambertMaterial({ color: 0x8a5a3a });
 
     // Mat / raft foundation slab — covers the entire bottom-terrace floor
-    const matSlabH = 0.5;
-    const matSlabTopY = -9 + matSlabH; // mat top ≈ y = -8.5
+    const matSlabH = 0.6;
+    const matSlabTopY = -9 + matSlabH; // mat top ≈ y = -8.4
     const matSlab = new THREE.Mesh(
       new THREE.BoxGeometry(11.6, matSlabH, 5.6),
       concreteMat,
@@ -218,7 +221,7 @@ export default function SiteScene() {
     matSlab.receiveShadow = true;
     scene.add(matSlab);
 
-    // Slightly lighter top to read as a fresh-troweled finish
+    // Lighter top finish on the mat
     const matSlabTop = new THREE.Mesh(
       new THREE.PlaneGeometry(11.6, 5.6),
       concreteAccent,
@@ -228,31 +231,62 @@ export default function SiteScene() {
     matSlabTop.receiveShadow = true;
     scene.add(matSlabTop);
 
-    // Footing pads + columns + rebar dowels at each grid location
-    const columnTopY = -1.6;
+    // Basement floor slab — covers most of the middle-terrace floor,
+    // with the bottom-pit hole left open through it. Built as 4 strips
+    // surrounding the bottom-pit footprint so the deep pit stays open.
+    function basementStrip(cx: number, cz: number, w: number, d: number) {
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.35, d),
+        concreteMat,
+      );
+      slab.position.set(cx, -5 + 0.175, cz);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
+      scene.add(slab);
+
+      const top = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, d),
+        concreteAccent,
+      );
+      top.rotation.x = -Math.PI / 2;
+      top.position.set(cx, -5 + 0.36, cz);
+      top.receiveShadow = true;
+      scene.add(top);
+    }
+    // West / east strips run the full middle-pit depth
+    basementStrip(-8.5, 0, 5, 12.6);
+    basementStrip( 8.5, 0, 5, 12.6);
+    // North / south strips fill the strip between bottom-pit and middle-pit edges
+    basementStrip(0, -4.75, 12, 3.1);
+    basementStrip(0,  4.75, 12, 3.1);
+
+    // Footing pads + columns + rebar dowels at each grid location.
+    // Columns rise from the mat all the way past ground level so they
+    // stick up clearly above the top pit and read as a building skeleton.
+    const columnTopY = 3.0; // 3 m above ground level
     const columnPositions: [number, number][] = [
       [-4, -2], [-4, 0], [-4, 2],
       [ 4, -2], [ 4, 0], [ 4, 2],
     ];
 
     for (const [cx, cz] of columnPositions) {
-      // Footing pad (sits on top of mat slab)
-      const footingH = 0.5;
+      // Wide footing pad on top of the mat
+      const footingH = 0.6;
       const footingY = matSlabTopY + footingH / 2;
       const footing = new THREE.Mesh(
-        new THREE.BoxGeometry(1.4, footingH, 1.4),
-        concreteMat,
+        new THREE.BoxGeometry(1.6, footingH, 1.6),
+        concreteAccent,
       );
       footing.position.set(cx, footingY, cz);
       footing.castShadow = true;
       footing.receiveShadow = true;
       scene.add(footing);
 
-      // Column rising from footing top to ground level
+      // Column — thick, rises from footing top to columnTopY (~3 m above ground)
       const columnBaseY = matSlabTopY + footingH;
       const columnH = columnTopY - columnBaseY;
       const column = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7, columnH, 0.7),
+        new THREE.BoxGeometry(1.0, columnH, 1.0),
         concreteMat,
       );
       column.position.set(cx, columnBaseY + columnH / 2, cz);
@@ -260,46 +294,56 @@ export default function SiteScene() {
       column.receiveShadow = true;
       scene.add(column);
 
-      // Edge accent on each column to give it form-mark texture
+      // Cap on each column to suggest a fresh top-of-pour finish
       const colCap = new THREE.Mesh(
-        new THREE.BoxGeometry(0.78, 0.08, 0.78),
+        new THREE.BoxGeometry(1.1, 0.1, 1.1),
         concreteAccent,
       );
-      colCap.position.set(cx, columnTopY + 0.04, cz);
+      colCap.position.set(cx, columnTopY + 0.05, cz);
       colCap.castShadow = true;
       scene.add(colCap);
 
-      // Vertical rebar protruding from column top — 4 dowels, ~0.7m
-      for (const [rx, rz] of [
-        [-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22],
-      ]) {
+      // Vertical rebar protruding from column top — 6 dowels, 1.5 m
+      const rebarOffsets: [number, number][] = [
+        [-0.32, -0.32], [0, -0.32], [0.32, -0.32],
+        [-0.32,  0.32], [0,  0.32], [0.32,  0.32],
+      ];
+      for (const [rx, rz] of rebarOffsets) {
         const rod = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.04, 0.7, 8),
+          new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8),
           rebarMat,
         );
-        rod.position.set(cx + rx, columnTopY + 0.35, cz + rz);
+        rod.position.set(cx + rx, columnTopY + 0.75, cz + rz);
         rod.castShadow = true;
         scene.add(rod);
       }
     }
 
-    // Strip footings around the perimeter of the bottom pit, sitting on
-    // the middle-terrace ledge (y = -5). Reads as a perimeter foundation
-    // wall waiting for the next concrete pour.
-    function stripFooting(cx: number, cz: number, w: number, d: number) {
-      const f = new THREE.Mesh(
-        new THREE.BoxGeometry(w, 0.4, d),
+    // Perimeter grade beams between column tops on each row — spans
+    // from column to column at column-top level so the structure reads
+    // as a connected frame, not just isolated posts.
+    function gradeBeam(cx: number, cz: number, w: number, d: number) {
+      const b = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.5, d),
         concreteMat,
       );
-      f.position.set(cx, -5 + 0.2, cz);
-      f.castShadow = true;
-      f.receiveShadow = true;
-      scene.add(f);
+      b.position.set(cx, columnTopY - 0.25, cz);
+      b.castShadow = true;
+      b.receiveShadow = true;
+      scene.add(b);
     }
-    stripFooting(-7.4, 0, 0.9, 6.6);   // west strip
-    stripFooting( 7.4, 0, 0.9, 6.6);   // east strip
-    stripFooting(0, -3.4, 14.9, 0.9);  // north strip
-    stripFooting(0,  3.4, 14.9, 0.9);  // south strip
+    // West column row beams (x = -4)
+    gradeBeam(-4, -1, 0.6, 2);
+    gradeBeam(-4,  1, 0.6, 2);
+    // East column row beams (x = 4)
+    gradeBeam( 4, -1, 0.6, 2);
+    gradeBeam( 4,  1, 0.6, 2);
+    // Cross beams at z = 0 between west and east rows
+    gradeBeam(-2, -2, 4, 0.6);
+    gradeBeam( 2, -2, 4, 0.6);
+    gradeBeam(-2,  2, 4, 0.6);
+    gradeBeam( 2,  2, 4, 0.6);
+    gradeBeam( 0,  0, 8, 0.6);
 
     // Stack of plywood formwork waiting on the middle-terrace ledge
     const plywoodGroup = new THREE.Group();

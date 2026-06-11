@@ -130,17 +130,19 @@ type ViewId = 'overview' | CcId;
 
 
 /* ── Chart geometry ─────────────────────────────────────────── */
-/* The chart SVG spans the full 880 px widget width (landscape 16∶9-ish).
+/* The chart SVG spans the full 760 px widget width — sized so the
+ * widget's overall aspect ratio (760 × ~474) matches the 16∶10
+ * thumbnail tiles on the guidelines grid (App.tsx).
  * The 24 px Header / SummaryStrip gutter is reproduced *inside* the SVG:
  *   • Y-axis tick labels are LEFT-aligned at SVG x = 24, so their
  *     left edge lines up with "Total Purchase Orders" above.
  *   • PAD_LEFT = 52 — leaves room (24 + ~22px for "100" + 6 padding)
  *     before the plot starts so labels never collide with grid lines.
- *   • PAD_RIGHT = 24 — plot right-edge lands at widget x = 856, the
+ *   • PAD_RIGHT = 24 — plot right-edge lands at widget x = 736, the
  *     same column where the legend's "500" / "450" totals end.
  * All three rows of widget content thus line up at the same left and
  * right margin. */
-const CHART_W = 880;
+const CHART_W = 760;
 const CHART_H = 280;
 const PAD_LEFT = 52;
 const PAD_RIGHT = 24;
@@ -342,7 +344,7 @@ export default function Creative1() {
       <AiAgentIntro />
 
       <div style={{ marginTop: '10px' }}>
-        <div style={{ position: 'relative', width: '880px' }}>
+        <div style={{ position: 'relative', width: '760px' }}>
           {/* AI's output — always read-only. The dual-gradient ring uses
            * the same technique as the Creative 3 prompt bar; the rainbow
            * layer is sized 200 % wide and slowly shifted by the
@@ -350,7 +352,7 @@ export default function Creative1() {
            * marking the widget visually as a live AI artifact. */}
           <div
             style={{
-              width: '880px',
+              width: '760px',
               boxSizing: 'border-box',
               border: '2px solid transparent',
               /* Matches the Modus button corner radius (--modus-wc-rounded-btn,
@@ -452,7 +454,7 @@ export default function Creative1() {
 
       <FooterActions
         editMode={editMode}
-        widgetWidth={880}
+        widgetWidth={760}
         onEdit={openEdit}
         onCancel={cancelEdit}
         onSave={saveEdit}
@@ -1761,8 +1763,10 @@ function SettingsCard({
   onChangeDisplay,
   onChangePalette,
 }: SettingsCardProps) {
-  /* Widget height = 72 (Header) + 90 (SummaryStrip) + 312 (Chart pad + svg) = 474px
-   * (landscape — the widget's 880 px width gives it a ~1.86∶1 ratio).
+  /* Widget height = 72 (Header) + 90 (SummaryStrip) + 312 (Chart pad + svg) = 474px.
+   * Combined with the 760 px width this gives a ~1.60∶1 ratio — the
+   * same 16∶10 aspect used by every thumbnail tile on the guidelines
+   * grid (App.tsx).
    * The card overlays the right side of the widget, flush with the
    * widget's top/right/bottom edges. A directional shadow on the left
    * edge reads as a panel slid in from the right. */
@@ -2448,7 +2452,7 @@ function AiAgentIntro() {
    * card below so the reading column doesn't shift. We achieve that
    * with a negative `marginLeft` on the flex container equal to the
    * logo width + gap; the row therefore overhangs into the gutter on
-   * the left, and the paragraph (flex: 1) fills the 880 px column
+   * the left, and the paragraph (flex: 1) fills the 760 px column
    * starting at x = 0 — same x as the widget. */
   return (
     <div
@@ -2457,7 +2461,7 @@ function AiAgentIntro() {
         alignItems: 'flex-start',
         gap: `${AI_LOGO_GAP}px`,
         marginLeft: `-${AI_LOGO_OFFSET}px`,
-        width: `${AI_LOGO_OFFSET + 880}px`,
+        width: `${AI_LOGO_OFFSET + 760}px`,
         padding: '4px 4px 0 0',
       }}
     >

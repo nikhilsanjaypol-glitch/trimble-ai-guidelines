@@ -33,7 +33,32 @@ const AI_OBSERVATION = {
   },
 };
 
-const AI_FIELD_COUNT = 5;
+/* Dropdown choice lists — every AI prefilled value is the first
+   option, with reasonable alternatives the surveyor can pick from. */
+const PROJECT_OPTIONS = [
+  'Pine Ridge Tract 12-A — Boundary & Topo',
+  'Pine Ridge Tract 11 — Boundary',
+  'Cedar Hollow Subdivision · Phase 2',
+  'Mountain View Realignment',
+  'Rocky Bluff Topographic Survey',
+];
+
+const ISSUE_OPTIONS = [
+  'Damaged monument cap',
+  'Encroachment on parcel',
+  'Missing marker',
+  'Boundary discrepancy',
+  'Vegetation obstruction',
+  'Out-of-tolerance control',
+];
+
+const RESPONSIBLE_OPTIONS = [
+  'Field Maintenance · S. Reyes',
+  'Survey Lead · J. Marquez',
+  'Project Manager · A. Khan',
+  'Office Drafting Team',
+  'Property Owner — coordinate via PM',
+];
 
 /* Captured photo — minimal SVG mock (no external image dependency).
    Soft outdoor scene with a tilted, slightly-damaged concrete
@@ -146,6 +171,75 @@ function FormRow({
 }
 
 /* Three-pill severity selector. */
+/* Native <select> styled to match Modus — shows the AI's suggested
+   value and lets the surveyor swap it for any of the alternatives.
+   Native select avoids any popup-clipping issues against the card's
+   overflow:hidden and gets keyboard / accessibility for free. */
+function Dropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '6px 28px 6px 10px',
+          minHeight: '30px',
+          border: '1px solid var(--modus-wc-color-base-200, #cbd2d9)',
+          borderRadius: '6px',
+          backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
+          fontSize: '13px',
+          fontFamily: 'inherit',
+          color: 'var(--modus-wc-color-base-content, #171c1e)',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none',
+          cursor: 'pointer',
+          outline: 'none',
+          transition: 'border-color 120ms ease',
+          // Force the native popup to render in light mode regardless
+          // of the OS color scheme — otherwise the dropdown options
+          // appear with a dark background on dark-mode systems while
+          // the rest of the card is light.
+          colorScheme: 'light',
+        }}
+      >
+        {options.map((opt) => (
+          <option
+            key={opt}
+            value={opt}
+            style={{ backgroundColor: '#ffffff', color: '#171c1e' }}
+          >
+            {opt}
+          </option>
+        ))}
+      </select>
+      <ModusWcIcon
+        name="expand_more"
+        size="xs"
+        decorative
+        style={{
+          position: 'absolute',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          pointerEvents: 'none',
+          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+        }}
+      />
+    </div>
+  );
+}
+
+// @ts-expect-error — kept for future use; remove when wired up
 function SeverityPills({
   value,
   onChange,
@@ -193,13 +287,15 @@ function SeverityPills({
    top, AI-prefilled form below. Surveyor reviews / edits / files. */
 function FieldObservation({ onClose }: { onClose: () => void }) {
   // Two-state card: collapsed shows just the photo + a single CTA;
-  // expanding reveals an empty form inline below the photo.
-  const [showForm, setShowForm] = useState(false);
-  const [project, setProject] = useState('');
-  const [issueType, setIssueType] = useState('');
-  const [responsible, setResponsible] = useState('');
-  const [severity, setSeverity] = useState<Severity | null>(null);
-  const [description, setDescription] = useState('');
+  // Form is shown by default with all AI-prefilled values. The
+  // surveyor reviews / edits via the dropdowns and then files.
+  const [project, setProject] = useState(AI_OBSERVATION.fields.project);
+  const [issueType, setIssueType] = useState(AI_OBSERVATION.fields.issueType);
+  const [responsible, setResponsible] = useState(AI_OBSERVATION.fields.responsible);
+  const [severity, setSeverity] = useState<Severity | null>(
+    AI_OBSERVATION.fields.severity,
+  );
+  const [description, setDescription] = useState(AI_OBSERVATION.fields.description);
   const [filed, setFiled] = useState(false);
 
   const inputBase: React.CSSProperties = {
@@ -308,140 +404,79 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Form — only after the user opens the draft */}
-      {showForm && (
-        <div
-          style={{ animation: 'creative8-form-in 0.22s ease-out' }}
-        >
-          <div className="flex flex-col gap-2" style={{ padding: '12px 16px' }}>
-            <FormRow label="Project">
-              <input
-                value={project}
-                onChange={(e) => setProject(e.target.value)}
-                placeholder="Select or type project name"
-                style={inputBase}
-              />
-            </FormRow>
-            <FormRow label="Issue type">
-              <input
-                value={issueType}
-                onChange={(e) => setIssueType(e.target.value)}
-                placeholder="e.g. Damaged monument"
-                style={inputBase}
-              />
-            </FormRow>
-            <FormRow label="Responsible party">
-              <input
-                value={responsible}
-                onChange={(e) => setResponsible(e.target.value)}
-                placeholder="Assign team or person"
-                style={inputBase}
-              />
-            </FormRow>
-            <FormRow label="Severity">
-              <SeverityPills value={severity} onChange={setSeverity} />
-            </FormRow>
-            <FormRow label="Description">
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                placeholder="Describe what you observed in the field…"
-                style={{
-                  ...inputBase,
-                  resize: 'vertical',
-                  lineHeight: 1.4,
-                }}
-              />
-            </FormRow>
-          </div>
-        </div>
-      )}
+      {/* Form — always visible. Description sits at the top directly
+          beneath the photo so the surveyor first reads (and edits)
+          the AI's narrative, then verifies the structured metadata
+          via dropdowns below. Every field is the AI's draft; clicks
+          let the surveyor swap any value. */}
+      <div className="flex flex-col gap-2" style={{ padding: '12px 16px' }}>
+        <FormRow label="Description">
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            style={{
+              ...inputBase,
+              resize: 'vertical',
+              lineHeight: 1.4,
+            }}
+          />
+        </FormRow>
+        <FormRow label="Project">
+          <Dropdown
+            value={project}
+            options={PROJECT_OPTIONS}
+            onChange={setProject}
+          />
+        </FormRow>
+        <FormRow label="Issue type">
+          <Dropdown
+            value={issueType}
+            options={ISSUE_OPTIONS}
+            onChange={setIssueType}
+          />
+        </FormRow>
+        <FormRow label="Responsible party">
+          <Dropdown
+            value={responsible}
+            options={RESPONSIBLE_OPTIONS}
+            onChange={setResponsible}
+          />
+        </FormRow>
+        <FormRow label="Severity">
+          <Dropdown
+            value={
+              severity
+                ? severity.charAt(0).toUpperCase() + severity.slice(1)
+                : 'Medium'
+            }
+            options={['Low', 'Medium', 'High']}
+            onChange={(v) => setSeverity(v.toLowerCase() as Severity)}
+          />
+        </FormRow>
+      </div>
 
-      {/* Footer — single CTA when collapsed, commit actions when expanded */}
+      {/* Footer — Save draft / File observation */}
       <div
+        className="flex items-center justify-end gap-2"
         style={{
           padding: '10px 16px 12px',
           borderTop: '1px solid var(--modus-wc-color-base-200, #eef0f4)',
         }}
       >
-        {!showForm ? (
-          // Native <button> is used for the collapsed CTA so the click
-          // is guaranteed to fire even though the card wrapper stops
-          // pointerdown propagation (so the canvas pan handler doesn't
-          // engage when interacting with the card).
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowForm(true);
-              }}
-              aria-label="Review AI draft"
-              className="creative8-review-cta"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 14px',
-                border: 'none',
-                borderRadius: '6px',
-                backgroundColor: 'var(--modus-wc-color-primary, #0e88f2)',
-                color: '#ffffff',
-                fontSize: '13px',
-                fontWeight: 500,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                lineHeight: 1,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-                transition: 'background-color 120ms ease, transform 80ms ease',
-              }}
-            >
-              <ModusWcIcon
-                name="sparkle"
-                size="xs"
-                decorative
-                style={{ pointerEvents: 'none' }}
-              />
-              <span style={{ pointerEvents: 'none' }}>
-                Review AI draft · {AI_FIELD_COUNT} fields
-              </span>
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-end gap-2">
-            <ModusWcButton variant="outlined" color="secondary" onButtonClick={onClose}>
-              Save draft
-            </ModusWcButton>
-            <ModusWcButton
-              color="primary"
-              onButtonClick={() => {
-                setFiled(true);
-                setTimeout(onClose, 600);
-              }}
-            >
-              {filed ? 'Filed' : 'File observation'}
-            </ModusWcButton>
-          </div>
-        )}
+        <ModusWcButton variant="outlined" color="secondary" onButtonClick={onClose}>
+          Save draft
+        </ModusWcButton>
+        <ModusWcButton
+          color="primary"
+          onButtonClick={() => {
+            setFiled(true);
+            setTimeout(onClose, 600);
+          }}
+        >
+          {filed ? 'Filed' : 'File observation'}
+        </ModusWcButton>
       </div>
-
-      <style>{`
-        @keyframes creative8-form-in {
-          0%   { opacity: 0; transform: translateY(-4px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        .creative8-review-cta:hover {
-          background-color: var(--modus-wc-color-primary-hover, #0066cc);
-        }
-        .creative8-review-cta:active {
-          transform: scale(0.98);
-        }
-        .creative8-review-cta:focus-visible {
-          outline: 2px solid var(--modus-wc-color-primary, #0e88f2);
-          outline-offset: 2px;
-        }
-      `}</style>
     </div>
   );
 }
@@ -548,7 +583,9 @@ function Marker({
         flexShrink: 0,
       }}
     >
-      {/* Filled rainbow pulse rings — only while closed */}
+      {/* Pulse rings — rainbow border only, transparent center.
+          A radial-gradient mask hollows out the inside so each ring
+          reads as an outline that expands and fades. */}
       {!open && (
         <>
           <span
@@ -556,7 +593,11 @@ function Marker({
             style={{
               ...centerStack,
               background: TRIMBLE_RAINBOW,
-              opacity: 0.6,
+              WebkitMaskImage:
+                'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+              maskImage:
+                'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+              opacity: 0.85,
               animation: 'creative8-rainbow-pulse 1.8s ease-out infinite',
               zIndex: 1,
             }}
@@ -566,7 +607,11 @@ function Marker({
             style={{
               ...centerStack,
               background: TRIMBLE_RAINBOW,
-              opacity: 0.6,
+              WebkitMaskImage:
+                'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+              maskImage:
+                'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+              opacity: 0.85,
               animation: 'creative8-rainbow-pulse 1.8s ease-out 0.9s infinite',
               zIndex: 1,
             }}
@@ -574,31 +619,45 @@ function Marker({
         </>
       )}
 
-      {/* Solid rainbow orb with a white sparkle inside */}
+      {/* Marker orb — rainbow border around a white core. The camera
+          icon sits inside the white center, drawn in Modus primary
+          blue so it reads cleanly against white. */}
       <span
         aria-hidden="true"
         className="creative8-orb"
         style={{
           ...centerStack,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           background: TRIMBLE_RAINBOW,
-          boxShadow: '0 4px 12px rgba(74,0,255,0.35), 0 2px 4px rgba(0,0,0,0.15)',
+          boxShadow: '0 4px 12px rgba(74,0,255,0.28), 0 2px 4px rgba(0,0,0,0.12)',
           transform: open ? 'scale(1.08)' : 'scale(1)',
           transition: 'transform 0.18s ease',
-          color: '#fff',
           zIndex: 2,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8L12 2z"
-            fill="white"
-          />
-          <circle cx="19" cy="5" r="1.2" fill="white" />
-          <circle cx="5" cy="19" r="1.2" fill="white" />
-        </svg>
+        <span
+          style={{
+            position: 'absolute',
+            inset: '2.5px',
+            backgroundColor: '#ffffff',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M9 4l-1.4 2H4a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 4 20h16a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 20 6h-3.6L15 4H9zm3 4.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"
+              fill="var(--modus-wc-color-primary, #0063A7)"
+            />
+          </svg>
+        </span>
       </span>
 
       <style>{`
@@ -1217,6 +1276,7 @@ function SitePlan() {
   );
 }
 
+// @ts-expect-error — kept for future use; remove when wired up
 function MapControls({
   zoom,
   onZoomIn,
@@ -1306,6 +1366,7 @@ function TitleBlock() {
   );
 }
 
+// @ts-expect-error — kept for future use; remove when wired up
 function ControlsHint() {
   return (
     <div
@@ -1377,10 +1438,11 @@ export default function Creative8() {
   };
 
   /* FieldObservation card position (clamped to viewport).
-     ── Expanded height ≈ 500px (header + 140px photo + 5-row tight
-        form + footer). Reserving that on first open so the form
-        slides in with no scroll required. */
-  const CARD_EXPANDED_HEIGHT = 500;
+     ── Card is always at full height (header + 140px photo +
+        Description textarea + 3 dropdowns + Severity pills + footer).
+        Reserving the full height on open so the card never has to
+        scroll within the viewport. */
+  const CARD_EXPANDED_HEIGHT = 580;
   const CARD_WIDTH = 360;
   const VIEWPORT_PADDING = 24;
   const idealCardLeft = markerScreen.x + 38;
@@ -1459,12 +1521,15 @@ export default function Creative8() {
     setZoom(newZoom);
   }
 
+  // @ts-expect-error — kept for future use; remove when wired up
   function zoomIn() {
     setZoom((z) => Math.min(MAX_ZOOM, z * 1.2));
   }
+  // @ts-expect-error — kept for future use; remove when wired up
   function zoomOut() {
     setZoom((z) => Math.max(MIN_ZOOM, z / 1.2));
   }
+  // @ts-expect-error — kept for future use; remove when wired up
   function resetView() {
     const el = containerRef.current;
     if (!el) return;
@@ -1609,32 +1674,6 @@ export default function Creative8() {
         }}
       >
         <TitleBlock />
-      </div>
-
-      {/* Map controls — bottom-right */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 30,
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <MapControls zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetView} />
-      </div>
-
-      {/* Controls hint — bottom-left */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '20px',
-          zIndex: 30,
-          pointerEvents: 'none',
-        }}
-      >
-        <ControlsHint />
       </div>
 
       <style>{`

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-react';
+import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
  * Guideline: OFFER POSSIBILITIES
@@ -11,21 +11,20 @@ import { ModusWcIcon, ModusWcTextInput } from '@trimble-oss/moduswebcomponents-r
  *   professional stays in the driver's seat.
  *
  * Component: 3D DESIGN STUDIO
- *   Left  – an interactive 3D interior (orbit / zoom). A small chat
- *           bar sits below as a secondary "say what's missing"
- *           channel.
+ *   Left  – an interactive 3D interior the professional can orbit
+ *           and zoom freely.
  *   Right – panel of UI controls that EACH directly mutate the 3D
  *           scene the professional is looking at:
  *             · Lighting Mood     → swaps key/ambient lights + sky
  *             · Surface Materials → recolors floor / walls / sofa
  *             · Decor Elements    → toggles plant / art / lamp /
  *                                   rug / bookshelf in the room
- *             · Camera View       → tweens the camera between
- *                                   curated angles
+ *             · Atmosphere        → adds scene fog for mood
+ *           Under the panel: Surprise me / Reset / Apply to model.
  *
- *   No "Render Image" CTA — the act of toggling controls IS the
- *   exploration. Every option is an AI-offered possibility, the
- *   professional steers the result by clicking.
+ *   The act of toggling controls IS the exploration. Every option
+ *   is an AI-offered possibility — the professional steers the
+ *   result by clicking, not by typing.
  * ───────────────────────────────────────────────────────────────── */
 
 /* ── Possibility data ─────────────────────────────────────────── */
@@ -430,7 +429,6 @@ function InteriorViewport({
     };
   }, []);
 
-  /* ── Materials → 3D ────────────────────────────────────────── */
   useEffect(() => {
     const mats = refs.current.materials;
     if (!mats) return;
@@ -441,7 +439,7 @@ function InteriorViewport({
     mats.lamp.color.set(get(1, '#b23b2e'));
     mats.floor.color.set(get(2, '#8b5a3c'));
     mats.wall.color.set(get(3, '#f2ede4'));
-    mats.art.color.set(get(4, '#d4a93b') ?? '#d4a93b');
+    mats.art.color.set(get(4, '#d4a93b'));
   }, [selectedSwatches]);
 
   /* ── Lighting mood → 3D ───────────────────────────────────── */
@@ -486,115 +484,6 @@ function InteriorViewport({
       style={{ cursor: 'grab' }}
       aria-label="Interactive 3D interior – drag to orbit, scroll to zoom"
     />
-  );
-}
-
-/* ── AI Chat bar (secondary input) ─────────────────────────────── */
-
-function ChatBar({
-  value,
-  onChange,
-  onSubmit,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <div className="flex flex-col">
-      {/* Prompt bar — same shell as Creative3, with a flat Trimble light-grey
-          border in place of the rainbow gradient. */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (value.trim()) onSubmit();
-        }}
-        className="flex items-center justify-between w-full overflow-hidden"
-        style={{
-          height: '42px',
-          border: '1.5px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          borderRadius: '12px',
-          padding: '4px',
-          backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-        }}
-        data-name="_Prompt/Base"
-      >
-        <div
-          className="prompt-bar-input flex-1 min-w-0"
-          style={{ display: 'flex', background: 'transparent' }}
-        >
-          <ModusWcTextInput
-            size="sm"
-            placeholder="How can I help you?"
-            bordered={false}
-            value={value}
-            onInputChange={(e: CustomEvent) => {
-              const v = e.detail?.target?.value ?? '';
-              onChange(v);
-            }}
-            style={{
-              flex: 1,
-              width: '100%',
-              display: 'block',
-              background: 'transparent',
-            }}
-          />
-        </div>
-
-        <div
-          className="flex items-center shrink-0"
-          style={{ gap: '0px' }}
-          data-name="Basic Actions"
-        >
-          <button
-            type="button"
-            aria-label="Add attachment"
-            style={{
-              width: '38px',
-              height: '48px',
-              padding: 0,
-              background: 'transparent',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <img
-              src="/assets/prompt-add.png"
-              alt=""
-              aria-hidden="true"
-              style={{ width: '36px', height: '34px', display: 'block' }}
-            />
-          </button>
-          <button
-            type="submit"
-            aria-label="Send prompt"
-            style={{
-              width: '38px',
-              height: '48px',
-              padding: 0,
-              background: 'transparent',
-              border: 'none',
-              borderRadius: '999px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <img
-              src="/assets/prompt-send.png"
-              alt=""
-              aria-hidden="true"
-              style={{ width: '36px', height: '34px', display: 'block' }}
-            />
-          </button>
-        </div>
-      </form>
-    </div>
   );
 }
 
@@ -894,7 +783,6 @@ export default function Creative9() {
   const [lighting, setLighting] = useState<string>(INITIAL.lighting);
   const [activeDecor, setActiveDecor] = useState<DecorElement['id'][]>(INITIAL.decor);
   const [atmosphere, setAtmosphere] = useState<string>(INITIAL.atmosphere);
-  const [chat, setChat] = useState('');
   const [savedFlash, setSavedFlash] = useState(false);
 
   function toggleSwatch(id: string) {
@@ -956,14 +844,16 @@ export default function Creative9() {
         rowGap: '12px',
       }}
     >
-      {/* ── ROW 1 · COL 1 — 3D viewport ──────────────────────── */}
-      {/* CSS Grid forces both row-1 cells to render at the SAME
-          height regardless of which side's content is taller or
-          when icons / Three.js finish loading — that's what stops
-          the gap from reappearing on reload. */}
+      {/* ── COL 1 — 3D viewport (spans both rows) ────────────── */}
+      {/* The render card now spans the full height of the grid so
+          its bottom edge aligns with the action buttons on the
+          right. CSS Grid keeps the heights locked together
+          regardless of when icons / Three.js finish loading. */}
       <div
         className="relative rounded-2xl overflow-hidden"
         style={{
+          gridColumn: '1',
+          gridRow: '1 / span 2',
           minHeight: '420px',
           backgroundColor: '#1d1f24',
           boxShadow: '0 6px 18px rgba(0,0,0,0.10)',
@@ -975,30 +865,14 @@ export default function Creative9() {
           activeDecor={activeDecor}
           atmosphere={atmosphere}
         />
-
-        {/* Orbit hint */}
-        <div
-          className="absolute flex items-center gap-1.5 rounded-full"
-          style={{
-            bottom: '14px',
-            right: '14px',
-            padding: '4px 10px',
-            backgroundColor: 'rgba(0,0,0,0.55)',
-            backdropFilter: 'blur(4px)',
-            color: 'rgba(255,255,255,0.92)',
-            fontSize: '10px',
-            letterSpacing: '0.3px',
-          }}
-        >
-          <ModusWcIcon name="drag" size="xs" decorative style={{ color: '#fff' }} />
-          Drag to orbit · scroll to zoom
-        </div>
       </div>
 
       {/* ── ROW 1 · COL 2 — Possibility controls card ───────── */}
       <div
         className="flex flex-col gap-5 p-5 rounded-2xl"
         style={{
+          gridColumn: '2',
+          gridRow: '1',
           backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
         }}
@@ -1055,16 +929,18 @@ export default function Creative9() {
         </div>
       </div>
 
-      {/* ── ROW 2 · COL 1 — Chat bar ─────────────────────────── */}
-      <ChatBar value={chat} onChange={setChat} onSubmit={() => setChat('')} />
-
       {/* ── ROW 2 · COL 2 — Action buttons ───────────────────── */}
-      {/* Grid forces row 2 to a single auto height; setting the
-          buttons to 42px keeps that row exactly as tall as the
-          chat-bar pill on the left. */}
+      {/* Row 2's only cell — the render card on the left spans
+          both rows, so this 42px button row sits directly under
+          the settings card and aligns with the render card's
+          bottom edge. */}
       <div
         className="flex items-stretch gap-2"
-        style={{ height: '42px' }}
+        style={{
+          gridColumn: '2',
+          gridRow: '2',
+          height: '42px',
+        }}
       >
         <ActionButton
           variant="tertiary"

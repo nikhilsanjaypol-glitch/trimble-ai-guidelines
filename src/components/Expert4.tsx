@@ -12,13 +12,13 @@ const ANSWER_BODY: Segment[] = [
   {
     kind: 'text',
     value:
-      "The unbraced length at this beam (3.6 m) exceeds the W14×30's L\u209a of 2.8 m. Once L_b exceeds L\u209a, the section's flexural strength is reduced by inelastic lateral-torsional buckling — it can no longer reach its full plastic moment.",
+      "The unbraced length at this beam (**3.6 m**) exceeds the W14×30's L\u209a of **2.8 m**. Once L_b exceeds L\u209a, the section's flexural strength is reduced by **inelastic lateral-torsional buckling** — it can no longer reach its full plastic moment.",
   },
   { kind: 'cite', sourceId: 1 },
   {
     kind: 'text',
     value:
-      ' W14×34 is the lightest section that restores full capacity at this span.',
+      ' **W14×34** is the lightest section that restores full capacity at this span.',
   },
 ];
 
@@ -41,9 +41,12 @@ const SOURCES: Source[] = [
 
 const FLAGGED_BEAM = { x: 1200, y: 1100 };
 
-const MIN_ZOOM = 0.4;
+const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 3.0;
-const INITIAL_ZOOM = 0.85;
+const INITIAL_ZOOM = 0.5;
+const CANVAS_W = 2400;
+const CANVAS_H = 1800;
+const FIT_PADDING = 40;
 
 const COL_X = [300, 660, 1020, 1380, 1740];
 const COL_LABELS = ['A', 'B', 'C', 'D', 'E'];
@@ -646,7 +649,7 @@ function Marker({ open, onClick }: { open: boolean; onClick: () => void }) {
         transform: open ? 'translateY(-1px)' : 'none',
       }}
     >
-      <TrimbleAiLogo size={16} />
+      <TrimbleAiLogo size={22} />
       <span>Why this change?</span>
       <span aria-hidden style={{ display: 'inline-flex', color: 'var(--modus-wc-color-primary, #0063a3)' }}>
         <ModusWcIcon name={open ? 'expand_less' : 'expand_more'} size="xs" decorative />
@@ -795,9 +798,35 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
   const [activeSource, setActiveSource] = useState<number | null>(null);
   const [hoveredSource, setHoveredSource] = useState<number | null>(null);
 
+  function renderText(text: string, segIdx: number) {
+    /* Parse **highlight** markers and wrap them in a yellow <mark>
+       so the key facts (numbers, the recommended section, the
+       reason) jump out of the prose. */
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, partIdx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <mark
+            key={`${segIdx}-${partIdx}`}
+            style={{
+              backgroundColor: '#fff1cf',
+              color: '#171c1e',
+              padding: '1px 4px',
+              borderRadius: 3,
+              fontWeight: 600,
+            }}
+          >
+            {part.slice(2, -2)}
+          </mark>
+        );
+      }
+      return <span key={`${segIdx}-${partIdx}`}>{part}</span>;
+    });
+  }
+
   function renderBody() {
     return ANSWER_BODY.map((seg, idx) => {
-      if (seg.kind === 'text') return <span key={idx}>{seg.value}</span>;
+      if (seg.kind === 'text') return <span key={idx}>{renderText(seg.value, idx)}</span>;
       const id = seg.sourceId;
       return (
         <CitationChip
@@ -829,7 +858,7 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
       {/* Header */}
       <div
         style={{
-          padding: '14px 16px 10px',
+          padding: '14px 16px 12px',
           borderBottom: '1px solid #eef0f4',
           display: 'flex',
           alignItems: 'flex-start',
@@ -837,7 +866,7 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
           gap: 8,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <span
             style={{
               display: 'inline-flex',
@@ -853,9 +882,21 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
             <TrimbleAiLogo size={11} />
             Trimble AI · why answers
           </span>
-          <span style={{ fontSize: 13, fontStyle: 'italic', color: '#171c1e', lineHeight: 1.4 }}>
-            {QUESTION}
-          </span>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <span
+              aria-hidden
+              style={{
+                width: 3,
+                alignSelf: 'stretch',
+                background: '#0063a3',
+                borderRadius: 2,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#171c1e', lineHeight: 1.4 }}>
+              {QUESTION}
+            </span>
+          </div>
         </div>
         <button
           type="button"
@@ -888,20 +929,46 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
           gap: 14,
         }}
       >
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: '#171c1e' }}>
-          {renderBody()}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#0063a3',
+            }}
+          >
+            Answer
+          </span>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: '#171c1e' }}>
+            {renderBody()}
+          </p>
+        </div>
 
-        {SOURCES.map((src) => (
-          <SourceCard
-            key={src.id}
-            source={src}
-            active={activeSource === src.id}
-            hovered={hoveredSource === src.id}
-            onMouseEnter={() => setHoveredSource(src.id)}
-            onMouseLeave={() => setHoveredSource(null)}
-          />
-        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#6a6e79',
+            }}
+          >
+            Source
+          </span>
+          {SOURCES.map((src) => (
+            <SourceCard
+              key={src.id}
+              source={src}
+              active={activeSource === src.id}
+              hovered={hoveredSource === src.id}
+              onMouseEnter={() => setHoveredSource(src.id)}
+              onMouseLeave={() => setHoveredSource(null)}
+            />
+          ))}
+        </div>
       </div>
 
       <style>{`
@@ -910,56 +977,6 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
           100% { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </div>
-  );
-}
-
-/* ── Map controls (zoom in / out / fit + percentage readout) ────── */
-function MapControls({
-  zoom,
-  onZoomIn,
-  onZoomOut,
-  onReset,
-}: {
-  zoom: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onReset: () => void;
-}) {
-  const btnStyle: React.CSSProperties = {
-    width: 34,
-    height: 34,
-    background: '#ffffff',
-    border: '1px solid #e0e1e9',
-    borderRadius: 6,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-  };
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <button type="button" onClick={onZoomIn} style={btnStyle} aria-label="Zoom in">
-        <ModusWcIcon name="add" size="sm" decorative style={{ color: '#364153' }} />
-      </button>
-      <button type="button" onClick={onZoomOut} style={btnStyle} aria-label="Zoom out">
-        <ModusWcIcon name="remove" size="sm" decorative style={{ color: '#364153' }} />
-      </button>
-      <button type="button" onClick={onReset} style={btnStyle} aria-label="Fit to view">
-        <ModusWcIcon name="frame_landscape" size="sm" decorative style={{ color: '#364153' }} />
-      </button>
-      <div
-        style={{
-          ...btnStyle,
-          cursor: 'default',
-          fontSize: 10,
-          fontWeight: 600,
-          color: '#4a5565',
-        }}
-      >
-        {Math.round(zoom * 100)}%
-      </div>
     </div>
   );
 }
@@ -999,31 +1016,6 @@ function TitlePill() {
   );
 }
 
-function ControlsHint() {
-  return (
-    <div
-      style={{
-        background: 'rgba(20,24,32,0.78)',
-        backdropFilter: 'blur(6px)',
-        color: '#ffffff',
-        fontSize: 11,
-        fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-        padding: '6px 12px',
-        borderRadius: 6,
-        display: 'flex',
-        gap: 12,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-      }}
-    >
-      <span><strong>Drag</strong> — pan</span>
-      <span style={{ opacity: 0.5 }}>·</span>
-      <span><strong>Scroll</strong> — zoom</span>
-      <span style={{ opacity: 0.5 }}>·</span>
-      <span><strong>Click pill</strong> — see why</span>
-    </div>
-  );
-}
-
 /* ── Default export — full-canvas pannable / zoomable CAD plan,
    with the new annotation-pill marker + answer-with-evidence card. */
 export default function Expert4() {
@@ -1046,13 +1038,23 @@ export default function Expert4() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // On mount, compute a fit-to-view zoom so the entire 2400×1800 sheet
+  // is visible and centered in the viewport — no auto-zoom on the flagged
+  // beam. The user can drag/scroll-zoom in afterwards.
   useEffect(() => {
     if (initialized) return;
     const el = containerRef.current;
     if (!el) return;
+    const fitX = (el.clientWidth - FIT_PADDING * 2) / CANVAS_W;
+    const fitY = (el.clientHeight - FIT_PADDING * 2) / CANVAS_H;
+    const fitZoom = Math.max(
+      MIN_ZOOM,
+      Math.min(MAX_ZOOM, Math.min(fitX, fitY)),
+    );
+    setZoom(fitZoom);
     setPan({
-      x: el.clientWidth / 2 - FLAGGED_BEAM.x * INITIAL_ZOOM,
-      y: el.clientHeight / 2 - FLAGGED_BEAM.y * INITIAL_ZOOM,
+      x: (el.clientWidth - CANVAS_W * fitZoom) / 2,
+      y: (el.clientHeight - CANVAS_H * fitZoom) / 2,
     });
     setInitialized(true);
   }, [initialized]);
@@ -1072,20 +1074,25 @@ export default function Expert4() {
     y: beamScreen.y + PILL_OFFSET.y,
   };
 
+  /* Card always sits to the LEFT of the pill, vertically centered on it.
+     The rainbow connector runs from the pill's left edge into the middle
+     of the card's right edge so it's clearly visible between the two. */
   const CARD_WIDTH = 380;
-  const CARD_MAX_HEIGHT = 620;
+  const CARD_HEIGHT = 360;
   const PADDING = 24;
-  const idealLeft = markerScreen.x + 36;
-  const idealTop = markerScreen.y - 20;
-  const cardLeft = Math.max(
-    PADDING,
-    Math.min(idealLeft, viewport.w - CARD_WIDTH - PADDING),
-  );
+  const PILL_HALF_W = 110;
+  const GAP = 56;
+
+  const cardLeft = markerScreen.x - PILL_HALF_W - GAP - CARD_WIDTH;
   const cardTop = Math.max(
     PADDING,
-    Math.min(idealTop, viewport.h - CARD_MAX_HEIGHT - PADDING),
+    Math.min(
+      markerScreen.y - CARD_HEIGHT / 2,
+      viewport.h - CARD_HEIGHT - PADDING,
+    ),
   );
-  const connectorEndY = cardTop + 60;
+  const connectorStart = { x: markerScreen.x - PILL_HALF_W, y: markerScreen.y };
+  const connectorEnd = { x: cardLeft + CARD_WIDTH, y: cardTop + CARD_HEIGHT / 2 };
 
   function handlePointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return;
@@ -1136,22 +1143,6 @@ export default function Expert4() {
     const wy = (my - pan.y) / zoom;
     setPan({ x: mx - wx * newZoom, y: my - wy * newZoom });
     setZoom(newZoom);
-  }
-
-  function zoomIn() {
-    setZoom((z) => Math.min(MAX_ZOOM, z * 1.2));
-  }
-  function zoomOut() {
-    setZoom((z) => Math.max(MIN_ZOOM, z / 1.2));
-  }
-  function resetView() {
-    const el = containerRef.current;
-    if (!el) return;
-    setZoom(INITIAL_ZOOM);
-    setPan({
-      x: el.clientWidth / 2 - FLAGGED_BEAM.x * INITIAL_ZOOM,
-      y: el.clientHeight / 2 - FLAGGED_BEAM.y * INITIAL_ZOOM,
-    });
   }
 
   return (
@@ -1216,7 +1207,11 @@ export default function Expert4() {
         />
       </svg>
 
-      {/* Connector — rainbow line from pill to card when open */}
+      {/* Connector — same 1.5px solid Trimble-primary stroke as the
+          "Why this change?" pill border, so the line reads as a direct
+          extension of the button into the evidence card. The line
+          touches the pill's left edge and the card's right edge with
+          no end caps in between. */}
       {open && (
         <svg
           style={{
@@ -1225,37 +1220,17 @@ export default function Expert4() {
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
-            zIndex: 5,
+            zIndex: 25,
           }}
         >
-          <defs>
-            <linearGradient id="expert4-connector" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#00D7C0" />
-              <stop offset="33%" stopColor="#009AFE" />
-              <stop offset="55%" stopColor="#4A00FF" />
-              <stop offset="78%" stopColor="#FF2092" />
-              <stop offset="100%" stopColor="#FF00D3" />
-            </linearGradient>
-          </defs>
           <line
-            x1={markerScreen.x}
-            y1={markerScreen.y}
-            x2={cardLeft}
-            y2={connectorEndY}
-            stroke="#ffffff"
-            strokeWidth="4"
-            strokeLinecap="round"
-            opacity="0.45"
-          />
-          <line
-            x1={markerScreen.x}
-            y1={markerScreen.y}
-            x2={cardLeft}
-            y2={connectorEndY}
-            stroke="url(#expert4-connector)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.95"
+            x1={connectorStart.x}
+            y1={connectorStart.y}
+            x2={connectorEnd.x}
+            y2={connectorEnd.y}
+            stroke="#0063a3"
+            strokeWidth="1.5"
+            strokeLinecap="butt"
           />
         </svg>
       )}
@@ -1297,19 +1272,6 @@ export default function Expert4() {
       {/* Top-left title pill */}
       <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 30, pointerEvents: 'none' }}>
         <TitlePill />
-      </div>
-
-      {/* Bottom-right zoom controls */}
-      <div
-        style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 30 }}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <MapControls zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetView} />
-      </div>
-
-      {/* Bottom-left controls hint */}
-      <div style={{ position: 'absolute', bottom: 20, left: 20, zIndex: 30, pointerEvents: 'none' }}>
-        <ControlsHint />
       </div>
     </div>
   );

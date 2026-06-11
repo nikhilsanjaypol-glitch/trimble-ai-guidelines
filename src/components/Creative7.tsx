@@ -102,6 +102,13 @@ const EDIT_INPUT_BASE = {
 } as const;
 
 function PlanCard() {
+  /* PlanCard reads the variant to decide whether to render the
+     full-fidelity tablet pieces (paraphrase block, footer hint) or
+     the minimal plan-only view. Defaults to plan-only when standalone. */
+  const variantCtx = useCreative7Variant();
+  const variant: Creative7Variant = variantCtx?.variant ?? 'plan-only';
+  const isTablet = variant === 'tablet';
+
   const [editing, setEditing] = useState(false);
   const [paraphrase, setParaphrase] = useState(PARAPHRASE_DEFAULT);
   const [steps, setSteps] = useState<PlanStep[]>(PLAN_STEPS);
@@ -119,12 +126,12 @@ function PlanCard() {
     };
     setEditing(true);
     requestAnimationFrame(() => {
-      if (focusTarget === 'paraphrase' || !focusTarget) {
+      if (focusTarget === 'paraphrase' && isTablet) {
         paraRef.current?.focus();
         const len = paraRef.current?.value.length ?? 0;
         paraRef.current?.setSelectionRange(len, len);
-      } else if (focusTarget === 'first-step' && steps[0]) {
-        stepRefs.current[steps[0].id]?.focus();
+      } else if (focusTarget === 'first-step' || !focusTarget) {
+        if (steps[0]) stepRefs.current[steps[0].id]?.focus();
       } else {
         /* Treat as a step id */
         stepRefs.current[focusTarget]?.focus();
@@ -213,8 +220,12 @@ function PlanCard() {
     }
   }
 
-  /* Auto-grow the paraphrase textarea to fit content. */
-  const paraRows = Math.max(2, paraphrase.split('\n').length, Math.ceil(paraphrase.length / 60));
+  /* Auto-grow the paraphrase textarea to fit content (tablet variant only). */
+  const paraRows = Math.max(
+    2,
+    paraphrase.split('\n').length,
+    Math.ceil(paraphrase.length / 60),
+  );
 
   return (
     <div
@@ -284,87 +295,89 @@ function PlanCard() {
           )}
         </div>
 
-        {/* Paraphrase */}
-        <div className="flex flex-col gap-1 px-4 pb-3 w-full">
-          <span
-            className="font-semibold"
-            style={{
-              fontSize: '11px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              letterSpacing: '0.4px',
-            }}
-          >
-            HERE&apos;S WHAT I&apos;LL DO
-          </span>
-          {editing ? (
-            <textarea
-              ref={paraRef}
-              value={paraphrase}
-              rows={paraRows}
-              spellCheck
-              onChange={(e) => setParaphrase(e.target.value)}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor =
-                  'var(--modus-wc-color-primary, #0063A7)';
-                e.currentTarget.style.boxShadow =
-                  '0 0 0 3px var(--modus-wc-color-primary-light, #e8f4fd)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor =
-                  'var(--modus-wc-color-base-200, #cbd2d9)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+        {/* Paraphrase — tablet variant only */}
+        {isTablet && (
+          <div className="flex flex-col gap-1 px-4 pb-3 w-full">
+            <span
+              className="font-semibold"
               style={{
-                ...EDIT_INPUT_BASE,
-                resize: 'vertical',
-                minWidth: 0,
-                maxWidth: '100%',
-                minHeight: '60px',
-                maxHeight: '160px',
-                overflowY: 'auto',
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                lineHeight: 1.5,
-                wordBreak: 'break-word',
-                overflowWrap: 'anywhere',
+                fontSize: '11px',
+                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                letterSpacing: '0.4px',
               }}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => startEdit('paraphrase')}
-              className="text-left transition-colors hover:bg-[var(--modus-wc-color-base-100)]"
-              style={{
-                background: 'transparent',
-                border: '1px solid transparent',
-                borderRadius: '6px',
-                padding: '2px 6px',
-                margin: '-2px -6px',
-                cursor: 'text',
-                width: 'calc(100% + 12px)',
-                minWidth: 0,
-              }}
-              aria-label="Edit paraphrase"
             >
-              <span
-                title={paraphrase}
+              HERE&apos;S WHAT I&apos;LL DO
+            </span>
+            {editing ? (
+              <textarea
+                ref={paraRef}
+                value={paraphrase}
+                rows={paraRows}
+                spellCheck
+                onChange={(e) => setParaphrase(e.target.value)}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor =
+                    'var(--modus-wc-color-primary, #0063A7)';
+                  e.currentTarget.style.boxShadow =
+                    '0 0 0 3px var(--modus-wc-color-primary-light, #e8f4fd)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor =
+                    'var(--modus-wc-color-base-200, #cbd2d9)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 style={{
+                  ...EDIT_INPUT_BASE,
+                  resize: 'vertical',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  minHeight: '60px',
+                  maxHeight: '160px',
+                  overflowY: 'auto',
                   fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
                   lineHeight: 1.5,
-                  display: '-webkit-box',
-                  WebkitBoxOrient: 'vertical',
-                  WebkitLineClamp: 2,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
                   wordBreak: 'break-word',
                   overflowWrap: 'anywhere',
                 }}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEdit('paraphrase')}
+                className="text-left transition-colors hover:bg-[var(--modus-wc-color-base-100)]"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                  borderRadius: '6px',
+                  padding: '2px 6px',
+                  margin: '-2px -6px',
+                  cursor: 'text',
+                  width: 'calc(100% + 12px)',
+                  minWidth: 0,
+                }}
+                aria-label="Edit paraphrase"
               >
-                {paraphrase}
-              </span>
-            </button>
-          )}
-        </div>
+                <span
+                  title={paraphrase}
+                  style={{
+                    fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                    color: 'var(--modus-wc-color-base-content, #171c1e)',
+                    lineHeight: 1.5,
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {paraphrase}
+                </span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Plan checklist — visually distinct panel, with inline step editing */}
         <div className="px-4 pb-3 w-full">
@@ -570,39 +583,7 @@ function PlanCard() {
         >
           {editing ? (
             <>
-              <span
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                }}
-              >
-                <kbd
-                  style={{
-                    fontFamily: 'inherit',
-                    fontSize: '10px',
-                    padding: '1px 5px',
-                    borderRadius: '3px',
-                    border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-                    backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  }}
-                >
-                  ⌘ + Enter
-                </kbd>{' '}
-                to save ·{' '}
-                <kbd
-                  style={{
-                    fontFamily: 'inherit',
-                    fontSize: '10px',
-                    padding: '1px 5px',
-                    borderRadius: '3px',
-                    border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-                    backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-                  }}
-                >
-                  Esc
-                </kbd>{' '}
-                to cancel
-              </span>
+              <span />
               <div className="flex items-center gap-2">
                 <ModusWcButton
                   size="sm"
@@ -622,14 +603,18 @@ function PlanCard() {
             </>
           ) : (
             <>
-              <span
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                }}
-              >
-                Click any line to edit the plan
-              </span>
+              {isTablet ? (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  }}
+                >
+                  Click any line to edit the plan
+                </span>
+              ) : (
+                <span />
+              )}
               <ModusWcButton
                 size="sm"
                 color="primary"
@@ -715,41 +700,46 @@ function SideNav() {
 /* ── Chat thread (shared between variants) ──────────────────────── */
 
 function ChatThread() {
+  const variantCtx = useCreative7Variant();
+  const isTablet = (variantCtx?.variant ?? 'plan-only') === 'tablet';
+
   return (
     <div className="flex flex-col gap-6" style={{ width: '100%', maxWidth: '464px' }}>
-      {/* User turn */}
-      <div className="flex flex-col items-end gap-1">
-        <div
-          className="rounded-2xl rounded-tr-md px-3 py-2"
-          style={{
-            maxWidth: '78%',
-            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            lineHeight: 1.5,
-          }}
-        >
-          {USER_REQUEST}
+      {/* User turn — tablet variant only */}
+      {isTablet && (
+        <div className="flex flex-col items-end gap-1">
+          <div
+            className="rounded-2xl rounded-tr-md px-3 py-2"
+            style={{
+              maxWidth: '78%',
+              backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              lineHeight: 1.5,
+            }}
+          >
+            {USER_REQUEST}
+          </div>
+          <span
+            style={{
+              fontSize: '10px',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          >
+            You · just now
+          </span>
         </div>
-        <span
-          style={{
-            fontSize: '10px',
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          }}
-        >
-          You · just now
-        </span>
-      </div>
+      )}
 
       {/* AI turn */}
       <div className="flex items-start gap-3">
         <div className="shrink-0" style={{ marginTop: '-2px' }}>
           <TrimbleAiLogo size={28} />
         </div>
-        <div className="flex flex-col gap-2 min-w-0 flex-1">
+        <div className="flex flex-col gap-3 min-w-0 flex-1">
           <span
             style={{
-              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              fontSize: '13px',
               color: 'var(--modus-wc-color-base-content, #171c1e)',
               lineHeight: 1.55,
             }}
@@ -761,15 +751,17 @@ function ChatThread() {
           {/* The plan card sits inline as the AI's structured response */}
           <PlanCard />
 
-          <span
-            style={{
-              fontSize: '11px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              lineHeight: 1.5,
-            }}
-          >
-            I&apos;ll only start once you confirm.
-          </span>
+          {isTablet && (
+            <span
+              style={{
+                fontSize: '11px',
+                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                lineHeight: 1.5,
+              }}
+            >
+              I&apos;ll only start once you confirm.
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -844,7 +836,10 @@ function TabletShell() {
 
 function PlanOnlyShell() {
   return (
-    <div className="w-full flex justify-center">
+    <div
+      className="w-full flex justify-center"
+      style={{ zoom: 1.15 }}
+    >
       <ChatThread />
     </div>
   );

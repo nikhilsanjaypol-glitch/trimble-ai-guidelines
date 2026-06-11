@@ -19,10 +19,9 @@ import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-reac
  *         04 · Steel Warren truss     — triangulated, robust
  *     · Footer with Previous-iteration / Recreate / Pick CTAs
  *
- *   Clicking any concept opens a detail modal with a larger
- *   elevation, key metrics, pros / trade-offs, and a "Use this
- *   direction" CTA — i.e. clicking a card opens something
- *   relevant.
+ *   Clicking a card selects that direction — the card gains a
+ *   primary-blue ring and the footer "Use this direction" CTA
+ *   activates (grey → blue) so the user can commit their pick.
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
@@ -92,8 +91,8 @@ const OPTIONS: SiteOption[] = [
     num: 3,
     title: 'Cable-stayed (single pylon)',
     subtitle: 'Asymmetric · 130 m pylon',
-    accent: '#9F1239',
-    accentSoft: 'rgba(159, 18, 57, 0.14)',
+    accent: 'var(--modus-wc-color-status-info, #004f83)',
+    accentSoft: 'rgba(0, 79, 131, 0.14)',
     metrics: [
       { label: 'Main span', value: '380 m' },
       { label: 'Pylon H',   value: '130 m' },
@@ -111,8 +110,8 @@ const OPTIONS: SiteOption[] = [
     num: 4,
     title: 'Steel Warren truss',
     subtitle: 'Through-truss · two in-river piers',
-    accent: '#D97706',
-    accentSoft: 'rgba(217, 119, 6, 0.14)',
+    accent: 'var(--modus-wc-color-status-warning, #856404)',
+    accentSoft: 'rgba(133, 100, 4, 0.14)',
     metrics: [
       { label: 'Main span', value: '140 m' },
       { label: 'Spans',     value: '3' },
@@ -412,236 +411,48 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
   );
 }
 
-/* ── Detail modal (opens on option click) ──────────────────────── */
-
-function DetailModal({
-  option,
-  onClose,
-  onDevelop,
-}: {
-  option: SiteOption;
-  onClose: () => void;
-  onDevelop: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(15, 23, 42, 0.55)' }}
-      onClick={onClose}
-    >
-      <div
-        className="rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{
-          width: '560px',
-          maxHeight: '90vh',
-          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between gap-3 px-5 py-3"
-          style={{ borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="flex items-center justify-center rounded-full font-semibold shrink-0"
-              style={{
-                width: '24px',
-                height: '24px',
-                fontSize: '12px',
-                backgroundColor: option.accentSoft,
-                color: option.accent,
-              }}
-            >
-              {option.num}
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span
-                className="font-semibold truncate"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                  color: 'var(--modus-wc-color-base-content, #101828)',
-                  lineHeight: 1.2,
-                }}
-              >
-                {option.title}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center size-7 rounded hover:bg-[var(--modus-wc-color-base-200)]"
-            aria-label="Close"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-          >
-            <ModusWcIcon
-              name="close"
-              size="sm"
-              decorative
-              style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-            />
-          </button>
-        </div>
-
-        {/* CAD preview */}
-        <div
-          className="relative"
-          style={{
-            backgroundColor: PAPER,
-            borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            aspectRatio: '16 / 7',
-          }}
-        >
-          <SitePlanSVG option={option} large />
-          <div
-            className="absolute bottom-1.5 right-1.5 flex items-center gap-1.5 px-1.5 py-0.5"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.92)',
-              border: `1px solid ${GRID_MAJOR}`,
-              fontSize: '9px',
-              fontFamily: 'ui-monospace, monospace',
-              letterSpacing: '0.4px',
-              color: INK_LIGHT,
-            }}
-          >
-            <span style={{ fontWeight: 700, color: INK }}>BR-0{option.num}</span>
-            <span>·</span>
-            <span>BRIDGE ELEVATION</span>
-            <span>·</span>
-            <span>1:1500</span>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex flex-col gap-4 px-5 py-4 overflow-y-auto">
-          {/* Metrics row */}
-          <div className="grid grid-cols-4 gap-2">
-            {option.metrics.map((m) => (
-              <div
-                key={m.label}
-                className="flex flex-col gap-0.5 p-2 rounded-lg"
-                style={{ backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)' }}
-              >
-                <span
-                  style={{
-                    fontSize: '10px',
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                    letterSpacing: '0.3px',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {m.label}
-                </span>
-                <span
-                  className="font-semibold"
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-sm, 13.5px)',
-                    color: 'var(--modus-wc-color-base-content, #101828)',
-                  }}
-                >
-                  {m.value}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Pros */}
-          <div className="flex flex-col gap-2">
-            <span
-              className="font-semibold"
-              style={{
-                fontSize: '11px',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                letterSpacing: '0.3px',
-                textTransform: 'uppercase',
-              }}
-            >
-              Why this direction
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {option.pros.map((p) => (
-                <div key={p} className="flex items-start gap-2">
-                  <ModusWcIcon
-                    name="check"
-                    size="xs"
-                    decorative
-                    style={{ color: option.accent, marginTop: '3px', flexShrink: 0 }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 'var(--modus-wc-font-size-sm, 13.5px)',
-                      color: 'var(--modus-wc-color-base-content, #171c1e)',
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    {p}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div
-          className="flex items-center gap-2 px-5 py-3"
-          style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
-        >
-          <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={onClose}>
-            Back to options
-          </ModusWcButton>
-          <div className="flex-1" />
-          <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={onClose}>
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="bookmark" size="xs" decorative />
-              Save
-            </span>
-          </ModusWcButton>
-          <ModusWcButton size="sm" color="primary" onButtonClick={onDevelop}>
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="arrow_right" size="xs" decorative />
-              Use this direction
-            </span>
-          </ModusWcButton>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── Option card (mini CAD preview + caption) ──────────────────── */
 
 function OptionCard({
   option,
-  onOpen,
+  selected,
+  onSelect,
 }: {
   option: SiteOption;
-  onOpen: () => void;
+  selected: boolean;
+  onSelect: () => void;
 }) {
+  const SELECT_RING = 'var(--modus-wc-color-primary, #0063a3)';
+  const SELECT_TINT = 'rgba(0, 99, 163, 0.06)';
+  const baseShadow = '0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)';
+  const selectedShadow = `0 0 0 2px ${SELECT_RING}, 0 6px 16px rgba(0, 99, 163, 0.18)`;
+
   return (
     <button
       type="button"
-      onClick={onOpen}
+      onClick={onSelect}
+      aria-pressed={selected}
       className="flex flex-col text-left rounded-xl overflow-hidden"
       style={{
-        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
+        backgroundColor: selected ? SELECT_TINT : 'var(--modus-wc-color-base-page, #ffffff)',
+        border: selected
+          ? `1px solid ${SELECT_RING}`
+          : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        boxShadow: selected ? selectedShadow : baseShadow,
         cursor: 'pointer',
         transition:
-          'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+          'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease',
       }}
       onMouseEnter={(e) => {
+        if (selected) return;
         e.currentTarget.style.transform = 'translateY(-2px)';
         e.currentTarget.style.boxShadow =
           '0 8px 20px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05)';
       }}
       onMouseLeave={(e) => {
+        if (selected) return;
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow =
-          '0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)';
+        e.currentTarget.style.boxShadow = baseShadow;
       }}
       aria-label={`Option ${option.num}: ${option.title}`}
     >
@@ -767,11 +578,31 @@ function ToolButton({
 
 function SuggestionPopup({
   onClose,
-  onOpenDetail,
+  selectedId,
+  onSelect,
+  onUseDirection,
 }: {
   onClose: () => void;
-  onOpenDetail: (id: OptionId) => void;
+  selectedId: OptionId | null;
+  onSelect: (id: OptionId) => void;
+  onUseDirection: (id: OptionId) => void;
 }) {
+  const [committedId, setCommittedId] = useState<OptionId | null>(null);
+  const hasSelection = selectedId !== null;
+  const committed = committedId
+    ? OPTIONS.find((o) => o.id === committedId) ?? null
+    : null;
+
+  const handleUseDirection = () => {
+    if (!selectedId) return;
+    setCommittedId(selectedId);
+    onUseDirection(selectedId);
+  };
+
+  const handleChooseAnother = () => {
+    setCommittedId(null);
+  };
+
   return (
     <div
       className="rounded-2xl p-[2px] relative"
@@ -824,105 +655,134 @@ function SuggestionPopup({
           </div>
         </div>
 
-        {/* Instruction strip — sits between header and grid */}
-        <div
-          className="flex items-center gap-2 px-4 py-1.5"
-          style={{
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-          }}
-        >
-          <ModusWcIcon
-            name="lightbulb"
-            size="xs"
-            decorative
-            style={{
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          />
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-              lineHeight: 1.4,
-            }}
-          >
-            Pick the direction you want to develop — I&apos;ll detail it.
-          </span>
-        </div>
-
-        {/* Body — option grid */}
+        {/* Body — option grid (dims & becomes non-interactive once committed) */}
         <div
           className="grid grid-cols-2 gap-2 px-4 py-3"
           style={{
             maxHeight: '440px',
             overflowY: 'auto',
+            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            pointerEvents: committed ? 'none' : 'auto',
           }}
         >
-          {OPTIONS.map((opt) => (
-            <OptionCard
-              key={opt.id}
-              option={opt}
-              onOpen={() => onOpenDetail(opt.id)}
-            />
-          ))}
+          {OPTIONS.map((opt) => {
+            const isSelected = selectedId === opt.id;
+            const dim = committed !== null && !isSelected;
+            return (
+              <div
+                key={opt.id}
+                style={{
+                  opacity: dim ? 0.35 : 1,
+                  filter: dim ? 'saturate(0.6) blur(1px)' : 'none',
+                  transition: 'opacity 0.2s ease, filter 0.2s ease',
+                }}
+              >
+                <OptionCard
+                  option={opt}
+                  selected={isSelected}
+                  onSelect={() => onSelect(opt.id)}
+                />
+              </div>
+            );
+          })}
         </div>
 
-        {/* Footer */}
-        <div
-          className="flex items-center gap-2 px-4 py-2.5"
-          style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
-        >
-          <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={() => undefined}>
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="history" size="xs" decorative />
-              Previous iteration
+        {/* Footer — swaps to a confirmation strip once committed */}
+        {committed ? (
+          <div
+            className="flex items-center gap-2 px-4 py-2"
+            style={{
+              borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+              backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+            }}
+          >
+            <ModusWcIcon
+              name="check_circle"
+              size="sm"
+              decorative
+              style={{ color: 'var(--modus-wc-color-status-success, #1e8a44)' }}
+            />
+            <span
+              style={{
+                fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+                color: 'var(--modus-wc-color-base-content, #101828)',
+                lineHeight: 1.4,
+              }}
+            >
+              Taking{' '}
+              <strong style={{ fontWeight: 600 }}>{committed.title}</strong>{' '}
+              forward — I&apos;ll detail it next.
             </span>
-          </ModusWcButton>
-          <div className="flex-1" />
-          <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={onClose}>
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="refresh" size="xs" decorative />
-              Recreate
-            </span>
-          </ModusWcButton>
-          <ModusWcButton size="sm" color="primary" onButtonClick={() => undefined}>
-            <span className="flex items-center gap-1">
-              <ModusWcIcon name="arrow_right" size="xs" decorative />
-              Use this direction
-            </span>
-          </ModusWcButton>
-        </div>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={handleChooseAnother}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+                fontWeight: 600,
+                color: 'var(--modus-wc-color-primary, #0063a3)',
+                textDecoration: 'underline',
+              }}
+            >
+              Undo
+            </button>
+          </div>
+        ) : (
+          <div
+            className="flex items-center gap-2 px-4 py-2.5"
+            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
+          >
+            <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={() => undefined}>
+              <span className="flex items-center gap-1">
+                <ModusWcIcon name="history" size="xs" decorative />
+                Previous iteration
+              </span>
+            </ModusWcButton>
+            <div className="flex-1" />
+            <ModusWcButton size="sm" color="tertiary" variant="outlined" onButtonClick={onClose}>
+              <span className="flex items-center gap-1">
+                <ModusWcIcon name="refresh" size="xs" decorative />
+                Recreate
+              </span>
+            </ModusWcButton>
+            <ModusWcButton
+              size="sm"
+              color={hasSelection ? 'primary' : 'tertiary'}
+              variant={hasSelection ? 'filled' : 'outlined'}
+              disabled={!hasSelection}
+              onButtonClick={handleUseDirection}
+            >
+              <span className="flex items-center gap-1">
+                <ModusWcIcon name="arrow_right" size="xs" decorative />
+                Use this direction
+              </span>
+            </ModusWcButton>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 
-/* ── Host: the option board itself + detail modal ───────────────
- *   No trigger — the card is the component example. Clicking any
- *   option opens its detail modal.
+/* ── Host: the option board itself ──────────────────────────────
+ *   No trigger — the card is the component example. Clicking an
+ *   option selects it; the CTA enables once a direction is picked.
  * ───────────────────────────────────────────────────────────────── */
 
 export default function Creative5() {
-  const [detailId, setDetailId] = useState<OptionId | null>(null);
-
-  const detail = detailId ? OPTIONS.find((o) => o.id === detailId) ?? null : null;
+  const [selectedId, setSelectedId] = useState<OptionId | null>(null);
 
   return (
-    <>
-      <SuggestionPopup
-        onClose={() => undefined}
-        onOpenDetail={(id) => setDetailId(id)}
-      />
-
-      {detail && (
-        <DetailModal
-          option={detail}
-          onClose={() => setDetailId(null)}
-          onDevelop={() => setDetailId(null)}
-        />
-      )}
-    </>
+    <SuggestionPopup
+      onClose={() => undefined}
+      selectedId={selectedId}
+      onSelect={(id) => setSelectedId(id)}
+      onUseDirection={() => undefined}
+    />
   );
 }

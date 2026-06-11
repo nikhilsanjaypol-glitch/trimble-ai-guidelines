@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useMemo,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -131,6 +133,16 @@ const moveKey = (dirId: PlanId, moveId: string) => `${dirId}:${moveId}`;
 const DEFAULT_ENABLED = new Set<string>(
   DIRECTIONS.flatMap((d) => d.moves.map((m) => moveKey(d.id, m.id)))
 );
+
+/* The "no signature moves" variant intentionally narrows the gallery
+ * down to a tighter set of three maximally-divergent directions — a
+ * minimalist option, a pro-grade option, and a social/family option —
+ * shown as larger tiles so each one reads as a distinct kitchen idea
+ * rather than a thumbnail. */
+const LITE_DIRECTION_IDS: PlanId[] = ['open', 'workflow', 'family'];
+const LITE_DIRECTIONS: Direction[] = LITE_DIRECTION_IDS
+  .map((id) => DIRECTIONS.find((d) => d.id === id))
+  .filter((d): d is Direction => Boolean(d));
 
 /* ── live, layered kitchen-plan SVG ─────────────────────────────── */
 
@@ -455,19 +467,35 @@ function ThumbnailCard({
   chosen,
   onOpen,
   showMoves,
+  large = false,
 }: {
   direction: Direction;
   chosen: boolean;
   onOpen: () => void;
   showMoves: boolean;
+  large?: boolean;
 }) {
+  /* Sizing tokens: the showcase variant uses larger, more distinct
+     tiles instead of the compact thumbnails. */
+  const padding = large ? 'p-4' : 'p-3';
+  const cardGap = large ? 'gap-4' : 'gap-3';
+  const previewHeight = large ? '180px' : '88px';
+  const iconBox = large ? '36px' : '26px';
+  const iconSize: 'sm' | 'xs' = large ? 'sm' : 'xs';
+  const titleFs = large
+    ? 'var(--modus-wc-font-size-md, 16px)'
+    : 'var(--modus-wc-font-size-sm, 13.5px)';
+  const philosophyFs = large ? '13px' : '11.5px';
+  const philosophyClamp = large ? 3 : 2;
+  const cardWidthStyle = large ? { width: '100%' } : { width: '152px' };
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex flex-col gap-3 p-3 rounded-xl text-left"
+      className={`flex flex-col ${cardGap} ${padding} rounded-xl text-left`}
       style={{
-        width: '152px',
+        ...cardWidthStyle,
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
         border: chosen
           ? `1.5px solid ${direction.accent}`
@@ -492,13 +520,14 @@ function ThumbnailCard({
           : '0 1px 2px rgba(0,0,0,0.03)';
       }}
     >
-      {/* mini live plan preview */}
+      {/* live plan preview — bigger in tile mode so each option reads
+          as its own kitchen idea rather than a thumbnail. */}
       <div
         className="rounded-md overflow-hidden relative"
         style={{
           backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
-          padding: '4px',
-          height: '88px',
+          padding: large ? '8px' : '4px',
+          height: previewHeight,
         }}
       >
         <LivePlan direction={direction} enabled={DEFAULT_ENABLED} />
@@ -538,14 +567,14 @@ function ThumbnailCard({
         <div
           className="flex items-center justify-center rounded-md shrink-0"
           style={{
-            width: '26px',
-            height: '26px',
+            width: iconBox,
+            height: iconBox,
             backgroundColor: direction.accentSoft,
           }}
         >
           <ModusWcIcon
             name={direction.icon}
-            size="xs"
+            size={iconSize}
             decorative
             style={{ color: direction.accent }}
           />
@@ -553,7 +582,7 @@ function ThumbnailCard({
         <span
           className="truncate font-semibold"
           style={{
-            fontSize: 'var(--modus-wc-font-size-sm, 13.5px)',
+            fontSize: titleFs,
             color: 'var(--modus-wc-color-base-content, #101828)',
             lineHeight: 1.2,
           }}
@@ -565,12 +594,12 @@ function ThumbnailCard({
       {/* philosophy */}
       <span
         style={{
-          fontSize: '11.5px',
+          fontSize: philosophyFs,
           color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-          lineHeight: 1.45,
+          lineHeight: 1.5,
           margin: 0,
           display: '-webkit-box',
-          WebkitLineClamp: 2,
+          WebkitLineClamp: philosophyClamp,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}
@@ -627,17 +656,29 @@ function MoveToggle({
   accent,
   accentSoft,
   onToggle,
+  readonly = false,
 }: {
   move: MoveDef;
   enabled: boolean;
   accent: string;
   accentSoft: string;
   onToggle: () => void;
+  readonly?: boolean;
 }) {
+  /* In readonly mode the row is rendered as a non-interactive
+     <div> — used by the no-moves "Design details" panel where the
+     items are pure information rather than toggles. */
+  const Tag: 'button' | 'div' = readonly ? 'div' : 'button';
+
   return (
-    <button
-      type="button"
-      onClick={onToggle}
+    <Tag
+      {...(readonly
+        ? {}
+        : {
+            type: 'button' as const,
+            onClick: onToggle,
+            'aria-pressed': enabled,
+          })}
       className="flex items-start gap-3 p-2.5 rounded-lg text-left"
       style={{
         width: '100%',
@@ -645,10 +686,9 @@ function MoveToggle({
           ? accentSoft
           : 'var(--modus-wc-color-base-100, #f7f8fa)',
         border: enabled ? `1px solid ${accent}` : '1px solid transparent',
-        cursor: 'pointer',
+        cursor: readonly ? 'default' : 'pointer',
         transition: 'background-color 0.15s ease, border-color 0.15s ease',
       }}
-      aria-pressed={enabled}
     >
       <div
         className="flex items-center justify-center rounded-md shrink-0"
@@ -661,7 +701,7 @@ function MoveToggle({
         }}
       >
         <ModusWcIcon
-          name={enabled ? 'visibility_on' : 'visibility_off'}
+          name={readonly ? 'check' : enabled ? 'visibility_on' : 'visibility_off'}
           size="xs"
           decorative
           style={{
@@ -697,7 +737,7 @@ function MoveToggle({
           {move.description}
         </span>
       </div>
-    </button>
+    </Tag>
   );
 }
 
@@ -862,10 +902,27 @@ export default function Creative3() {
   const variantCtx = useCreative3Variant();
   const variant: Creative3Variant = variantCtx?.variant ?? 'no-moves';
 
+  /* Variant-aware direction set: the showcase variant trims down to a
+     tight 3-tile gallery; the interactive variant uses the full 5.   */
+  const directions = useMemo<Direction[]>(
+    () => (variant === 'no-moves' ? LITE_DIRECTIONS : DIRECTIONS),
+    [variant]
+  );
+
+  /* Guard: if the user switches variant mid-flow, an `activeId` from
+     the larger gallery may no longer be in the trimmed list — drop
+     back to the overview rather than landing on an orphan detail.   */
+  useEffect(() => {
+    if (activeId && !directions.some((d) => d.id === activeId)) {
+      setActiveId(null);
+      setView('overview');
+    }
+  }, [directions, activeId]);
+
   const active = activeId
-    ? DIRECTIONS.find((d) => d.id === activeId) ?? null
+    ? directions.find((d) => d.id === activeId) ?? null
     : null;
-  const chosen = DIRECTIONS.find((d) => d.id === chosenId) ?? null;
+  const chosen = directions.find((d) => d.id === chosenId) ?? null;
 
   /* In the no-moves variant we always render every move as visible so the
      LivePlan shows the complete plan without any toggle UI alongside it. */
@@ -881,14 +938,15 @@ export default function Creative3() {
     setView('overview');
   };
 
-  /* Cycle through DIRECTIONS in either direction; wraps at both ends so
-     the prev/next arrows never disable, matching a carousel feel.     */
+  /* Cycle through the active direction set in either direction; wraps
+     at both ends so the prev/next arrows never disable, matching a
+     carousel feel.                                                  */
   const stepActive = (delta: 1 | -1) => {
     if (!activeId) return;
-    const idx = DIRECTIONS.findIndex((d) => d.id === activeId);
+    const idx = directions.findIndex((d) => d.id === activeId);
     if (idx < 0) return;
-    const nextIdx = (idx + delta + DIRECTIONS.length) % DIRECTIONS.length;
-    setActiveId(DIRECTIONS[nextIdx].id);
+    const nextIdx = (idx + delta + directions.length) % directions.length;
+    setActiveId(directions[nextIdx].id);
   };
 
   const toggleMove = (dirId: PlanId, moveId: string) => {
@@ -914,8 +972,8 @@ export default function Creative3() {
         return `${chosen.name} is locked in. Open another option to compare, or revisit your choice.`;
       }
       return variant === 'with-moves'
-        ? '5 divergent directions for your kitchen. Open any option to explore it in detail.'
-        : '5 divergent directions for your kitchen. Open any option to see the full plan.';
+        ? `${directions.length} divergent directions for your kitchen. Open any option to explore it in detail.`
+        : `${directions.length} divergent directions for your kitchen. Open any option to see the full plan.`;
     }
     if (!active) return '';
     if (chosenId === active.id) {
@@ -968,9 +1026,10 @@ export default function Creative3() {
 
       {view === 'overview' && (
         <OverviewScreen
+          directions={directions}
           chosenId={chosenId}
           onOpen={openDetail}
-          showMoves={variant === 'with-moves'}
+          variant={variant}
         />
       )}
 
@@ -987,21 +1046,21 @@ export default function Creative3() {
           onPrev={() => stepActive(-1)}
           onNext={() => stepActive(1)}
           prevName={
-            DIRECTIONS[
-              (DIRECTIONS.findIndex((d) => d.id === active.id) -
+            directions[
+              (directions.findIndex((d) => d.id === active.id) -
                 1 +
-                DIRECTIONS.length) %
-                DIRECTIONS.length
+                directions.length) %
+                directions.length
             ].name
           }
           nextName={
-            DIRECTIONS[
-              (DIRECTIONS.findIndex((d) => d.id === active.id) + 1) %
-                DIRECTIONS.length
+            directions[
+              (directions.findIndex((d) => d.id === active.id) + 1) %
+                directions.length
             ].name
           }
-          position={DIRECTIONS.findIndex((d) => d.id === active.id) + 1}
-          total={DIRECTIONS.length}
+          position={directions.findIndex((d) => d.id === active.id) + 1}
+          total={directions.length}
         />
       )}
 
@@ -1016,14 +1075,20 @@ export default function Creative3() {
 /* ── overview screen ────────────────────────────────────────────── */
 
 function OverviewScreen({
+  directions,
   chosenId,
   onOpen,
-  showMoves,
+  variant,
 }: {
+  directions: Direction[];
   chosenId: PlanId | null;
   onOpen: (id: PlanId) => void;
-  showMoves: boolean;
+  variant: Creative3Variant;
 }) {
+  const showMoves = variant === 'with-moves';
+  /* In no-moves we render fewer, larger tiles instead of thumbnails. */
+  const largeTiles = variant === 'no-moves';
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -1045,17 +1110,27 @@ function OverviewScreen({
             color: 'var(--modus-wc-color-base-content-low-contrast, #9aa0a6)',
           }}
         >
-          5 of 5 shown
+          {directions.length} of {directions.length} shown
         </span>
       </div>
-      <div className="flex gap-3 justify-between">
-        {DIRECTIONS.map((d) => (
+      <div
+        className={
+          largeTiles ? 'grid gap-3' : 'flex gap-3 justify-between'
+        }
+        style={
+          largeTiles
+            ? { gridTemplateColumns: `repeat(${directions.length}, 1fr)` }
+            : undefined
+        }
+      >
+        {directions.map((d) => (
           <ThumbnailCard
             key={d.id}
             direction={d}
             chosen={d.id === chosenId}
             onOpen={() => onOpen(d.id)}
             showMoves={showMoves}
+            large={largeTiles}
           />
         ))}
       </div>
@@ -1218,13 +1293,15 @@ function DetailScreen({
           )}
         </div>
 
-        {/* body: SVG (left) + toggle stack (right, only when with-moves) */}
+        {/* body: SVG (left) + side panel (right). The side panel is
+            present in both variants — interactive toggles in with-moves
+            and read-only "Design details" in no-moves. */}
         <div className="flex gap-4">
           <div
             className="rounded-xl overflow-hidden"
             style={{
-              flex: showMoves ? '0 0 440px' : '1 1 auto',
-              height: showMoves ? '300px' : '360px',
+              flex: '0 0 440px',
+              height: '300px',
               backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
               border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
               padding: '8px',
@@ -1233,22 +1310,22 @@ function DetailScreen({
             <LivePlan direction={active} enabled={enabled} />
           </div>
 
-          {showMoves && (
-            <div className="flex flex-col gap-2 flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span
-                  className="font-semibold"
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-xs, 11.5px)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    color:
-                      'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                    margin: 0,
-                  }}
-                >
-                  Signature moves
-                </span>
+          <div className="flex flex-col gap-2 flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-xs, 11.5px)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color:
+                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  margin: 0,
+                }}
+              >
+                {showMoves ? 'Signature moves' : 'Design details'}
+              </span>
+              {showMoves && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1279,19 +1356,24 @@ function DetailScreen({
                     ? 'Hide all'
                     : 'Show all'}
                 </button>
-              </div>
-              {active.moves.map((m) => (
-                <MoveToggle
-                  key={m.id}
-                  move={m}
-                  enabled={enabled.has(moveKey(active.id, m.id))}
-                  accent={active.accent}
-                  accentSoft={active.accentSoft}
-                  onToggle={() => onToggleMove(active.id, m.id)}
-                />
-              ))}
+              )}
             </div>
-          )}
+            {active.moves.map((m) => (
+              <MoveToggle
+                key={m.id}
+                move={m}
+                enabled={
+                  showMoves
+                    ? enabled.has(moveKey(active.id, m.id))
+                    : true
+                }
+                accent={active.accent}
+                accentSoft={active.accentSoft}
+                onToggle={() => onToggleMove(active.id, m.id)}
+                readonly={!showMoves}
+              />
+            ))}
+          </div>
         </div>
 
         {/* footer — single primary commit action */}
