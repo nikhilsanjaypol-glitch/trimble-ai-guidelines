@@ -162,8 +162,8 @@ const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
     body: "Don\u2019t force the user to guess how to talk to the expert. Use clarifying questions to help the user formulate their request, especially if the initial prompt is vague or lacks technical detail.",
   },
   expert2: {
-    purpose: "To make the AI\u2019s process transparent.",
-    body: "The AI should narrate what it is doing, what it has found, and what remains, so the user can follow along, build confidence, and intervene if needed.",
+    purpose: "To create mutual understanding.",
+    body: "Communicate the work done and decisions made, alongside any key rationale. This builds trust in responses, while allowing users to review, learn from and accept recommendations.",
   },
   expert3: {
     purpose: "To provide digestible information.",

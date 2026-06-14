@@ -229,10 +229,10 @@ function PlanCard() {
 
   return (
     <div
-      className="rounded-2xl p-[2px]"
+      className="creative7-plan-card-glow rounded-2xl p-[2px]"
       style={{
         background: TRIMBLE_RAINBOW,
-        boxShadow: '0 8px 22px rgba(0,0,0,0.08), 0 2px 5px rgba(0,0,0,0.05)',
+        backgroundSize: '200% 200%',
         width: '100%',
       }}
     >
@@ -403,7 +403,7 @@ function PlanCard() {
                   letterSpacing: '0.4px',
                 }}
               >
-                PLAN · {steps.length} STEPS
+                {steps.length} STEPS
               </span>
               {!editing && (
                 <button
@@ -835,12 +835,20 @@ function TabletShell() {
 /* ── Plan-only shell — just the centered chat thread, no chrome ─── */
 
 function PlanOnlyShell() {
+  /* Use `transform: scale()` (standard) instead of `zoom` (non-standard) so
+     Cursor's Select Element tool and the browser inspector hit-test cleanly
+     on the scaled UI. We wrap with an outer flex centerer so the scaled
+     child stays centered even though `transform` doesn't affect layout size. */
   return (
-    <div
-      className="w-full flex justify-center"
-      style={{ zoom: 1.15 }}
-    >
-      <ChatThread />
+    <div className="w-full flex justify-center">
+      <div
+        style={{
+          transform: 'scale(1.15)',
+          transformOrigin: 'top center',
+        }}
+      >
+        <ChatThread />
+      </div>
     </div>
   );
 }

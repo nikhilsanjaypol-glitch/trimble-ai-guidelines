@@ -366,3 +366,24 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
   width: 0;
   height: 0;
 }
+
+/* ── Creative 7 — shimmering rainbow border on the plan card.
+   Matches Creative 5's padding-wrap border (rounded-2xl + p-[2px] +
+   diagonal 135° gradient), but the gradient is sized 200% × 200% and
+   slowly scrolled diagonally so the colours drift along the same axis
+   as the gradient itself — giving the border a quiet glow without
+   changing its thickness.                                              */
+@keyframes creative7RainbowShimmer {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+.creative7-plan-card-glow {
+  animation: creative7RainbowShimmer 4s ease-in-out infinite;
+  /* Neutral dual-layer elevation — same two-layer pattern as
+     Creative 5's card (0 20px 50px / 0 6px 16px), scaled down for
+     this ~464px-wide chat card so the lift feels proportionate. */
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.14),
+    0 4px 10px rgba(0, 0, 0, 0.08);
+}
