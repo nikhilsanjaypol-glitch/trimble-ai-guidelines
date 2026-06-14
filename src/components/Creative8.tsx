@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
@@ -62,7 +63,8 @@ const RESPONSIBLE_OPTIONS = [
 
 /* Captured photo — minimal SVG mock (no external image dependency).
    Soft outdoor scene with a tilted, slightly-damaged concrete
-   benchmark monument as the subject. */
+   benchmark monument as the subject, framed slightly wider so the
+   subject doesn't dominate the frame. */
 function CapturedPhoto() {
   return (
     <svg
@@ -79,6 +81,15 @@ function CapturedPhoto() {
           <stop offset="42%" stopColor="#a59883" />
           <stop offset="100%" stopColor="#766955" />
         </linearGradient>
+        {/* Steel rod — silver with a left-side highlight via gradient. */}
+        <linearGradient id="cp-rod-8" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#dadcde" />
+          <stop offset="50%" stopColor="#9aa0a6" />
+          <stop offset="100%" stopColor="#5a5e62" />
+        </linearGradient>
+        {/* Tag face — light tan concrete / aluminum, matches the
+            previous monument styling so the BM-104 plate reads the
+            same as before. */}
         <linearGradient id="cp-mon-8" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ddd6c8" />
           <stop offset="100%" stopColor="#a39884" />
@@ -100,39 +111,89 @@ function CapturedPhoto() {
         opacity="0.45"
       />
 
-      {/* Monument shadow */}
-      <ellipse cx="160" cy="178" rx="64" ry="6" fill="rgba(20,28,16,0.28)" />
+      {/* Survey monument — a steel rebar rod driven into the ground
+          with a brass benchmark cap fixed to the top. Framed wide so
+          the entire cap and rod are visible in the photo. */}
+      <g transform="translate(160 178)">
+        {/* Ground shadow under the monument */}
+        <ellipse cx="0" cy="6" rx="30" ry="5" fill="rgba(20,28,16,0.4)" />
+        {/* Disturbed dirt mound at base of rod */}
+        <ellipse cx="0" cy="3" rx="24" ry="4" fill="#5a4830" opacity="0.7" />
+        <ellipse cx="-9" cy="2" rx="6" ry="2" fill="#3a2c18" opacity="0.6" />
+        <ellipse cx="10" cy="3" rx="5" ry="1.5" fill="#3a2c18" opacity="0.55" />
 
-      {/* Damaged concrete monument (subject) */}
-      <g transform="translate(160 158) rotate(5)">
+        {/* Steel rod (rebar) */}
         <rect
-          x="-13"
-          y="-44"
-          width="26"
-          height="48"
-          fill="url(#cp-mon-8)"
-          stroke="#5a554a"
-          strokeWidth="0.8"
-          rx="1"
+          x="-3"
+          y="-50"
+          width="6"
+          height="58"
+          fill="url(#cp-rod-8)"
+          stroke="#3a3d3f"
+          strokeWidth="0.4"
         />
-        {/* Damaged top corner */}
-        <polygon points="-13,-44 -3,-48 13,-42 13,-38 -13,-38" fill="#36383e" opacity="0.78" />
-        {/* Exposed rebar */}
-        <line x1="-2" y1="-44" x2="-2" y2="-54" stroke="#73381f" strokeWidth="1.6" strokeLinecap="round" />
-        {/* Survey cross mark */}
-        <line x1="-5" y1="-18" x2="5" y2="-18" stroke="#2a2f38" strokeWidth="1.4" />
-        <line x1="0" y1="-23" x2="0" y2="-13" stroke="#2a2f38" strokeWidth="1.4" />
-        {/* Engraved label */}
-        <text
-          x="0"
-          y="-2"
-          fontSize="4"
-          fill="#3a3f48"
-          textAnchor="middle"
-          fontFamily="ui-monospace, SFMono-Regular, monospace"
-        >
-          BM-104
-        </text>
+        {/* Bright vertical highlight */}
+        <line
+          x1="-1.7"
+          y1="-50"
+          x2="-1.7"
+          y2="6"
+          stroke="#ebedef"
+          strokeWidth="0.8"
+          opacity="0.7"
+        />
+        {/* Rust streaks along the rod */}
+        <line x1="-3" y1="-30" x2="3" y2="-30" stroke="#7a4d2d" strokeWidth="0.5" opacity="0.55" />
+        <line x1="-3" y1="-12" x2="3" y2="-12" stroke="#7a4d2d" strokeWidth="0.5" opacity="0.45" />
+        <line x1="-3" y1="2" x2="3" y2="2" stroke="#7a4d2d" strokeWidth="0.4" opacity="0.4" />
+
+        {/* Tag — square benchmark plate fixed to the top of the rod.
+            Same visual styling as the previous monument: light tan
+            concrete face, damaged top corner, engraved survey cross,
+            and the BM-104 inscription. Slightly tilted for realism. */}
+        <g transform="translate(0 -52) rotate(-4)">
+          {/* Drop shadow under the tag */}
+          <rect
+            x="-19"
+            y="-13"
+            width="38"
+            height="28"
+            fill="rgba(20,20,20,0.35)"
+            transform="translate(1 1.5)"
+            rx="1.2"
+          />
+          {/* Tag face */}
+          <rect
+            x="-19"
+            y="-13"
+            width="38"
+            height="28"
+            fill="url(#cp-mon-8)"
+            stroke="#5a554a"
+            strokeWidth="0.8"
+            rx="1.2"
+          />
+          {/* Damaged top-right corner (chipped) */}
+          <polygon
+            points="-19,-13 -3,-15 19,-12 19,-10 -19,-10"
+            fill="#36383e"
+            opacity="0.78"
+          />
+          {/* Survey cross mark */}
+          <line x1="-4" y1="0" x2="4" y2="0" stroke="#2a2f38" strokeWidth="1.4" />
+          <line x1="0" y1="-4" x2="0" y2="4" stroke="#2a2f38" strokeWidth="1.4" />
+          {/* Engraved label */}
+          <text
+            x="0"
+            y="11"
+            fontSize="4"
+            fill="#3a3f48"
+            textAnchor="middle"
+            fontFamily="ui-monospace, SFMono-Regular, monospace"
+          >
+            BM-104
+          </text>
+        </g>
       </g>
 
       {/* Foliage details */}
@@ -171,10 +232,11 @@ function FormRow({
 }
 
 /* Three-pill severity selector. */
-/* Native <select> styled to match Modus — shows the AI's suggested
-   value and lets the surveyor swap it for any of the alternatives.
-   Native select avoids any popup-clipping issues against the card's
-   overflow:hidden and gets keyboard / accessibility for free. */
+/* Custom dropdown — fully manual UI rendered through a Portal so it
+   escapes the card's overflow:hidden. All colors are hardcoded to
+   light-mode values so the popup looks identical regardless of the
+   user's OS color scheme (the native <select> popup on macOS/Win
+   ignores `color-scheme: light` on dark systems and renders dark). */
 function Dropdown({
   value,
   options,
@@ -184,57 +246,179 @@ function Dropdown({
   options: string[];
   onChange: (v: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // Recalculate the popup position from the trigger's bounding box.
+  // Flip above the trigger if there isn't enough room below.
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const el = triggerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const desiredHeight = Math.min(options.length * 34 + 8, 220);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const flip = spaceBelow < desiredHeight + 12 && rect.top > desiredHeight + 12;
+      setPos({
+        top: flip ? rect.top - desiredHeight - 4 : rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+    reposition();
+    const onDocDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(t) &&
+        popupRef.current &&
+        !popupRef.current.contains(t)
+      ) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      document.removeEventListener('mousedown', onDocDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open, options.length]);
+
   return (
     <div style={{ position: 'relative' }}>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         style={{
           width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px',
           padding: '6px 28px 6px 10px',
           minHeight: '30px',
-          border: '1px solid var(--modus-wc-color-base-200, #cbd2d9)',
+          border: open ? '1px solid #0063A7' : '1px solid #cbd2d9',
           borderRadius: '6px',
-          backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
+          backgroundColor: '#ffffff',
           fontSize: '13px',
           fontFamily: 'inherit',
-          color: 'var(--modus-wc-color-base-content, #171c1e)',
-          appearance: 'none',
-          WebkitAppearance: 'none',
-          MozAppearance: 'none',
+          color: '#171c1e',
           cursor: 'pointer',
-          outline: 'none',
+          textAlign: 'left',
+          position: 'relative',
           transition: 'border-color 120ms ease',
-          // Force the native popup to render in light mode regardless
-          // of the OS color scheme — otherwise the dropdown options
-          // appear with a dark background on dark-mode systems while
-          // the rest of the card is light.
-          colorScheme: 'light',
         }}
       >
-        {options.map((opt) => (
-          <option
-            key={opt}
-            value={opt}
-            style={{ backgroundColor: '#ffffff', color: '#171c1e' }}
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            color: '#171c1e',
+          }}
+        >
+          {value}
+        </span>
+        <ModusWcIcon
+          name="expand_more"
+          size="xs"
+          decorative
+          style={{
+            position: 'absolute',
+            right: '8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+            color: '#6a6e79',
+          }}
+        />
+      </button>
+
+      {open &&
+        createPortal(
+          <div
+            ref={popupRef}
+            role="listbox"
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              width: pos.width,
+              backgroundColor: '#ffffff',
+              color: '#171c1e',
+              border: '1px solid #cbd2d9',
+              borderRadius: '6px',
+              boxShadow:
+                '0 12px 28px rgba(15,23,42,0.18), 0 4px 8px rgba(15,23,42,0.08)',
+              zIndex: 10000,
+              maxHeight: '220px',
+              overflowY: 'auto',
+              padding: '4px',
+              colorScheme: 'light',
+            }}
           >
-            {opt}
-          </option>
-        ))}
-      </select>
-      <ModusWcIcon
-        name="expand_more"
-        size="xs"
-        decorative
-        style={{
-          position: 'absolute',
-          right: '8px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          pointerEvents: 'none',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-        }}
-      />
+            {options.map((opt) => {
+              const selected = opt === value;
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(opt);
+                    setOpen(false);
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = selected
+                      ? 'rgba(0,99,167,0.14)'
+                      : 'rgba(0,0,0,0.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = selected
+                      ? 'rgba(0,99,167,0.08)'
+                      : 'transparent';
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '7px 10px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: selected ? 'rgba(0,99,167,0.08)' : 'transparent',
+                    fontSize: '13px',
+                    color: '#171c1e',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    fontWeight: selected ? 600 : 400,
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -326,32 +510,21 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
     >
       {/* Header */}
       <div
-        className="flex items-start justify-between"
+        className="flex items-center justify-between"
         style={{
-          padding: '14px 16px 10px',
+          padding: '12px 16px',
           borderBottom: '1px solid var(--modus-wc-color-base-200, #eef0f4)',
         }}
       >
-        <div className="flex flex-col gap-0.5">
-          <div
-            className="font-semibold"
-            style={{
-              fontSize: '15px',
-              color: 'var(--modus-wc-color-base-content, #101828)',
-              lineHeight: 1.2,
-            }}
-          >
-            Field observation
-          </div>
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              letterSpacing: '0.2px',
-            }}
-          >
-            BM-104 · Tract 12-A · {AI_OBSERVATION.capturedAt}
-          </div>
+        <div
+          className="font-semibold"
+          style={{
+            fontSize: '17px',
+            color: 'var(--modus-wc-color-base-content, #101828)',
+            lineHeight: 1.2,
+          }}
+        >
+          Field observation
         </div>
         <button
           type="button"
@@ -382,25 +555,6 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
       <div style={{ position: 'relative', backgroundColor: '#1a1f24' }}>
         <div style={{ height: '140px', width: '100%' }}>
           <CapturedPhoto />
-        </div>
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '8px',
-            left: '10px',
-            right: '10px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontSize: '10px',
-            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-            color: '#ffffff',
-            textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-            letterSpacing: '0.3px',
-          }}
-        >
-          <span>● REC · {AI_OBSERVATION.capturedAt}</span>
-          <span>{AI_OBSERVATION.coords}</span>
         </div>
       </div>
 
@@ -456,7 +610,9 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
         </FormRow>
       </div>
 
-      {/* Footer — Save draft / File observation */}
+      {/* Footer — Save draft (grey) + Submit (primary → green when
+          filed). Both rendered as native <button>s so they share the
+          exact same padding and height. */}
       <div
         className="flex items-center justify-end gap-2"
         style={{
@@ -464,18 +620,74 @@ function FieldObservation({ onClose }: { onClose: () => void }) {
           borderTop: '1px solid var(--modus-wc-color-base-200, #eef0f4)',
         }}
       >
-        <ModusWcButton variant="outlined" color="secondary" onButtonClick={onClose}>
-          Save draft
-        </ModusWcButton>
-        <ModusWcButton
-          color="primary"
-          onButtonClick={() => {
-            setFiled(true);
-            setTimeout(onClose, 600);
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="creative8-saveDraft-btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '8px 14px',
+            border: 'none',
+            borderRadius: '6px',
+            backgroundColor: '#e5e7eb',
+            color: '#374151',
+            fontSize: '13px',
+            fontWeight: 500,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            lineHeight: 1,
+            transition: 'background-color 120ms ease, transform 80ms ease',
           }}
         >
-          {filed ? 'Filed' : 'File observation'}
-        </ModusWcButton>
+          Save draft
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (filed) return;
+            setFiled(true);
+            setTimeout(onClose, 1100);
+          }}
+          disabled={filed}
+          aria-label={filed ? 'Submitted' : 'Submit'}
+          className="creative8-submit-btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 14px',
+            border: 'none',
+            borderRadius: '6px',
+            backgroundColor: filed
+              ? 'var(--modus-wc-color-success, #1e8a44)'
+              : 'var(--modus-wc-color-primary, #0063A7)',
+            color: '#ffffff',
+            fontSize: '13px',
+            fontWeight: 500,
+            fontFamily: 'inherit',
+            cursor: filed ? 'default' : 'pointer',
+            lineHeight: 1,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            transition: 'background-color 200ms ease, transform 80ms ease',
+          }}
+        >
+          {filed && (
+            <ModusWcIcon
+              name="check"
+              size="xs"
+              decorative
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
+          <span style={{ pointerEvents: 'none' }}>
+            {filed ? 'Submitted' : 'Submit'}
+          </span>
+        </button>
       </div>
     </div>
   );
@@ -637,7 +849,7 @@ function Marker({
         <span
           style={{
             position: 'absolute',
-            inset: '2.5px',
+            inset: '1.5px',
             backgroundColor: '#ffffff',
             borderRadius: '50%',
             display: 'flex',
@@ -1680,6 +1892,26 @@ export default function Creative8() {
         @keyframes creative8-fade-in {
           0%   { opacity: 0; transform: translateY(-4px); }
           100% { opacity: 1; transform: translateY(0);    }
+        }
+        .creative8-submit-btn:not(:disabled):hover {
+          background-color: var(--modus-wc-color-primary-hover, #0066cc);
+        }
+        .creative8-submit-btn:not(:disabled):active {
+          transform: scale(0.98);
+        }
+        .creative8-submit-btn:focus-visible {
+          outline: 2px solid var(--modus-wc-color-primary, #0063A7);
+          outline-offset: 2px;
+        }
+        .creative8-saveDraft-btn:hover {
+          background-color: #d1d5db;
+        }
+        .creative8-saveDraft-btn:active {
+          transform: scale(0.98);
+        }
+        .creative8-saveDraft-btn:focus-visible {
+          outline: 2px solid #9aa0a6;
+          outline-offset: 2px;
         }
       `}</style>
     </div>
