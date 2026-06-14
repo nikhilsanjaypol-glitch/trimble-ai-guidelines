@@ -251,6 +251,24 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
   animation: creative6FadeIn 0.28s ease-out;
 }
 
+/* Animated rainbow shimmer on just the outer border line — matches
+   Creative 1's palindrome cadence (3.6 s ease-in-out) so every AI
+   artifact in the app shimmers in the same rhythm. The gradient is
+   sized 200 % wide so it can scroll across the border without
+   revealing seams. */
+@keyframes creative6BorderShimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.creative6-card-glow {
+  animation: creative6BorderShimmer 3.6s ease-in-out infinite;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.10);
+}
+
 /* ── Creative 5 — Concept Studio ────────────────────────────────── */
 @keyframes conceptPulse {
   0% {

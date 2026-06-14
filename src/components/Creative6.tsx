@@ -561,13 +561,12 @@ export default function Creative6({ open = true, onClose }: Creative6Props = {})
 
   return (
     <>
-      {/* Main card with rainbow gradient border */}
+      {/* Main card with animated rainbow gradient border + glow halo */}
       <div
-        className="rounded-2xl p-[2px] shrink-0 relative"
+        className="creative6-card-glow rounded-2xl p-[2px] shrink-0 relative"
         style={{
           background: TRIMBLE_RAINBOW,
-          boxShadow:
-            '0px 8px 24px rgba(0,0,0,0.18), 0px 2px 6px rgba(0,0,0,0.1)',
+          backgroundSize: '200% 200%',
           width: '300px',
         }}
       >
