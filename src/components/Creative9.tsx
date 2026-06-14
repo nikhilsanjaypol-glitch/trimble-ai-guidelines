@@ -100,17 +100,18 @@ const PALETTE: Swatch[] = [
 ];
 
 interface DecorElement {
-  id: 'rug' | 'plant' | 'art' | 'lamp' | 'shelf';
+  id: 'rug' | 'plant' | 'art' | 'lamp' | 'shelf' | 'cushion';
   label: string;
   icon: string;
 }
 
 const DECOR: DecorElement[] = [
-  { id: 'rug',   label: 'Rug',         icon: 'layers'        },
-  { id: 'plant', label: 'Plant',       icon: 'sustainability'},
-  { id: 'art',   label: 'Wall art',    icon: 'image'         },
-  { id: 'lamp',  label: 'Floor lamp',  icon: 'lightbulb_on'  },
-  { id: 'shelf', label: 'Bookshelf',   icon: 'book'          },
+  { id: 'rug',     label: 'Rug',         icon: 'layers'         },
+  { id: 'plant',   label: 'Plant',       icon: 'sustainability' },
+  { id: 'art',     label: 'Wall art',    icon: 'image'          },
+  { id: 'lamp',    label: 'Floor lamp',  icon: 'lightbulb_on'   },
+  { id: 'shelf',   label: 'Bookshelf',   icon: 'book'           },
+  { id: 'cushion', label: 'Cushions',    icon: 'view_pages'     },
 ];
 
 interface Atmosphere {
@@ -382,6 +383,13 @@ function InteriorViewport({
     scene.add(shelfGroup);
     decor.shelf = shelfGroup;
 
+    /* Cushions — two pillows on the sofa */
+    const cushionGroup = new THREE.Group();
+    addBox(0.5, 0.18, 0.5, -0.85, 0.45, -3.45, materials.lamp, cushionGroup);
+    addBox(0.5, 0.18, 0.5,  0.85, 0.45, -3.45, materials.art,  cushionGroup);
+    scene.add(cushionGroup);
+    decor.cushion = cushionGroup;
+
     /* ── Stash refs for the prop-driven effects ─────────────── */
     refs.current = {
       scene,
@@ -620,7 +628,7 @@ function DecorToggles({
             type="button"
             onClick={() => onToggle(d.id)}
             aria-pressed={isActive}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors"
+            className="px-2.5 py-1.5 rounded-full transition-colors font-medium whitespace-nowrap"
             style={{
               backgroundColor: isActive
                 ? 'var(--modus-wc-color-primary-light, #e8f4fd)'
@@ -633,18 +641,10 @@ function DecorToggles({
               color: isActive
                 ? 'var(--modus-wc-color-primary, #0063A7)'
                 : 'var(--modus-wc-color-base-content, #252a2e)',
+              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
             }}
           >
-            <ModusWcIcon name={d.icon} size="xs" decorative style={{ color: 'inherit' }} />
-            <span
-              className="font-medium whitespace-nowrap"
-              style={{ fontSize: 'var(--modus-wc-font-size-xs, 12px)' }}
-            >
-              {d.label}
-            </span>
-            {isActive && (
-              <ModusWcIcon name="check" size="xs" decorative style={{ color: 'inherit' }} />
-            )}
+            {d.label}
           </button>
         );
       })}
