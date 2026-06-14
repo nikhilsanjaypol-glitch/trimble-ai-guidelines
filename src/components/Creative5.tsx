@@ -416,10 +416,12 @@ function SitePlanSVG({ option, large = false }: { option: SiteOption; large?: bo
 function OptionCard({
   option,
   selected,
+  dim = false,
   onSelect,
 }: {
   option: SiteOption;
   selected: boolean;
+  dim?: boolean;
   onSelect: () => void;
 }) {
   const SELECT_RING = 'var(--modus-wc-color-primary, #0063a3)';
@@ -432,7 +434,7 @@ function OptionCard({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className="flex flex-col text-left rounded-xl overflow-hidden"
+      className="flex flex-col text-left rounded-xl overflow-hidden w-full h-full"
       style={{
         backgroundColor: selected ? SELECT_TINT : 'var(--modus-wc-color-base-page, #ffffff)',
         border: selected
@@ -440,17 +442,19 @@ function OptionCard({
           : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
         boxShadow: selected ? selectedShadow : baseShadow,
         cursor: 'pointer',
+        opacity: dim ? 0.35 : 1,
+        filter: dim ? 'saturate(0.6) blur(1px)' : 'none',
         transition:
-          'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease',
+          'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, opacity 0.2s ease, filter 0.2s ease',
       }}
       onMouseEnter={(e) => {
-        if (selected) return;
+        if (selected || dim) return;
         e.currentTarget.style.transform = 'translateY(-2px)';
         e.currentTarget.style.boxShadow =
           '0 8px 20px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05)';
       }}
       onMouseLeave={(e) => {
-        if (selected) return;
+        if (selected || dim) return;
         e.currentTarget.style.transform = 'translateY(0)';
         e.currentTarget.style.boxShadow = baseShadow;
       }}
@@ -459,7 +463,7 @@ function OptionCard({
       <div
         style={{
           width: '100%',
-          aspectRatio: '16 / 7',
+          aspectRatio: '16 / 8',
           backgroundColor: PAPER,
           position: 'relative',
           overflow: 'hidden',
@@ -605,9 +609,10 @@ function SuggestionPopup({
 
   return (
     <div
-      className="rounded-2xl p-[2px] relative"
+      className="creative7-plan-card-glow rounded-2xl p-[2px] relative"
       style={{
         background: TRIMBLE_RAINBOW,
+        backgroundSize: '200% 200%',
         boxShadow: '0 20px 50px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.10)',
         width: '820px',
       }}
@@ -659,7 +664,7 @@ function SuggestionPopup({
         <div
           className="grid grid-cols-2 gap-2 px-4 py-3"
           style={{
-            maxHeight: '440px',
+            maxHeight: '520px',
             overflowY: 'auto',
             borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
             pointerEvents: committed ? 'none' : 'auto',
@@ -667,22 +672,15 @@ function SuggestionPopup({
         >
           {OPTIONS.map((opt) => {
             const isSelected = selectedId === opt.id;
-            const dim = committed !== null && !isSelected;
+            const isDim = committed !== null && !isSelected;
             return (
-              <div
+              <OptionCard
                 key={opt.id}
-                style={{
-                  opacity: dim ? 0.35 : 1,
-                  filter: dim ? 'saturate(0.6) blur(1px)' : 'none',
-                  transition: 'opacity 0.2s ease, filter 0.2s ease',
-                }}
-              >
-                <OptionCard
-                  option={opt}
-                  selected={isSelected}
-                  onSelect={() => onSelect(opt.id)}
-                />
-              </div>
+                option={opt}
+                selected={isSelected}
+                dim={isDim}
+                onSelect={() => onSelect(opt.id)}
+              />
             );
           })}
         </div>
