@@ -7,9 +7,12 @@ const CARD_WIDTH = 300;
 const CARD_MARGIN = 16;
 const CARD_GAP = 96;
 
-// Anchor sits just above the top of the retaining wall on the north edge of
-// the central dig — that's the slope the Creative 6 strategies are about.
-const ANCHOR = new THREE.Vector3(0, 4.5, -12.4);
+// Anchor sits centred over the building foundation columns inside the
+// dig — that's the structural element the Creative 6 strategies are
+// now about. Positioned slightly above the column tops (y ≈ 3.0) and
+// between the two column rows (x = 0) so the line of sight from the
+// camera to the marker stays clear.
+const ANCHOR = new THREE.Vector3(0, 5, 0);
 
 export default function SiteScene() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -1079,29 +1082,6 @@ export default function SiteScene() {
         }}
       >
         <Creative6 open={open} onClose={() => setOpen(false)} />
-      </div>
-
-      {/* Controls hint */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 18,
-          left: 18,
-          padding: '8px 12px',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(0,0,0,0.55)',
-          color: '#fff',
-          fontSize: '12px',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          zIndex: 6,
-          lineHeight: 1.5,
-          backdropFilter: 'blur(4px)',
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>Camera controls</div>
-        <div style={{ opacity: 0.85 }}>
-          Drag — orbit &nbsp;·&nbsp; Right-drag — pan &nbsp;·&nbsp; Scroll — zoom
-        </div>
       </div>
     </div>
   );

@@ -47,71 +47,71 @@ const CONFIDENCE_STYLES: Record<
 
 const alternatives: Alternative[] = [
   {
-    icon: 'layers',
-    title: 'Extreme Grade Opportunity',
+    icon: 'view_grid',
+    title: 'Optimize Column Grid',
     summary:
-      'Re-grade the slope 2% gentler — the retaining wall is no longer needed and the full $40K is captured.',
+      'Cut the column count from 6 to 4 with deeper grade beams — saves ~$22K in concrete, rebar, and formwork.',
     description:
-      "By increasing the site's northern slope by 2%, you can eliminate the need for a $40k retaining wall, though it will require 10% more fill material.",
-    tags: ['Cost-saving', 'Trade-off'],
+      'Re-engineer the structural bay to span longer with four perimeter columns instead of six, using deeper interior grade beams to carry the load.',
+    tags: ['Cost-saving', 'Structural'],
     rationale:
-      'A 2% slope spreads the elevation change over a longer run, removing the need for structural retention entirely.',
+      'Fewer columns mean fewer footings, less concrete, and less formwork — the deeper grade beams more than absorb the redistributed load.',
     pros: [
-      'Eliminates $40k retaining wall cost',
-      'Reduces structural complexity on the north edge',
-      'Improves natural drainage along the slope',
-      'Fewer specialty contractors required',
+      'Eliminates 2 columns + footings + rebar cages (~$22K)',
+      'Faster column-pour cycle on the critical path',
+      'Fewer column form sets to handle and rotate',
+      'More open basement floor plate for MEP routing',
     ],
     nextSteps: [
-      'Run updated grading calculations for the north boundary',
-      'Get a quantity takeoff on the additional fill required',
-      'Confirm revised slope meets ADA and drainage code',
+      'Run revised column-grid analysis with the structural engineer',
+      'Update grade-beam sizing for the longer span',
+      'Re-tally concrete and rebar quantities for the new layout',
     ],
     confidence: 'high',
   },
   {
-    icon: 'map_outline',
-    title: 'Segmental Block Retaining Wall',
+    icon: 'sync',
+    title: 'Post-Tensioned Mat Slab',
     summary:
-      'Swap poured concrete for dry-stacked segmental blocks — material costs drop ~25% at the same load rating.',
+      'Replace the conventional rebar mat with post-tensioned tendons — cuts rebar tonnage ~35% and lets the slab go thinner.',
     description:
-      'Swap the poured concrete wall for a segmental block system to cut material costs by 25% while maintaining the same structural performance.',
-    tags: ['Cost-effective', 'Low risk'],
+      'Swap the conventional reinforced mat foundation for a post-tensioned design with stressed tendons in place of dense rebar, allowing a thinner slab section.',
+    tags: ['Material-saving', 'Faster'],
     rationale:
-      'Dry-stacked interlocking blocks need no formwork or curing — same load rating at noticeably lower material and labor cost.',
+      'PT tendons carry tension more efficiently than passive rebar, allowing a thinner slab with less steel for the same structural performance.',
     pros: [
-      'Cuts wall material costs by ~25%',
-      'No formwork or concrete curing delays',
-      'Easier to phase and adjust during construction',
-      'Modular system allows future modifications',
+      'Cuts mat rebar tonnage by ~35%',
+      'Slab thickness drops from 600mm to ~450mm',
+      'Improved crack control across the foundation',
+      'Faster strip-and-load cycle for upper floors',
     ],
     nextSteps: [
-      'Request segmental block supplier quotes for the required run length',
-      'Review geotech report for backfill and compaction requirements',
-      'Confirm structural engineer sign-off on block system sizing',
+      'Engage a PT specialist to validate the slab design',
+      'Get tendon supplier quote for stressing and grouting',
+      'Update the rebar / concrete takeoff for the thinner slab',
     ],
     confidence: 'medium',
   },
   {
-    icon: 'sync',
-    title: 'Cut-Fill Balance Optimization',
+    icon: 'speed',
+    title: 'High-Strength Concrete (6000 psi)',
     summary:
-      'Reuse on-site cut material as fill in the low areas — saves ~$18K in haul-off and imported fill.',
+      'Spec 6000 psi columns instead of 4000 psi — shrinks cross-sections ~25% and trims vertical rebar.',
     description:
-      'Re-sequence the earthwork to balance cut and fill volumes on site, reducing truck haul cycles and saving an estimated $18k in material transport.',
-    tags: ['Faster', 'Cost-effective'],
+      'Switch the column concrete from 4000 psi to 6000 psi (~40 MPa), allowing smaller cross-sections and reduced vertical reinforcement at a small mix-cost premium.',
+    tags: ['Material-saving', 'Trade-off'],
     rationale:
-      'Excess cut is currently hauled off while fill is imported. Reusing on-site spoils as fill removes both trips.',
+      'Higher compressive strength carries the same load with less section, recovering the mix cost premium through reduced concrete volume and rebar.',
     pros: [
-      'Saves ~$18k in haul and import costs',
-      'Reduces truck traffic and schedule risk',
-      'Lower carbon footprint from reduced haulage',
-      'Simplifies logistics with fewer off-site movements',
+      'Columns shrink from 1.0×1.0 m to ~0.85×0.85 m',
+      'Vertical rebar drops ~15%',
+      'More usable basement floor area',
+      'Same code compliance and load rating',
     ],
     nextSteps: [
-      'Run a cut-fill mass haul diagram across the full site',
-      'Identify areas where spoil from cut zones can be reused',
-      'Update the earthwork sequence in the project schedule',
+      'Confirm the batch plant can supply 6000 psi consistently',
+      'Re-run the column reinforcement schedule at higher fc',
+      'Update structural drawings for the new column dimensions',
     ],
     confidence: 'low',
   },
@@ -267,7 +267,8 @@ const INK_LIGHT = '#5a6270';
 
 /* ── Per-strategy CAD-style illustrations ───────────────────────── */
 
-function RegradeIllustration() {
+/* Strategy 1 — Optimize column grid (plan view: 6 → 4 columns) */
+function ColumnGridIllustration() {
   const accent = '#1e7e34';
   return (
     <svg
@@ -278,60 +279,62 @@ function RegradeIllustration() {
     >
       <defs>
         <pattern
-          id="hatchGround1"
+          id="hatchSlabPlan"
           width={6}
           height={6}
           patternUnits="userSpaceOnUse"
           patternTransform="rotate(45)"
         >
-          <line x1={0} y1={0} x2={0} y2={6} stroke={INK_LIGHT} strokeWidth={0.7} />
+          <line x1={0} y1={0} x2={0} y2={6} stroke={INK_LIGHT} strokeWidth={0.6} />
         </pattern>
       </defs>
 
-      {/* Ground baseline */}
-      <line x1={16} y1={78} x2={224} y2={78} stroke={INK} strokeWidth={1.6} />
-      <rect x={16} y={78} width={208} height={16} fill="url(#hatchGround1)" />
+      {/* Foundation slab outline (plan view) */}
+      <rect x={20} y={18} width={200} height={62} fill="url(#hatchSlabPlan)" stroke={INK} strokeWidth={1.6} />
 
-      {/* Original (steep) slope — dashed */}
-      <line
-        x1={56} y1={78} x2={112} y2={20}
-        stroke={INK_LIGHT} strokeWidth={1.6} strokeDasharray="5 3"
-      />
+      {/* OLD 6-column grid — dashed, faded (3 cols × 2 rows) */}
+      {[60, 120, 180].flatMap((cx) =>
+        [38, 60].map((cy) => (
+          <circle
+            key={`old-${cx}-${cy}`}
+            cx={cx} cy={cy} r={6}
+            fill="white"
+            stroke={INK_LIGHT}
+            strokeWidth={1.4}
+            strokeDasharray="3 2"
+          />
+        )),
+      )}
 
-      {/* Old retaining wall — crossed-out */}
-      <g transform="translate(106, 12)">
-        <rect width={14} height={12} fill="white" stroke={INK_LIGHT} strokeWidth={1} />
-        <line x1={-3} y1={-3} x2={17} y2={15} stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
-        <line x1={17} y1={-3} x2={-3} y2={15} stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
-      </g>
+      {/* NEW 4-column grid — bold accent (2 cols × 2 rows) */}
+      {[60, 180].flatMap((cx) =>
+        [38, 60].map((cy) => (
+          <g key={`new-${cx}-${cy}`}>
+            <rect
+              x={cx - 8} y={cy - 8} width={16} height={16}
+              fill={accent} fillOpacity={0.18}
+              stroke={accent} strokeWidth={2}
+            />
+            <rect x={cx - 3} y={cy - 3} width={6} height={6} fill={accent} />
+          </g>
+        )),
+      )}
 
-      {/* New regraded slope — bold, with soft accent wedge */}
-      <path d="M 56 78 L 208 38 L 208 78 Z" fill={accent} fillOpacity={0.16} />
-      <line
-        x1={56} y1={78} x2={208} y2={38}
-        stroke={accent} strokeWidth={3.2} strokeLinecap="round"
-      />
-
-      {/* +2% label — placed in the open sky area above the new slope,
-          clear of the crossed-out wall on the left and the structure on the right */}
+      {/* Savings label */}
       <text
-        x={132} y={40}
-        fontSize={18} fontWeight={800} fill={accent}
-        fontFamily="ui-monospace, monospace" letterSpacing={0.5}
+        x={120} y={97}
+        fontSize={14} fontWeight={800} fill={accent}
+        fontFamily="ui-monospace, monospace" letterSpacing={0.6}
+        textAnchor="middle"
       >
-        +2%
+        −2 COLUMNS
       </text>
-
-      {/* Tiny structure marker at top of new slope */}
-      <g transform="translate(196, 24)" fill={INK}>
-        <polygon points="0,6 9,-2 18,6" />
-        <rect x={2} y={6} width={14} height={10} />
-      </g>
     </svg>
   );
 }
 
-function BlockWallIllustration() {
+/* Strategy 2 — Post-tensioned mat slab (rebar vs PT tendons, section view) */
+function PostTensionedIllustration() {
   const accent = '#0063a7';
   return (
     <svg
@@ -340,56 +343,71 @@ function BlockWallIllustration() {
       className="w-full h-full"
       aria-hidden
     >
-      <defs>
-        <pattern
-          id="hatchSoil2"
-          width={6}
-          height={6}
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <line x1={0} y1={0} x2={0} y2={6} stroke={INK_LIGHT} strokeWidth={0.7} />
-        </pattern>
-      </defs>
+      {/* Slab outline */}
+      <rect x={20} y={32} width={200} height={36} fill="white" stroke={INK} strokeWidth={1.6} />
 
-      {/* Backfill behind wall — hatched */}
-      <path
-        d="M 152 84 L 152 24 L 222 24 L 222 84 Z"
-        fill="url(#hatchSoil2)"
-        stroke={INK_LIGHT}
-        strokeWidth={1}
-      />
+      {/* Centre divider between "before" (left) and "after" (right) */}
+      <line x1={120} y1={20} x2={120} y2={80} stroke={INK} strokeWidth={0.8} strokeDasharray="3 3" />
 
-      {/* Capstone above blocks */}
-      <rect
-        x={48} y={20} width={108} height={6}
-        fill={accent} fillOpacity={0.30}
-        stroke={INK} strokeWidth={1.2}
-      />
-
-      {/* Stacked segmental blocks — 3 chunky rows for legibility */}
-      <g stroke={INK} strokeWidth={1.4}>
-        {/* Row 1 — bottom */}
-        <rect x={42} y={62} width={120} height={22} fill="white" />
-        <line x1={82} y1={62} x2={82} y2={84} />
-        <line x1={122} y1={62} x2={122} y2={84} />
-        {/* Row 2 — staggered, accent-tinted */}
-        <rect x={48} y={40} width={108} height={22} fill={accent} fillOpacity={0.14} />
-        <line x1={102} y1={40} x2={102} y2={62} />
-        {/* Row 3 — top */}
-        <rect x={54} y={20} width={96} height={20} fill="white" />
-        <line x1={94} y1={20} x2={94} y2={40} />
-        <line x1={130} y1={20} x2={130} y2={40} />
+      {/* LEFT — conventional rebar grid (dense, dashed, faded) */}
+      <g stroke={INK_LIGHT} strokeWidth={0.9} strokeDasharray="2 1.5">
+        {/* Horizontal bars */}
+        {[40, 48, 56, 64].map((y) => (
+          <line key={`h-${y}`} x1={28} y1={y} x2={114} y2={y} />
+        ))}
+        {/* Vertical bars */}
+        {[30, 42, 54, 66, 78, 90, 102, 112].map((x) => (
+          <line key={`v-${x}`} x1={x} y1={36} x2={x} y2={66} />
+        ))}
       </g>
 
-      {/* Ground baseline + hatched ground */}
-      <line x1={16} y1={84} x2={224} y2={84} stroke={INK} strokeWidth={1.6} />
-      <rect x={16} y={84} width={208} height={12} fill="url(#hatchSoil2)" />
+      {/* RIGHT — PT tendons (bold drape curves with end anchors) */}
+      <g stroke={accent} strokeWidth={2.4} fill="none" strokeLinecap="round">
+        <path d="M 130 42 Q 175 64 220 42" />
+        <path d="M 130 50 Q 175 72 220 50" />
+        <path d="M 130 58 Q 175 80 220 58" />
+      </g>
+      {/* Anchor plates at tendon ends */}
+      {[42, 50, 58].map((y) => (
+        <g key={`anchor-${y}`}>
+          <rect x={127} y={y - 3} width={4} height={6} fill={accent} />
+          <rect x={219} y={y - 3} width={4} height={6} fill={accent} />
+        </g>
+      ))}
+
+      {/* Section labels */}
+      <text
+        x={70} y={26}
+        fontSize={11} fontWeight={800} fill={INK_LIGHT}
+        fontFamily="ui-monospace, monospace" letterSpacing={0.6}
+        textAnchor="middle"
+      >
+        REBAR
+      </text>
+      <text
+        x={170} y={26}
+        fontSize={11} fontWeight={800} fill={accent}
+        fontFamily="ui-monospace, monospace" letterSpacing={0.6}
+        textAnchor="middle"
+      >
+        PT TENDONS
+      </text>
+
+      {/* Savings */}
+      <text
+        x={120} y={97}
+        fontSize={14} fontWeight={800} fill={accent}
+        fontFamily="ui-monospace, monospace" letterSpacing={0.6}
+        textAnchor="middle"
+      >
+        −35% STEEL
+      </text>
     </svg>
   );
 }
 
-function CutFillIllustration() {
+/* Strategy 3 — High-strength concrete (column cross-section comparison) */
+function HighStrengthConcreteIllustration() {
   const accent = '#0e7490';
   return (
     <svg
@@ -398,95 +416,92 @@ function CutFillIllustration() {
       className="w-full h-full"
       aria-hidden
     >
-      <defs>
-        <pattern
-          id="hatchCut3"
-          width={5}
-          height={5}
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(135)"
+      {/* OLD column 4000 psi — large, dashed outline */}
+      <g transform="translate(60, 44)">
+        <rect
+          x={-30} y={-30} width={60} height={60}
+          fill="white"
+          stroke={INK_LIGHT} strokeWidth={1.6}
+          strokeDasharray="4 3"
+        />
+        {/* Stirrup hint */}
+        <rect
+          x={-23} y={-23} width={46} height={46}
+          fill="none"
+          stroke={INK_LIGHT} strokeWidth={0.8}
+          strokeDasharray="2 2"
+        />
+        {/* 8 rebar dots — corners + mid-edges */}
+        {[
+          [-20, -20], [0, -20], [20, -20],
+          [-20, 0], [20, 0],
+          [-20, 20], [0, 20], [20, 20],
+        ].map(([x, y]) => (
+          <circle key={`old-${x}-${y}`} cx={x} cy={y} r={2.4} fill={INK_LIGHT} />
+        ))}
+        <text
+          x={0} y={48}
+          fontSize={11} fontWeight={700} fill={INK_LIGHT}
+          fontFamily="ui-monospace, monospace" letterSpacing={0.4}
+          textAnchor="middle"
         >
-          <line x1={0} y1={0} x2={0} y2={5} stroke={accent} strokeWidth={0.9} />
-        </pattern>
-        <pattern
-          id="hatchFill3"
-          width={5}
-          height={5}
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
+          4000 psi
+        </text>
+      </g>
+
+      {/* Arrow — old → new */}
+      <g transform="translate(120, 44)" stroke={INK} strokeWidth={2} strokeLinecap="round">
+        <line x1={-14} y1={0} x2={10} y2={0} />
+        <polygon points="10,-5 22,0 10,5" fill={INK} stroke="none" />
+      </g>
+
+      {/* NEW column 6000 psi — smaller, bold accent */}
+      <g transform="translate(180, 44)">
+        <rect
+          x={-22} y={-22} width={44} height={44}
+          fill={accent} fillOpacity={0.14}
+          stroke={accent} strokeWidth={2.4}
+        />
+        {/* Stirrup hint */}
+        <rect
+          x={-17} y={-17} width={34} height={34}
+          fill="none"
+          stroke={accent} strokeWidth={0.9}
+        />
+        {/* 6 rebar dots — corners + mid-edges */}
+        {[
+          [-15, -15], [0, -15], [15, -15],
+          [-15, 15], [0, 15], [15, 15],
+        ].map(([x, y]) => (
+          <circle key={`new-${x}-${y}`} cx={x} cy={y} r={2.6} fill={accent} />
+        ))}
+        <text
+          x={0} y={40}
+          fontSize={11} fontWeight={800} fill={accent}
+          fontFamily="ui-monospace, monospace" letterSpacing={0.4}
+          textAnchor="middle"
         >
-          <line x1={0} y1={0} x2={0} y2={5} stroke={accent} strokeWidth={0.9} />
-        </pattern>
-      </defs>
+          6000 psi
+        </text>
+      </g>
 
-      {/* CUT zone — terrain peak above target line */}
-      <path
-        d="M 16 56 Q 68 -8 124 56 L 16 56 Z"
-        fill="url(#hatchCut3)"
-        stroke={accent}
-        strokeWidth={1.2}
-      />
-
-      {/* FILL zone — terrain valley below target line */}
-      <path
-        d="M 124 56 L 224 56 L 224 90 Q 196 116 124 56 Z"
-        fill="url(#hatchFill3)"
-        stroke={accent}
-        strokeWidth={1.2}
-      />
-
-      {/* Existing terrain — bold continuous line over both zones */}
-      <path
-        d="M 16 56 Q 68 -8 124 56 Q 196 116 224 90"
-        stroke={INK}
-        strokeWidth={2}
-        fill="none"
-        strokeLinecap="round"
-      />
-
-      {/* Target final grade — bold dashed */}
-      <line
-        x1={16} y1={56} x2={224} y2={56}
-        stroke={INK} strokeWidth={1.8} strokeDasharray="6 4"
-      />
-
-      {/* Big CUT label — sits inside the cut zone, below the terrain peak,
-          above the target grade line */}
+      {/* Savings */}
       <text
-        x={50} y={44}
+        x={120} y={97}
         fontSize={14} fontWeight={800} fill={accent}
-        fontFamily="ui-monospace, monospace" letterSpacing={0.5}
+        fontFamily="ui-monospace, monospace" letterSpacing={0.6}
+        textAnchor="middle"
       >
-        CUT
+        −25% AREA
       </text>
-
-      {/* Big FILL label — sits inside the fill zone, below the target line,
-          above the terrain valley */}
-      <text
-        x={172} y={86}
-        fontSize={14} fontWeight={800} fill={accent}
-        fontFamily="ui-monospace, monospace" letterSpacing={0.5}
-      >
-        FILL
-      </text>
-
-      {/* Bold material-movement arrow — cut → fill, ends above the FILL label */}
-      <path
-        d="M 88 26 Q 130 -6 168 64"
-        stroke={accent}
-        strokeWidth={2}
-        fill="none"
-        strokeLinecap="round"
-      />
-      <polygon points="168,60 174,72 162,72" fill={accent} />
     </svg>
   );
 }
 
 const ILLUSTRATIONS = [
-  RegradeIllustration,
-  BlockWallIllustration,
-  CutFillIllustration,
+  ColumnGridIllustration,
+  PostTensionedIllustration,
+  HighStrengthConcreteIllustration,
 ];
 
 /* ── Strategy "Picture" Visual — paper sheet with CAD elevation ── */
