@@ -866,20 +866,20 @@ function EvidenceCard({ onClose }: { onClose: () => void }) {
           gap: 8,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <span
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
-              fontSize: 10,
-              fontWeight: 700,
+              gap: 7,
+              fontSize: 12,
+              fontWeight: 400,
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
               color: '#6a6e79',
             }}
           >
-            <TrimbleAiLogo size={11} />
+            <TrimbleAiLogo size={16} />
             Trimble AI · why answers
           </span>
           <div style={{ display: 'flex', gap: 10 }}>
