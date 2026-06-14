@@ -839,6 +839,7 @@ export default function Creative9() {
         backgroundColor: 'var(--modus-wc-color-base-100, #f5f6f8)',
         width: '1040px',
         gap: '20px',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.10)',
       }}
     >
       {/* ── LEFT — 3D viewport ───────────────────────────────── */}
