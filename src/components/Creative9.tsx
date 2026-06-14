@@ -480,7 +480,7 @@ function InteriorViewport({
   return (
     <div
       ref={mountRef}
-      className="w-full h-full"
+      className="absolute inset-0"
       style={{ cursor: 'grab' }}
       aria-label="Interactive 3D interior – drag to orbit, scroll to zoom"
     />
@@ -834,27 +834,22 @@ export default function Creative9() {
 
   return (
     <div
-      className="grid p-5 rounded-2xl"
+      className="flex items-stretch p-5 rounded-2xl"
       style={{
         backgroundColor: 'var(--modus-wc-color-base-100, #f5f6f8)',
         width: '1040px',
-        gridTemplateColumns: '1fr 320px',
-        gridTemplateRows: '1fr auto',
-        columnGap: '20px',
-        rowGap: '12px',
+        gap: '20px',
       }}
     >
-      {/* ── COL 1 — 3D viewport (spans both rows) ────────────── */}
-      {/* The render card now spans the full height of the grid so
-          its bottom edge aligns with the action buttons on the
-          right. CSS Grid keeps the heights locked together
-          regardless of when icons / Three.js finish loading. */}
+      {/* ── LEFT — 3D viewport ───────────────────────────────── */}
+      {/* Locked to exactly 528 px tall. The Three.js canvas inside
+          is absolutely positioned (see InteriorViewport), so even
+          if the renderer briefly sets a different pixel size, it
+          can never push this card taller. */}
       <div
-        className="relative rounded-2xl overflow-hidden"
+        className="relative rounded-2xl overflow-hidden flex-1"
         style={{
-          gridColumn: '1',
-          gridRow: '1 / span 2',
-          minHeight: '420px',
+          height: '528px',
           backgroundColor: '#1d1f24',
           boxShadow: '0 6px 18px rgba(0,0,0,0.10)',
         }}
@@ -867,123 +862,123 @@ export default function Creative9() {
         />
       </div>
 
-      {/* ── ROW 1 · COL 2 — Possibility controls card ───────── */}
+      {/* ── RIGHT — Settings card + action buttons stacked ──── */}
+      {/* Also locked to 528 px total so its bottom edge aligns
+          perfectly with the bottom of the render card on the left.
+          Settings card uses flex-1 to fill (528 − 42 − 12 = 474 px)
+          regardless of how its children render. */}
       <div
-        className="flex flex-col gap-5 p-5 rounded-2xl"
-        style={{
-          gridColumn: '2',
-          gridRow: '1',
-          backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        }}
+        className="flex flex-col"
+        style={{ width: '320px', height: '528px', gap: '12px' }}
       >
-        {/* Title block */}
-        <div className="flex flex-col gap-0.5">
-          <span
-            className="font-medium"
-            style={{
-              fontSize: '10px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              letterSpacing: '0.8px',
-            }}
-          >
-            AI POSSIBILITIES
-          </span>
-          <span
-            className="font-semibold"
-            style={{
-              fontSize: 'var(--modus-wc-font-size-lg, 18px)',
-              color: 'var(--modus-wc-color-base-content, #101828)',
-              lineHeight: 1.3,
-            }}
-          >
-            Explore this scene
-          </span>
+        {/* Possibility controls card */}
+        <div
+          className="flex flex-col gap-5 p-5 rounded-2xl flex-1 overflow-hidden"
+          style={{
+            backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}
+        >
+          {/* Title block */}
+          <div className="flex flex-col gap-0.5">
+            <span
+              className="font-medium"
+              style={{
+                fontSize: '10px',
+                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                letterSpacing: '0.8px',
+              }}
+            >
+              AI POSSIBILITIES
+            </span>
+            <span
+              className="font-semibold"
+              style={{
+                fontSize: 'var(--modus-wc-font-size-lg, 18px)',
+                color: 'var(--modus-wc-color-base-content, #101828)',
+                lineHeight: 1.3,
+              }}
+            >
+              Explore this scene
+            </span>
+          </div>
+
+          {/* Lighting Mood */}
+          <div className="flex flex-col gap-1.5">
+            <SectionLabel icon="sun" label="Lighting mood" />
+            <LightingPicker value={lighting} onChange={setLighting} />
+          </div>
+
+          {/* Surface Materials */}
+          <div className="flex flex-col gap-1.5">
+            <SectionLabel icon="palette" label="Surface materials" />
+            <SwatchPicker
+              selectedIds={selectedSwatches}
+              onToggle={toggleSwatch}
+            />
+          </div>
+
+          {/* Decor */}
+          <div className="flex flex-col gap-1.5">
+            <SectionLabel icon="sustainability" label="Decor elements" />
+            <DecorToggles active={activeDecor} onToggle={toggleDecor} />
+          </div>
+
+          {/* Atmosphere — wires into scene.fog in the 3D viewport */}
+          <div className="flex flex-col gap-1.5">
+            <SectionLabel icon="moon" label="Atmosphere" />
+            <AtmospherePicker value={atmosphere} onChange={setAtmosphere} />
+          </div>
         </div>
 
-        {/* Lighting Mood */}
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel icon="sun" label="Lighting mood" />
-          <LightingPicker value={lighting} onChange={setLighting} />
-        </div>
-
-        {/* Surface Materials */}
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel icon="palette" label="Surface materials" />
-          <SwatchPicker
-            selectedIds={selectedSwatches}
-            onToggle={toggleSwatch}
+        {/* Action buttons — fixed 42px row directly under the card */}
+        <div
+          className="flex items-stretch gap-2"
+          style={{ height: '42px' }}
+        >
+          <ActionButton
+            variant="tertiary"
+            onClick={handleSurprise}
+            label="Surprise me"
+            icon={
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8L12 2z"
+                  fill="var(--modus-wc-color-primary, #0063A7)"
+                />
+                <circle cx="19" cy="5" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
+                <circle cx="5" cy="19" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
+              </svg>
+            }
+          />
+          <ActionButton
+            variant="tertiary"
+            onClick={handleReset}
+            label="Reset"
+            icon={
+              <ModusWcIcon
+                name="refresh"
+                size="xs"
+                decorative
+                style={{ color: 'var(--modus-wc-color-base-content, #364153)' }}
+              />
+            }
+          />
+          <ActionButton
+            variant="primary"
+            onClick={handleSave}
+            label="Apply to model"
+            flash={savedFlash}
+            icon={
+              <ModusWcIcon
+                name="check_circle"
+                size="xs"
+                decorative
+                style={{ color: '#fff' }}
+              />
+            }
           />
         </div>
-
-        {/* Decor */}
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel icon="sustainability" label="Decor elements" />
-          <DecorToggles active={activeDecor} onToggle={toggleDecor} />
-        </div>
-
-        {/* Atmosphere — wires into scene.fog in the 3D viewport */}
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel icon="moon" label="Atmosphere" />
-          <AtmospherePicker value={atmosphere} onChange={setAtmosphere} />
-        </div>
-      </div>
-
-      {/* ── ROW 2 · COL 2 — Action buttons ───────────────────── */}
-      {/* Row 2's only cell — the render card on the left spans
-          both rows, so this 42px button row sits directly under
-          the settings card and aligns with the render card's
-          bottom edge. */}
-      <div
-        className="flex items-stretch gap-2"
-        style={{
-          gridColumn: '2',
-          gridRow: '2',
-          height: '42px',
-        }}
-      >
-        <ActionButton
-          variant="tertiary"
-          onClick={handleSurprise}
-          label="Surprise me"
-          icon={
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M12 2l1.6 5.2L19 9l-5.4 1.8L12 16l-1.6-5.2L5 9l5.4-1.8L12 2z"
-                fill="var(--modus-wc-color-primary, #0063A7)"
-              />
-              <circle cx="19" cy="5" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
-              <circle cx="5" cy="19" r="1.2" fill="var(--modus-wc-color-primary, #0063A7)" />
-            </svg>
-          }
-        />
-        <ActionButton
-          variant="tertiary"
-          onClick={handleReset}
-          label="Reset"
-          icon={
-            <ModusWcIcon
-              name="refresh"
-              size="xs"
-              decorative
-              style={{ color: 'var(--modus-wc-color-base-content, #364153)' }}
-            />
-          }
-        />
-        <ActionButton
-          variant="primary"
-          onClick={handleSave}
-          label="Apply to model"
-          flash={savedFlash}
-          icon={
-            <ModusWcIcon
-              name="check_circle"
-              size="xs"
-              decorative
-              style={{ color: '#fff' }}
-            />
-          }
-        />
       </div>
     </div>
   );
