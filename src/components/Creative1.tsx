@@ -130,20 +130,21 @@ type ViewId = 'overview' | CcId;
 
 
 /* ── Chart geometry ─────────────────────────────────────────── */
-/* The chart SVG spans the full 760 px widget width — sized so the
- * widget's overall aspect ratio (760 × ~474) matches the 16∶10
- * thumbnail tiles on the guidelines grid (App.tsx).
- * The 24 px Header / SummaryStrip gutter is reproduced *inside* the SVG:
+/* The chart SVG spans the full 720 px widget width. The chart height
+ * is 360, giving the widget a near-square ~1.30∶1 ratio that's a touch
+ * smaller than the previous 760 × 574 size while preserving the same
+ * proportions. The 24 px Header / SummaryStrip gutter is reproduced
+ * *inside* the SVG:
  *   • Y-axis tick labels are LEFT-aligned at SVG x = 24, so their
  *     left edge lines up with "Total Purchase Orders" above.
  *   • PAD_LEFT = 52 — leaves room (24 + ~22px for "100" + 6 padding)
  *     before the plot starts so labels never collide with grid lines.
- *   • PAD_RIGHT = 24 — plot right-edge lands at widget x = 736, the
+ *   • PAD_RIGHT = 24 — plot right-edge lands at widget x = 696, the
  *     same column where the legend's "500" / "450" totals end.
  * All three rows of widget content thus line up at the same left and
  * right margin. */
-const CHART_W = 760;
-const CHART_H = 280;
+const CHART_W = 720;
+const CHART_H = 360;
 const PAD_LEFT = 52;
 const PAD_RIGHT = 24;
 const Y_LABEL_X = 24;
@@ -344,7 +345,7 @@ export default function Creative1() {
       <AiAgentIntro />
 
       <div style={{ marginTop: '10px' }}>
-        <div style={{ position: 'relative', width: '760px' }}>
+        <div style={{ position: 'relative', width: '720px' }}>
           {/* AI's output — always read-only. The dual-gradient ring uses
            * the same technique as the Creative 3 prompt bar; the rainbow
            * layer is sized 200 % wide and slowly shifted by the
@@ -352,13 +353,14 @@ export default function Creative1() {
            * marking the widget visually as a live AI artifact. */}
           <div
             style={{
-              width: '760px',
+              width: '720px',
               boxSizing: 'border-box',
               border: '2px solid transparent',
-              /* Matches the Modus button corner radius (--modus-wc-rounded-btn,
-               * 0.5rem) so the widget and the Edit / Save buttons share the
-               * same silhouette. */
-              borderRadius: '8px',
+              /* Larger card-style radius so the widget reads as a
+               * dashboard surface rather than a button-shaped tile.
+               * Edit / Save buttons keep their own 8 px radius —
+               * different roles, different silhouettes. */
+              borderRadius: '16px',
               backgroundImage:
                 `linear-gradient(${COLORS.white}, ${COLORS.white}), ` +
                 'linear-gradient(90deg, #00d7c0 0%, #0094f0 35%, #b73efa 68%, #ff5a8c 100%)',
@@ -454,7 +456,7 @@ export default function Creative1() {
 
       <FooterActions
         editMode={editMode}
-        widgetWidth={760}
+        widgetWidth={720}
         onEdit={openEdit}
         onCancel={cancelEdit}
         onSave={saveEdit}
@@ -675,99 +677,144 @@ function SummaryStrip({
   hoveredCc,
   onHover,
 }: SummaryStripProps) {
+  /* The strip is rendered as a single flex row of equal-weight cells
+   * separated by hairline dividers. Each cell stacks a small uppercase
+   * label and a large tabular value, the same way every cell in a
+   * dashboard summary table would be presented. The visual contract is
+   * "this is one table", not "these are five separate cards" — no
+   * rounded corners, no shadows, no per-cell pill backgrounds. */
   return (
     <div
       style={{
         height: '90px',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'stretch',
         padding: '0 24px',
-        gap: '40px',
         borderBottom: `1px solid ${COLORS.border}`,
       }}
     >
-      <div className="flex items-baseline" style={{ gap: '12px', flexShrink: 0 }}>
+      {/* Column 1 — Total POs (no color dot, slightly wider) */}
+      <SummaryCell
+        label="Total Purchase Orders"
+        value={grandTotal}
+        widthGrow={1.4}
+        isFirst
+      />
+
+      {/* Columns 2-5 — one cell per cost center */}
+      {ccs.map((cc, i) => {
+        const isHovered = hoveredCc === cc.id;
+        const isOtherHovered = hoveredCc !== null && hoveredCc !== cc.id;
+        return (
+          <SummaryCell
+            key={cc.id}
+            label={cc.label}
+            value={totals[i]}
+            dotColor={cc.color}
+            dimmed={isOtherHovered}
+            highlighted={isHovered}
+            onMouseEnter={() => onHover(cc.id)}
+            onMouseLeave={() => onHover(null)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── SummaryStrip cell — one column of the unified summary table ── */
+interface SummaryCellProps {
+  label: string;
+  value: number;
+  /** Optional color dot next to the label (cost-center cells). */
+  dotColor?: string;
+  /** Stretch factor for the cell's flex-basis. Defaults to 1. */
+  widthGrow?: number;
+  /** Suppress the left hairline divider — used by the first cell. */
+  isFirst?: boolean;
+  /** Whether this cell is dimmed because another column is being hovered. */
+  dimmed?: boolean;
+  /** Whether this cell is the one being hovered. */
+  highlighted?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}
+
+function SummaryCell({
+  label,
+  value,
+  dotColor,
+  widthGrow = 1,
+  isFirst,
+  dimmed,
+  highlighted,
+  onMouseEnter,
+  onMouseLeave,
+}: SummaryCellProps) {
+  return (
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className="flex flex-col justify-center"
+      style={{
+        flex: `${widthGrow} 1 0`,
+        minWidth: 0,
+        padding: '0 10px',
+        gap: '4px',
+        /* Hairline divider on the left of every cell except the first —
+         * gives the row the visual cadence of table columns without
+         * adding decorative chrome. */
+        borderLeft: isFirst ? 'none' : `1px solid ${COLORS.border}`,
+        /* Hover wash spans the full cell so the strip reads as a row of
+         * cells (a table), not a row of pills sitting on a strip. */
+        backgroundColor: highlighted ? 'rgba(0, 99, 163, 0.06)' : 'transparent',
+        opacity: dimmed ? 0.55 : 1,
+        transition: 'background-color 120ms ease, opacity 120ms ease',
+      }}
+    >
+      <div className="flex items-center" style={{ gap: '4px', minWidth: 0 }}>
+        {dotColor && (
+          <span
+            aria-hidden="true"
+            className="block shrink-0"
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '999px',
+              backgroundColor: dotColor,
+            }}
+          />
+        )}
+        {/* Label intentionally renders WITHOUT ellipsis / nowrap so the
+         * full text is always visible — the cell is sized below to fit
+         * "TOTAL PURCHASE ORDERS" / "COST CENTER 0X" in full. If the
+         * widget ever shrinks past that point the label will wrap to a
+         * second line rather than being truncated. */}
         <span
+          className="uppercase"
           style={{
-            fontSize: '18px',
-            fontWeight: 600,
-            color: COLORS.textMid,
-            lineHeight: '28px',
-            letterSpacing: '0.027px',
+            fontSize: '10px',
+            fontWeight: 700,
+            color: COLORS.textLow,
+            letterSpacing: '0.3px',
+            lineHeight: '13px',
           }}
         >
-          Total Purchase Orders
-        </span>
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: '20px',
-            fontWeight: 400,
-            color: COLORS.textMid,
-            lineHeight: '28px',
-            letterSpacing: '0.03px',
-            transition: 'color 120ms ease',
-          }}
-        >
-          {grandTotal}
+          {label}
         </span>
       </div>
-
-      <div
-        className="grid grid-cols-2 flex-1"
-        style={{ gap: '4px 24px', rowGap: '4px' }}
+      <span
+        className="tabular-nums"
+        style={{
+          fontSize: '22px',
+          fontWeight: 500,
+          color: COLORS.text,
+          lineHeight: '28px',
+          letterSpacing: '0.03px',
+        }}
       >
-        {ccs.map((cc, i) => {
-          const isHovered = hoveredCc === cc.id;
-          const isOtherHovered = hoveredCc !== null && hoveredCc !== cc.id;
-          const opacity = isOtherHovered ? 0.55 : 1;
-
-          return (
-            <div
-              key={cc.id}
-              onMouseEnter={() => onHover(cc.id)}
-              onMouseLeave={() => onHover(null)}
-              className="flex items-center text-left"
-              style={{
-                /* Size each chip to the actual text width so the hover
-                 * rectangle covers the full label, not just the grid cell. */
-                width: 'max-content',
-                justifySelf: 'start',
-                gap: '8px',
-                fontSize: '14px',
-                fontWeight: 700,
-                color: COLORS.blue,
-                lineHeight: '21px',
-                letterSpacing: '0.15px',
-                whiteSpace: 'nowrap',
-                padding: '4px 6px',
-                margin: '-4px -6px',
-                borderRadius: '4px',
-                opacity,
-                transition: 'opacity 120ms ease, background-color 120ms ease',
-                backgroundColor: isHovered
-                  ? 'rgba(0, 99, 163, 0.06)'
-                  : 'transparent',
-              }}
-            >
-              <span
-                className="block shrink-0"
-                style={{
-                  width: '14px',
-                  height: '14px',
-                  borderRadius: '999px',
-                  backgroundColor: cc.color,
-                  border: `2px solid ${cc.color}`,
-                  boxSizing: 'border-box',
-                }}
-              />
-              <span>{cc.label}</span>
-              <span>-</span>
-              <span className="tabular-nums">{totals[i]}</span>
-            </div>
-          );
-        })}
-      </div>
+        {value}
+      </span>
     </div>
   );
 }
@@ -1391,11 +1438,11 @@ function ChartDonut({
 }: ChartDonutProps) {
   /* Geometry — donut sits centered in the chart canvas. Outer / inner radii
    * are picked so the ring reads at the same visual weight as the line
-   * and bar charts. */
+   * and bar charts at the current chart height (380 px). */
   const cx = CHART_W / 2;
   const cy = PAD_TOP + PLOT_H / 2;
-  const R_OUTER = 110;
-  const R_INNER = 70;
+  const R_OUTER = 140;
+  const R_INNER = 90;
   /* Hovered slice expands outward 6px so it pops without breaking layout. */
   const HOVER_LIFT = 6;
 
@@ -1763,10 +1810,9 @@ function SettingsCard({
   onChangeDisplay,
   onChangePalette,
 }: SettingsCardProps) {
-  /* Widget height = 72 (Header) + 90 (SummaryStrip) + 312 (Chart pad + svg) = 474px.
-   * Combined with the 760 px width this gives a ~1.60∶1 ratio — the
-   * same 16∶10 aspect used by every thumbnail tile on the guidelines
-   * grid (App.tsx).
+  /* Widget height = 72 (Header) + 90 (SummaryStrip) + 392 (Chart pad + svg) = 554px.
+   * Combined with the 720 px width this gives a ~1.30∶1 ratio — same
+   * proportions as the previous 760 × 574 size but scaled down a touch.
    * The card overlays the right side of the widget, flush with the
    * widget's top/right/bottom edges. A directional shadow on the left
    * edge reads as a panel slid in from the right. */
@@ -1780,8 +1826,8 @@ function SettingsCard({
          * straight so the card reads as a flush panel, not a floating popover. */
         borderTopLeftRadius: 0,
         borderBottomLeftRadius: 0,
-        borderTopRightRadius: '8px',
-        borderBottomRightRadius: '8px',
+        borderTopRightRadius: '16px',
+        borderBottomRightRadius: '16px',
         borderLeft: `1px solid ${COLORS.border}`,
         boxShadow:
           '-12px 0 28px rgba(15,23,42,0.10), -2px 0 6px rgba(15,23,42,0.06)',
@@ -2436,8 +2482,11 @@ function UserPromptBubble({ prompt }: UserPromptBubbleProps) {
  * pixel-crisp without distortion. */
 const AI_LOGO_HEIGHT = 44;
 const AI_LOGO_WIDTH = Math.round((AI_LOGO_HEIGHT * 80) / 56); // 63
-const AI_LOGO_GAP = 12;
-const AI_LOGO_OFFSET = AI_LOGO_WIDTH + AI_LOGO_GAP; // 75
+/* Gap of 0 pushes the logo flush against the start of the paragraph —
+ * the logo's right edge sits at the widget's left edge, so the brand
+ * mark visually leads directly into "Here's your widget…". */
+const AI_LOGO_GAP = 0;
+const AI_LOGO_OFFSET = AI_LOGO_WIDTH + AI_LOGO_GAP; // 63
 
 function AiAgentIntro() {
   /* Static narration — describes the widget once. Save / edit status is
@@ -2452,7 +2501,7 @@ function AiAgentIntro() {
    * card below so the reading column doesn't shift. We achieve that
    * with a negative `marginLeft` on the flex container equal to the
    * logo width + gap; the row therefore overhangs into the gutter on
-   * the left, and the paragraph (flex: 1) fills the 760 px column
+   * the left, and the paragraph (flex: 1) fills the 720 px column
    * starting at x = 0 — same x as the widget. */
   return (
     <div
@@ -2461,7 +2510,7 @@ function AiAgentIntro() {
         alignItems: 'flex-start',
         gap: `${AI_LOGO_GAP}px`,
         marginLeft: `-${AI_LOGO_OFFSET}px`,
-        width: `${AI_LOGO_OFFSET + 760}px`,
+        width: `${AI_LOGO_OFFSET + 720}px`,
         padding: '4px 4px 0 0',
       }}
     >
