@@ -2702,6 +2702,11 @@ function FooterActions({
                 flexShrink: 0,
               }}
             >
+              {/* Same icon-as-image pattern used by Creative 2's prompt
+               * bar — the asset is a black glyph; lowering opacity to
+               * 0.45 reads as the muted grey state while the prompt is
+               * empty, then animates back to full-opacity (black) the
+               * moment the user types something. */}
               <img
                 src="/assets/prompt-send.png"
                 alt=""
@@ -2713,6 +2718,8 @@ function FooterActions({
                   display: 'block',
                   pointerEvents: 'none',
                   userSelect: 'none',
+                  opacity: isPromptEmpty ? 0.45 : 1,
+                  transition: 'opacity 140ms ease',
                 }}
               />
             </button>

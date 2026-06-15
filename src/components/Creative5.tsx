@@ -613,7 +613,7 @@ function SuggestionPopup({
       style={{
         background: TRIMBLE_RAINBOW,
         backgroundSize: '200% 200%',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.10)',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.10), 0 6px 16px rgba(0,0,0,0.05)',
         width: '820px',
       }}
     >

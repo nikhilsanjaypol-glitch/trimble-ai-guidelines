@@ -168,6 +168,65 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
   }
 }
 
+/* ── Pro 6 — cyan pulse marker ──────────────────────────────────────
+   Cyan sibling of .ai-marker. Reuses the rainbowPulse keyframes for
+   the expanding rings; only the colour is overridden.  Used to mark
+   the centroid of an AI-edited area in a 3-D viewport so the user
+   can click it to reveal the explanation card. */
+.cyan-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cyan-marker .cyan-orb {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--modus-wc-color-info, #1FB1A7);
+  box-shadow:
+    0 4px 12px rgba(31, 177, 167, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+  color: #fff;
+  z-index: 2;
+  transition: transform 0.18s ease;
+}
+
+.cyan-marker:hover .cyan-orb,
+.cyan-marker[aria-pressed='true'] .cyan-orb {
+  transform: scale(1.1);
+}
+
+.cyan-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin-top: -18px;
+  margin-left: -18px;
+  border-radius: 50%;
+  background: var(--modus-wc-color-info, #1FB1A7);
+  opacity: 0.55;
+  z-index: 1;
+  animation: rainbowPulse 1.8s ease-out infinite;
+}
+
+.cyan-pulse-ring-delay {
+  animation-delay: 0.9s;
+}
+
 /* ── AI Preview Pill ────────────────────────────────────────────── */
 .ai-preview-pill {
   position: relative;
@@ -404,4 +463,13 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
   box-shadow:
     0 14px 32px rgba(0, 0, 0, 0.14),
     0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Pro 6 — rainbow border glitter on the AI-edit card ───────────
+   Reuses Creative 7's diagonal shimmer keyframes so every AI artifact
+   in the app glitters with the same cadence. The Pro 6 card keeps
+   its own bespoke drop-shadow (set inline) — only the border-gradient
+   scrolling animation comes from this class.                         */
+.pro6-card-glow {
+  animation: creative7RainbowShimmer 4s ease-in-out infinite;
 }

@@ -610,10 +610,12 @@ function TroubleshootCard({
   showPromptBar = true,
   logoSize = 24,
   logoOffsetLeft = 0,
+  showWhyButton = true,
 }: {
   showPromptBar?: boolean;
   logoSize?: number;
   logoOffsetLeft?: number;
+  showWhyButton?: boolean;
 } = {}) {
   const [activeStep, setActiveStep] = useState<StepId | null>(null);
   const [triedSteps, setTriedSteps] = useState<StepId[]>([]);
@@ -784,6 +786,7 @@ function TroubleshootCard({
               <strong style={{ fontWeight: 600 }}>hardware fault</strong>, usually a power or
               connection issue. Here are some things to try, in order from quickest to most involved:
             </p>
+            {showWhyButton && (
             <button
               type="button"
               onClick={() => setShowWhy((p) => !p)}
@@ -821,6 +824,7 @@ function TroubleshootCard({
                 }}
               />
             </button>
+            )}
           </div>
 
           {showWhy && (
@@ -1342,27 +1346,51 @@ function TiM2Bare() {
       className="flex flex-col shrink-0"
       style={{ width: `${BARE_LANDSCAPE_WIDTH}px` }}
     >
-      <TroubleshootCard showPromptBar={false} logoSize={30} logoOffsetLeft={10} />
+      <TroubleshootCard
+        showPromptBar={false}
+        logoSize={30}
+        logoOffsetLeft={10}
+        showWhyButton={false}
+      />
     </div>
   );
 }
 
-/* Visual scale factor applied to the whole guideline. `zoom` (rather
- * than `transform: scale`) is used so the layout box grows too — that
- * way the parent Shell still centers cleanly with no overflow clip
- * and no subpixel blurriness. Bump this constant to taste.          */
+/* Visual scale factor applied to the whole guideline. We use
+ * `transform: scale` (not `zoom`) so that Cursor's "Select element"
+ * overlay can still hit-test the underlying DOM — `zoom` throws off
+ * the coordinate math the picker relies on. To keep the parent Shell
+ * centering correct we wrap the scaled tree in an outer box whose
+ * width/height match the post-scale visual size and absolutely
+ * position the scaled child inside it.                              */
 const UI_SCALE = 1.1;
 
-/* ── Expert 1 — page export.
- *    Reads the variant from Expert1VariantContext, which is driven by
- *    the Expert1VariantPicker inside the top-right GuidelineOverlay
- *    info button (App.tsx). Defaults to the full phone shell.       */
 export default function Expert1() {
   const ctx = useExpert1Variant();
   const variant = ctx?.variant ?? 'phone';
+
+  /* Dimensions of the unscaled child, so we can reserve the right
+   * amount of layout space after scaling.                          */
+  const innerWidth = variant === 'phone' ? MOBILE_WIDTH : BARE_LANDSCAPE_WIDTH;
+  const innerHeight = variant === 'phone' ? MOBILE_HEIGHT : undefined;
+
   return (
-    <div style={{ zoom: UI_SCALE }}>
-      {variant === 'phone' ? <TiM2Mobile /> : <TiM2Bare />}
+    <div
+      style={{
+        width: `${innerWidth * UI_SCALE}px`,
+        height: innerHeight ? `${innerHeight * UI_SCALE}px` : undefined,
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          width: `${innerWidth}px`,
+          transform: `scale(${UI_SCALE})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        {variant === 'phone' ? <TiM2Mobile /> : <TiM2Bare />}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import type { ReactElement } from 'react';
+import { useState } from 'react';
 import {
   ModusWcButton,
   ModusWcIcon,
@@ -8,233 +9,154 @@ import {
 /* ─────────────────────────────────────────────────────────────────
  * Pro 4 — SUPPORT INTERVENTION
  *
- * "The professional must remain the ultimate authority. Provide
- *  tools to MODIFY, REVERT, or OVERRIDE the final output. By
- *  integrating results with UNDO/REDO and AUDIT capabilities,
- *  users can take full accountability for the work as its owner."
- *
- * One focused card. Every clause of the principle has a visible
- * surface:
- *   · The author chip names who currently owns the value (AI / YOU)
- *   · Three tile buttons expose Modify · Revert · Override directly
- *   · Header icons offer Undo / Redo across the version stack
- *   · Footer ribbon shows the version count and opens the audit log
+ * The /pro4 route renders five identical cards stacked vertically,
+ * one per button-layout variant, so the engineer can compare them
+ * head-to-head and pick the one that wins.
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
 
-const AI_VALUE = '65';
-const UNIT = 'Nm';
-
-type Author = 'ai' | 'you';
 type Mode = 'idle' | 'modifying' | 'overriding';
+type PathKind = 'ai' | 'modified' | 'original' | 'overridden';
+type Variant = 'a' | 'b' | 'c' | 'd' | 'e';
 
 interface Version {
-  value: string;
-  author: Author;
+  kind: PathKind;
   reason?: string;
-  label: string;
-  time: string;
 }
 
-const INITIAL_VERSION: Version = {
-  value: AI_VALUE,
-  author: 'ai',
-  label: 'AI proposal',
-  time: '09:42',
-};
+const INITIAL_VERSION: Version = { kind: 'ai' };
 
-function nowLabel(): string {
-  const d = new Date();
-  return `${d.getHours().toString().padStart(2, '0')}:${d
-    .getMinutes()
-    .toString()
-    .padStart(2, '0')}`;
-}
-
-/* ── Mini Trimble AI logo ───────────────────────────────────────── */
-function TrimbleAiLogo({ size = 16 }: { size?: number }) {
+/* ── Aerial backdrop (shared) ───────────────────────────────────── */
+function FieldBackdrop() {
   return (
-    <span
-      className="flex items-center justify-center shrink-0"
-      style={{ width: size, height: size }}
-    >
-      <svg viewBox="0 0 30.002 32.6797" width="100%" height="100%" fill="none">
-        <defs>
-          <linearGradient
-            id="pro4-logo"
-            x1="3.7558"
-            y1="10.5251"
-            x2="20.4332"
-            y2="30.2565"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#FF2BFC" />
-            <stop offset="0.628993" stopColor="#0563A7" />
-            <stop offset="1" stopColor="#075CA4" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M1.69824 24.9697C3.48353 26.9109 5.82653 28.2524 8.4043 28.8096L1.69824 32.6797V24.9697ZM10.6523 5.60742C16.5357 5.60742 21.3057 10.3803 21.3057 16.2676C21.3055 22.1547 16.5356 26.9268 10.6523 26.9268C4.76928 26.9265 0.00017177 22.1545 0 16.2676C0 10.3805 4.76918 5.60766 10.6523 5.60742ZM10.6523 7.69238C5.9201 7.69263 2.08398 11.5321 2.08398 16.2676C2.08416 21.0029 5.92021 24.8416 10.6523 24.8418C15.3847 24.8418 19.2215 21.003 19.2217 16.2676C19.2217 11.532 15.3848 7.69238 10.6523 7.69238ZM30.002 16.3398L23.2803 20.2217C24.0854 17.7019 24.0922 14.9945 23.2998 12.4707L30.002 16.3398ZM8.35547 3.83691C5.79861 4.40439 3.47535 5.73916 1.69824 7.66309V0L8.35547 3.83691Z"
-          fill="url(#pro4-logo)"
-        />
-      </svg>
-    </span>
+    <g>
+      <rect x="0" y="0" width="320" height="200" fill="#8db35a" />
+      <rect x="0" y="0" width="110" height="140" fill="#4f6a39" />
+      <circle cx="40" cy="40" r="22" fill="#3f5a2c" />
+      <circle cx="80" cy="58" r="18" fill="#446530" />
+      <circle cx="20" cy="100" r="20" fill="#3f5a2c" />
+      <circle cx="70" cy="118" r="16" fill="#446530" />
+      <circle cx="100" cy="36" r="14" fill="#3f5a2c" />
+      <rect x="0" y="140" width="320" height="60" fill="#a78f5f" />
+      <rect x="110" y="128" width="210" height="14" fill="#bda072" opacity="0.9" />
+      <path
+        d="M0 170 L120 140 L320 145"
+        stroke="#8b7142"
+        strokeWidth="6"
+        fill="none"
+        opacity="0.55"
+      />
+      <g opacity="0.18" stroke="#5a7a3a" strokeWidth="1">
+        {Array.from({ length: 28 }).map((_, i) => (
+          <line key={i} x1={110 + i * 8} y1="0" x2={110 + i * 8} y2="140" />
+        ))}
+      </g>
+    </g>
   );
 }
 
-/* ── Author chip on the right of the value ─────────────────────── */
-function AuthorChip({ author }: { author: Author }) {
-  if (author === 'ai') {
+function PathOverlay({ kind }: { kind: PathKind }) {
+  if (kind === 'original') {
     return (
-      <span
-        className="inline-flex items-center gap-1.5"
-        style={{
-          height: '24px',
-          padding: '0 10px 0 6px',
-          borderRadius: '1000px',
-          backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-          fontWeight: 700,
-          letterSpacing: '0.4px',
-          textTransform: 'uppercase',
-        }}
-      >
-        <TrimbleAiLogo size={14} />
-        AI authored
-      </span>
+      <g stroke="#a8e670" strokeWidth="2.4" fill="none" strokeLinecap="round">
+        {Array.from({ length: 8 }).map((_, i) => {
+          const x = 130 + i * 20;
+          return <line key={i} x1={x} y1="12" x2={x} y2="140" opacity={0.95} />;
+        })}
+      </g>
+    );
+  }
+  const tightness = kind === 'modified' ? 16 : 18;
+  const arc = kind === 'modified' ? -18 : -22;
+  return (
+    <g stroke="#a8e670" strokeWidth="2.4" fill="none" strokeLinecap="round">
+      {Array.from({ length: 9 }).map((_, i) => {
+        const x = 120 + i * tightness;
+        return (
+          <path
+            key={i}
+            d={`M ${x} 12 C ${x + 10} 60, ${x + arc} 110, ${x + 4} 140`}
+            opacity={0.95}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+function TractorMarker({ kind }: { kind: PathKind }) {
+  if (kind === 'original') {
+    return (
+      <g transform="translate(170 88)">
+        <rect x="-4" y="-6" width="8" height="46" fill="#13b9d9" opacity="0.9" />
+        <polygon
+          points="0,-30 -14,-6 14,-6"
+          fill="#13b9d9"
+          stroke="#ffffff"
+          strokeWidth="1.4"
+        />
+      </g>
     );
   }
   return (
-    <span
-      className="inline-flex items-center gap-1.5"
-      style={{
-        height: '24px',
-        padding: '2px',
-        borderRadius: '1000px',
-        background: TRIMBLE_RAINBOW,
-      }}
-    >
-      <span
-        className="inline-flex items-center gap-1.5"
-        style={{
-          height: '20px',
-          padding: '0 10px',
-          borderRadius: '1000px',
-          backgroundColor: '#ffffff',
-          color: 'var(--modus-wc-color-base-content, #171c1e)',
-          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-          fontWeight: 700,
-          letterSpacing: '0.4px',
-          textTransform: 'uppercase',
-        }}
-      >
-        Authored by you
-      </span>
-    </span>
+    <g transform="translate(192 92)">
+      <polygon
+        points="0,-14 -10,8 10,8"
+        fill="#13b9d9"
+        stroke="#ffffff"
+        strokeWidth="1.4"
+      />
+    </g>
   );
 }
 
-/* ── Tile button (one per intervention tool) ────────────────────── */
-type Tone = 'primary' | 'neutral' | 'warning';
-
-const TONE_TOKENS: Record<
-  Tone,
-  { fg: string; bg: string; border: string; bgHover: string }
-> = {
-  primary: {
-    fg: 'var(--modus-wc-color-primary, #0063a3)',
-    bg: 'rgba(0, 99, 163, 0.06)',
-    border: 'rgba(0, 99, 163, 0.30)',
-    bgHover: 'rgba(0, 99, 163, 0.12)',
-  },
-  neutral: {
-    fg: 'var(--modus-wc-color-base-content, #171c1e)',
-    bg: 'var(--modus-wc-color-base-100, #f1f1f6)',
-    border: 'var(--modus-wc-color-base-200, #e0e1e9)',
-    bgHover: 'var(--modus-wc-color-base-200, #e0e1e9)',
-  },
-  warning: {
-    fg: 'var(--modus-wc-color-status-warning, #985200)',
-    bg: 'rgba(152, 82, 0, 0.06)',
-    border: 'rgba(152, 82, 0, 0.30)',
-    bgHover: 'rgba(152, 82, 0, 0.12)',
-  },
-};
-
-function InterventionTile({
-  icon,
-  label,
-  helper,
-  tone,
-  disabled,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  helper: string;
-  tone: Tone;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  const t = TONE_TOKENS[tone];
+function OverrideMarker() {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex flex-col items-start gap-1 text-left transition-colors"
-      style={{
-        flex: 1,
-        padding: '10px',
-        borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
-        border: `1px solid ${t.border}`,
-        backgroundColor: t.bg,
-        color: t.fg,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.45 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (disabled) return;
-        e.currentTarget.style.backgroundColor = t.bgHover;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = t.bg;
-      }}
-    >
-      <span
-        className="flex items-center justify-center rounded-md"
-        style={{
-          width: '24px',
-          height: '24px',
-          backgroundColor: '#ffffff',
-        }}
+    <g transform="translate(245 50)">
+      <circle r="14" fill="#ffffff" opacity="0.92" />
+      <circle r="14" fill="rgba(152,82,0,0.18)" />
+      <text
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="13"
+        fontWeight="700"
+        fill="#985200"
       >
-        <ModusWcIcon name={icon} size="xs" decorative style={{ color: t.fg }} />
-      </span>
-      <span
-        className="font-semibold"
-        style={{
-          fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-          color: 'var(--modus-wc-color-base-content, #171c1e)',
-          marginTop: '2px',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          lineHeight: '14px',
-        }}
-      >
-        {helper}
-      </span>
-    </button>
+        !
+      </text>
+    </g>
   );
+}
+
+function PathMap({ kind }: { kind: PathKind }) {
+  return (
+    <svg
+      viewBox="0 0 320 200"
+      preserveAspectRatio="xMidYMid slice"
+      className="block w-full h-full"
+    >
+      <FieldBackdrop />
+      <PathOverlay kind={kind} />
+      <TractorMarker kind={kind} />
+      {kind === 'overridden' && <OverrideMarker />}
+    </svg>
+  );
+}
+
+function previewBorder(kind: PathKind): string {
+  switch (kind) {
+    case 'ai':
+      return TRIMBLE_RAINBOW;
+    case 'modified':
+      return 'var(--modus-wc-color-primary, #0063a3)';
+    case 'overridden':
+      return 'var(--modus-wc-color-status-warning, #985200)';
+    case 'original':
+    default:
+      return 'var(--modus-wc-color-base-200, #e0e1e9)';
+  }
 }
 
 /* ── Header icon button (undo / redo) ───────────────────────────── */
@@ -258,16 +180,16 @@ function HeaderIconButton({
       onClick={onClick}
       className="flex items-center justify-center transition-colors"
       style={{
-        width: '28px',
-        height: '28px',
-        borderRadius: '6px',
+        width: '32px',
+        height: '32px',
+        borderRadius: '8px',
         border: 'none',
         backgroundColor: 'transparent',
         color: disabled
           ? 'var(--modus-wc-color-base-content-low-contrast, #b0b3bd)'
           : 'var(--modus-wc-color-base-content, #171c1e)',
         cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? 0.4 : 1,
       }}
       onMouseEnter={(e) => {
         if (disabled) return;
@@ -283,23 +205,533 @@ function HeaderIconButton({
   );
 }
 
-/* ── Pro 4 — Support Intervention ───────────────────────────────── */
-export default function Pro4() {
+/* ── Tone tokens (used by every variant) ────────────────────────── */
+type Tone = 'primary' | 'neutral' | 'warning';
+
+const TONE_TOKENS: Record<
+  Tone,
+  {
+    iconFg: string;
+    iconBg: string;
+    border: string;
+    tileBg: string;
+    tileBgHover: string;
+  }
+> = {
+  primary: {
+    iconFg: '#ffffff',
+    iconBg: 'var(--modus-wc-color-primary, #0063a3)',
+    border: 'rgba(0, 99, 163, 0.22)',
+    tileBg: 'rgba(0, 99, 163, 0.04)',
+    tileBgHover: 'rgba(0, 99, 163, 0.10)',
+  },
+  neutral: {
+    iconFg: 'var(--modus-wc-color-base-content, #171c1e)',
+    iconBg: 'var(--modus-wc-color-base-100, #f1f1f6)',
+    border: 'var(--modus-wc-color-base-200, #e0e1e9)',
+    tileBg: '#ffffff',
+    tileBgHover: 'var(--modus-wc-color-base-100, #f8f9fa)',
+  },
+  warning: {
+    iconFg: '#ffffff',
+    iconBg: 'var(--modus-wc-color-status-warning, #985200)',
+    border: 'rgba(152, 82, 0, 0.28)',
+    tileBg: 'rgba(152, 82, 0, 0.04)',
+    tileBgHover: 'rgba(152, 82, 0, 0.10)',
+  },
+};
+
+interface ButtonHandlers {
+  onModify: () => void;
+  onRevert: () => void;
+  onOverride: () => void;
+  revertDisabled: boolean;
+}
+
+const BUTTONS: Array<{
+  icon: string;
+  label: string;
+  helper: string;
+  tone: Tone;
+  action: keyof Pick<ButtonHandlers, 'onModify' | 'onRevert' | 'onOverride'>;
+}> = [
+  {
+    icon: 'edit_combination',
+    label: 'Modify',
+    helper: 'Edit the plan',
+    tone: 'primary',
+    action: 'onModify',
+  },
+  {
+    icon: 'refresh',
+    label: 'Revert',
+    helper: 'Restore original',
+    tone: 'neutral',
+    action: 'onRevert',
+  },
+  {
+    icon: 'lock',
+    label: 'Override',
+    helper: 'Force with reason',
+    tone: 'warning',
+    action: 'onOverride',
+  },
+];
+
+/* ── Variant A — Circular icon buttons ──────────────────────────── */
+function ButtonsA(h: ButtonHandlers) {
+  return (
+    <div
+      className="flex items-start justify-around"
+      style={{ padding: '16px 16px 22px' }}
+    >
+      {BUTTONS.map((b) => {
+        const t = TONE_TOKENS[b.tone];
+        const isRevert = b.action === 'onRevert';
+        const disabled = isRevert && h.revertDisabled;
+        return (
+          <button
+            key={b.label}
+            type="button"
+            onClick={disabled ? undefined : h[b.action]}
+            disabled={disabled}
+            className="flex flex-col items-center gap-2 transition-transform"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '4px',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.45 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (disabled) return;
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <span
+              className="flex items-center justify-center rounded-full"
+              style={{
+                width: '56px',
+                height: '56px',
+                backgroundColor: t.iconBg,
+                boxShadow:
+                  b.tone === 'neutral'
+                    ? '0 1px 2px rgba(0,0,0,0.06), inset 0 0 0 1px var(--modus-wc-color-base-200, #e0e1e9)'
+                    : '0 6px 14px -4px rgba(0,0,0,0.20)',
+              }}
+            >
+              <ModusWcIcon
+                name={b.icon}
+                size="md"
+                decorative
+                style={{ color: t.iconFg }}
+              />
+            </span>
+            <span
+              className="font-bold"
+              style={{
+                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+                lineHeight: '18px',
+              }}
+            >
+              {b.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Variant B — Tinted tiles (current) ─────────────────────────── */
+function ButtonsB(h: ButtonHandlers) {
+  return (
+    <div
+      className="flex items-stretch gap-2"
+      style={{ padding: '14px 16px 16px' }}
+    >
+      {BUTTONS.map((b) => {
+        const t = TONE_TOKENS[b.tone];
+        const isRevert = b.action === 'onRevert';
+        const disabled = isRevert && h.revertDisabled;
+        return (
+          <button
+            key={b.label}
+            type="button"
+            onClick={disabled ? undefined : h[b.action]}
+            disabled={disabled}
+            className="flex flex-col items-start gap-2 text-left transition-all"
+            style={{
+              flex: 1,
+              padding: '16px 14px',
+              borderRadius: '12px',
+              border: `1px solid ${t.border}`,
+              backgroundColor: t.tileBg,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.45 : 1,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            }}
+            onMouseEnter={(e) => {
+              if (disabled) return;
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow =
+                '0 8px 18px -6px rgba(0,0,0,0.14)';
+              e.currentTarget.style.backgroundColor = t.tileBgHover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+              e.currentTarget.style.backgroundColor = t.tileBg;
+            }}
+          >
+            <span
+              className="flex items-center justify-center rounded-lg"
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: t.iconBg,
+                boxShadow:
+                  b.tone === 'neutral'
+                    ? '0 1px 1px rgba(0,0,0,0.04)'
+                    : '0 2px 6px -2px rgba(0,0,0,0.18)',
+              }}
+            >
+              <ModusWcIcon
+                name={b.icon}
+                size="md"
+                decorative
+                style={{ color: t.iconFg }}
+              />
+            </span>
+            <span
+              className="font-semibold"
+              style={{
+                fontSize: 'var(--modus-wc-font-size-md, 16px)',
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+                lineHeight: '20px',
+                marginTop: '2px',
+              }}
+            >
+              {b.label}
+            </span>
+            <span
+              style={{
+                fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
+                color:
+                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                lineHeight: '14px',
+              }}
+            >
+              {b.helper}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Variant C — Stacked action rows ────────────────────────────── */
+function ButtonsC(h: ButtonHandlers) {
+  return (
+    <div
+      className="flex flex-col gap-2"
+      style={{ padding: '14px 16px 16px' }}
+    >
+      {BUTTONS.map((b) => {
+        const t = TONE_TOKENS[b.tone];
+        const isRevert = b.action === 'onRevert';
+        const disabled = isRevert && h.revertDisabled;
+        return (
+          <button
+            key={b.label}
+            type="button"
+            onClick={disabled ? undefined : h[b.action]}
+            disabled={disabled}
+            className="flex items-center gap-3 text-left transition-colors"
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              border: `1px solid ${t.border}`,
+              backgroundColor: t.tileBg,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.45 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (disabled) return;
+              e.currentTarget.style.backgroundColor = t.tileBgHover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = t.tileBg;
+            }}
+          >
+            <span
+              className="flex items-center justify-center rounded-md shrink-0"
+              style={{
+                width: '36px',
+                height: '36px',
+                backgroundColor: t.iconBg,
+              }}
+            >
+              <ModusWcIcon
+                name={b.icon}
+                size="sm"
+                decorative
+                style={{ color: t.iconFg }}
+              />
+            </span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span
+                className="font-bold"
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                  lineHeight: '18px',
+                }}
+              >
+                {b.label}
+              </span>
+              <span
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
+                  color:
+                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  lineHeight: '14px',
+                  marginTop: '2px',
+                }}
+              >
+                {b.helper}
+              </span>
+            </div>
+            <ModusWcIcon
+              name="chevron_right"
+              size="xs"
+              decorative
+              style={{
+                color:
+                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              }}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Variant D — Segmented toolbar ──────────────────────────────── */
+function ButtonsD(h: ButtonHandlers) {
+  return (
+    <div style={{ padding: '14px 16px 16px' }}>
+      <div
+        className="flex items-stretch overflow-hidden"
+        style={{
+          borderRadius: '12px',
+          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          backgroundColor: '#ffffff',
+        }}
+      >
+        {BUTTONS.map((b, i) => {
+          const t = TONE_TOKENS[b.tone];
+          const isRevert = b.action === 'onRevert';
+          const disabled = isRevert && h.revertDisabled;
+          return (
+            <button
+              key={b.label}
+              type="button"
+              onClick={disabled ? undefined : h[b.action]}
+              disabled={disabled}
+              className="flex-1 flex flex-col items-center gap-1.5 transition-colors"
+              style={{
+                padding: '14px 4px',
+                borderLeft:
+                  i === 0
+                    ? 'none'
+                    : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                borderTop: 'none',
+                borderRight: 'none',
+                borderBottom: 'none',
+                backgroundColor: 'transparent',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.45 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (disabled) return;
+                e.currentTarget.style.backgroundColor = t.tileBgHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <ModusWcIcon
+                name={b.icon}
+                size="md"
+                decorative
+                style={{ color: t.iconBg }}
+              />
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                  lineHeight: '18px',
+                }}
+              >
+                {b.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Variant E — Hierarchy: primary + outlined ──────────────────── */
+function ButtonsE(h: ButtonHandlers) {
+  const tPrimary = TONE_TOKENS.primary;
+  const tWarning = TONE_TOKENS.warning;
+  return (
+    <div className="flex gap-2" style={{ padding: '14px 16px 16px' }}>
+      <button
+        type="button"
+        onClick={h.onModify}
+        className="flex flex-col items-start text-left transition-all"
+        style={{
+          flex: 1.4,
+          padding: '14px 16px',
+          borderRadius: '12px',
+          border: 'none',
+          backgroundColor: tPrimary.iconBg,
+          color: '#ffffff',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px -4px rgba(0, 99, 163, 0.40)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow =
+            '0 8px 18px -6px rgba(0, 99, 163, 0.45)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow =
+            '0 4px 12px -4px rgba(0, 99, 163, 0.40)';
+        }}
+      >
+        <span
+          className="flex items-center justify-center rounded-lg"
+          style={{
+            width: '36px',
+            height: '36px',
+            backgroundColor: 'rgba(255,255,255,0.18)',
+            marginBottom: '8px',
+          }}
+        >
+          <ModusWcIcon
+            name="edit_combination"
+            size="md"
+            decorative
+            style={{ color: '#ffffff' }}
+          />
+        </span>
+        <span
+          className="font-bold"
+          style={{ fontSize: 16, color: '#ffffff', lineHeight: '20px' }}
+        >
+          Modify
+        </span>
+        <span
+          style={{
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.85)',
+            lineHeight: '14px',
+            marginTop: '2px',
+          }}
+        >
+          Edit the plan
+        </span>
+      </button>
+
+      <div className="flex-1 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={h.revertDisabled ? undefined : h.onRevert}
+          disabled={h.revertDisabled}
+          className="flex items-center gap-2 transition-colors"
+          style={{
+            flex: 1,
+            padding: '0 12px',
+            borderRadius: '10px',
+            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+            backgroundColor: '#ffffff',
+            color: 'var(--modus-wc-color-base-content, #171c1e)',
+            cursor: h.revertDisabled ? 'not-allowed' : 'pointer',
+            opacity: h.revertDisabled ? 0.45 : 1,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+          onMouseEnter={(e) => {
+            if (h.revertDisabled) return;
+            e.currentTarget.style.backgroundColor =
+              'var(--modus-wc-color-base-100, #f8f9fa)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+          }}
+        >
+          <ModusWcIcon name="refresh" size="xs" decorative />
+          Revert
+        </button>
+        <button
+          type="button"
+          onClick={h.onOverride}
+          className="flex items-center gap-2 transition-colors"
+          style={{
+            flex: 1,
+            padding: '0 12px',
+            borderRadius: '10px',
+            border: `1px solid ${tWarning.border}`,
+            backgroundColor: '#ffffff',
+            color: 'var(--modus-wc-color-status-warning, #985200)',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = tWarning.tileBgHover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+          }}
+        >
+          <ModusWcIcon
+            name="lock"
+            size="xs"
+            decorative
+            style={{ color: 'var(--modus-wc-color-status-warning, #985200)' }}
+          />
+          Override
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Pro 4 Card (one per variant) ───────────────────────────────── */
+function Pro4Card({ variant }: { variant: Variant }) {
   const [history, setHistory] = useState<Version[]>([INITIAL_VERSION]);
   const [pointer, setPointer] = useState(0);
   const [mode, setMode] = useState<Mode>('idle');
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [draft, setDraft] = useState('');
+  const [draftSummary, setDraftSummary] = useState('');
   const [reason, setReason] = useState('');
 
   const current = history[pointer];
   const canUndo = pointer > 0;
   const canRedo = pointer < history.length - 1;
-
-  const totalEdits = useMemo(
-    () => history.filter((v) => v.author === 'you').length,
-    [history],
-  );
 
   function pushVersion(version: Version) {
     const next = [...history.slice(0, pointer + 1), version];
@@ -308,60 +740,49 @@ export default function Pro4() {
   }
 
   function startModify() {
-    setDraft(current.value);
+    setDraftSummary('');
     setMode('modifying');
   }
-
   function startOverride() {
-    setDraft(current.value);
+    setDraftSummary('');
     setReason('');
     setMode('overriding');
   }
-
   function commitModify() {
-    const v = draft.trim();
-    if (v === '') return;
-    pushVersion({
-      value: v,
-      author: 'you',
-      label: 'Modified',
-      time: nowLabel(),
-    });
+    if (draftSummary.trim() === '') return;
+    pushVersion({ kind: 'modified' });
     setMode('idle');
   }
-
   function commitOverride() {
-    const v = draft.trim();
-    const r = reason.trim();
-    if (v === '' || r === '') return;
-    pushVersion({
-      value: v,
-      author: 'you',
-      label: 'Override',
-      reason: r,
-      time: nowLabel(),
-    });
+    if (draftSummary.trim() === '' || reason.trim() === '') return;
+    pushVersion({ kind: 'overridden', reason: reason.trim() });
     setMode('idle');
   }
-
-  function revertToAi() {
-    pushVersion({
-      value: AI_VALUE,
-      author: 'you',
-      label: 'Reverted to AI',
-      time: nowLabel(),
-    });
+  function revert() {
+    pushVersion({ kind: 'original' });
   }
-
   function undo() {
-    if (!canUndo) return;
-    setPointer((p) => p - 1);
+    if (canUndo) setPointer((p) => p - 1);
+  }
+  function redo() {
+    if (canRedo) setPointer((p) => p + 1);
   }
 
-  function redo() {
-    if (!canRedo) return;
-    setPointer((p) => p + 1);
-  }
+  const handlers: ButtonHandlers = {
+    onModify: startModify,
+    onRevert: revert,
+    onOverride: startOverride,
+    revertDisabled: current.kind === 'original',
+  };
+
+  const ButtonsByVariant: Record<Variant, (h: ButtonHandlers) => ReactElement> = {
+    a: ButtonsA,
+    b: ButtonsB,
+    c: ButtonsC,
+    d: ButtonsD,
+    e: ButtonsE,
+  };
+  const ButtonsRenderer = ButtonsByVariant[variant];
 
   return (
     <div
@@ -371,38 +792,24 @@ export default function Pro4() {
         borderRadius: '16px',
         border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
         boxShadow:
-          '0 1px 2px rgba(0,0,0,0.04), 0 8px 24px -10px rgba(0,0,0,0.10)',
+          '0 20px 50px rgba(0,0,0,0.10), 0 6px 16px rgba(0,0,0,0.05)',
       }}
     >
-      {/* ── Header: spec context + undo/redo ───────────────────── */}
+      {/* Title + undo/redo */}
       <div
         className="flex items-center justify-between gap-2"
-        style={{ padding: '14px 16px 8px' }}
+        style={{ padding: '16px 16px 12px' }}
       >
-        <div className="flex flex-col min-w-0">
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-              fontWeight: 700,
-              letterSpacing: '0.6px',
-              textTransform: 'uppercase',
-              color:
-                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          >
-            Bolt M16 · grade 8.8
-          </span>
-          <span
-            className="font-semibold"
-            style={{
-              fontSize: 'var(--modus-wc-font-size-md, 16px)',
-              color: 'var(--modus-wc-color-base-content, #101828)',
-              marginTop: '2px',
-            }}
-          >
-            Torque spec
-          </span>
-        </div>
+        <span
+          style={{
+            fontSize: 'var(--modus-wc-font-size-lg, 18px)',
+            color: 'var(--modus-wc-color-base-content, #171c1e)',
+            letterSpacing: '0.1px',
+            fontWeight: 500,
+          }}
+        >
+          Path optimization
+        </span>
         <div className="flex items-center gap-0.5 shrink-0">
           <HeaderIconButton
             icon="undo"
@@ -419,80 +826,55 @@ export default function Pro4() {
         </div>
       </div>
 
-      {/* ── Value + author chip ─────────────────────────────────── */}
-      <div
-        className="flex items-end justify-between gap-3"
-        style={{ padding: '0 16px 4px' }}
-      >
-        <div className="flex items-baseline gap-1.5 min-w-0">
-          <span
-            className="font-semibold tabular-nums"
+      {/* Visual centerpiece */}
+      <div style={{ padding: '0 16px' }}>
+        <div
+          className="relative overflow-hidden"
+          style={{
+            borderRadius: '12px',
+            padding: current.kind === 'original' ? '1px' : '2px',
+            ...(current.kind === 'ai'
+              ? {
+                  backgroundImage: TRIMBLE_RAINBOW,
+                  backgroundSize: '200% 100%',
+                  animation:
+                    'pro4RainbowShimmer 3.6s ease-in-out infinite',
+                }
+              : { background: previewBorder(current.kind) }),
+          }}
+        >
+          <div
+            className="relative overflow-hidden"
             style={{
-              fontSize: '38px',
-              lineHeight: '40px',
-              color: 'var(--modus-wc-color-base-content, #171c1e)',
-              fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '-0.6px',
+              borderRadius: '10px',
+              aspectRatio: '4 / 3',
+              backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
             }}
           >
-            {current.value}
-          </span>
-          <span
-            className="font-semibold"
-            style={{
-              fontSize: 'var(--modus-wc-font-size-md, 16px)',
-              color:
-                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          >
-            {UNIT}
-          </span>
+            <PathMap kind={current.kind} />
+          </div>
         </div>
-        <AuthorChip author={current.author} />
       </div>
 
-      {/* ── Reason (AI rationale or override note) ──────────────── */}
-      <p
-        style={{
-          margin: 0,
-          padding: '4px 16px 14px',
-          fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-          lineHeight: '18px',
-        }}
-      >
-        {current.reason ? (
-          <>
-            <span style={{ fontWeight: 700, color: 'var(--modus-wc-color-status-warning, #985200)' }}>
-              Override reason:
-            </span>{' '}
-            {current.reason}
-          </>
-        ) : current.author === 'ai' ? (
-          'AI lowered torque after detecting fastener-fatigue risk in the updated load case.'
-        ) : (
-          'Your value owns this spec.'
-        )}
-      </p>
-
-      {/* ── Inline state: Modify / Override / 3 tools ───────────── */}
+      {/* Inline modify form */}
       {mode === 'modifying' && (
         <div
           className="flex flex-col gap-2"
           style={{
-            margin: '0 16px',
+            margin: '14px 16px 16px',
             padding: '12px',
-            borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
+            borderRadius: '10px',
             backgroundColor: 'rgba(0, 99, 163, 0.05)',
             border: '1px solid rgba(0, 99, 163, 0.25)',
           }}
         >
           <ModusWcTextInput
-            label="Your value"
-            value={draft}
+            label="What did you change?"
+            value={draftSummary}
             size="sm"
+            placeholder="e.g. Tightened row spacing by 0.4 m"
             onInputChange={(e: CustomEvent) =>
-              setDraft(e.detail?.target?.value ?? '')
+              setDraftSummary(e.detail?.target?.value ?? '')
             }
           />
           <div className="flex items-center justify-end gap-2">
@@ -507,39 +889,41 @@ export default function Pro4() {
             <ModusWcButton
               size="sm"
               color="primary"
-              disabled={draft.trim() === '' || undefined}
+              disabled={draftSummary.trim() === '' || undefined}
               onButtonClick={commitModify}
             >
-              Save my value
+              Save my plan
             </ModusWcButton>
           </div>
         </div>
       )}
 
+      {/* Inline override form */}
       {mode === 'overriding' && (
         <div
           className="flex flex-col gap-2"
           style={{
-            margin: '0 16px',
+            margin: '14px 16px 16px',
             padding: '12px',
-            borderRadius: 'var(--modus-wc-border-radius-md, 8px)',
+            borderRadius: '10px',
             backgroundColor: 'rgba(152, 82, 0, 0.06)',
             border: '1px solid rgba(152, 82, 0, 0.30)',
           }}
         >
           <ModusWcTextInput
-            label="Forced value"
-            value={draft}
+            label="Forced plan"
+            value={draftSummary}
             size="sm"
+            placeholder="e.g. Switch to standard straight rows"
             onInputChange={(e: CustomEvent) =>
-              setDraft(e.detail?.target?.value ?? '')
+              setDraftSummary(e.detail?.target?.value ?? '')
             }
           />
           <ModusWcTextInput
             label="Reason (recorded)"
             value={reason}
             size="sm"
-            placeholder="e.g. Site standard supersedes AI"
+            placeholder="e.g. Equipment limitation"
             onInputChange={(e: CustomEvent) =>
               setReason(e.detail?.target?.value ?? '')
             }
@@ -557,12 +941,14 @@ export default function Pro4() {
               size="sm"
               color="warning"
               disabled={
-                draft.trim() === '' || reason.trim() === '' || undefined
+                draftSummary.trim() === '' ||
+                reason.trim() === '' ||
+                undefined
               }
               onButtonClick={commitOverride}
             >
               <span className="flex items-center gap-1">
-                <ModusWcIcon name="block" size="xs" decorative />
+                <ModusWcIcon name="lock" size="xs" decorative />
                 Override AI
               </span>
             </ModusWcButton>
@@ -570,207 +956,84 @@ export default function Pro4() {
         </div>
       )}
 
-      {mode === 'idle' && (
-        <div
-          className="flex items-stretch gap-2"
-          style={{ padding: '0 16px' }}
-        >
-          <InterventionTile
-            icon="edit_combination"
-            label="Modify"
-            helper="Edit the value"
-            tone="primary"
-            onClick={startModify}
-          />
-          <InterventionTile
-            icon="refresh"
-            label="Revert"
-            helper="Restore AI value"
-            tone="neutral"
-            disabled={current.value === AI_VALUE && current.author === 'ai'}
-            onClick={revertToAi}
-          />
-          <InterventionTile
-            icon="block"
-            label="Override"
-            helper="Force with reason"
-            tone="warning"
-            onClick={startOverride}
-          />
-        </div>
-      )}
+      {/* Variant button section */}
+      {mode === 'idle' && <ButtonsRenderer {...handlers} />}
+    </div>
+  );
+}
 
-      {/* ── Footer: audit ribbon ────────────────────────────────── */}
-      <div
-        className="flex items-center justify-between gap-2"
-        style={{
-          marginTop: '14px',
-          padding: '10px 16px',
-          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          backgroundColor: 'var(--modus-wc-color-base-100, #f8f9fa)',
-          borderBottomLeftRadius: '16px',
-          borderBottomRightRadius: '16px',
-        }}
-      >
-        <span
-          className="inline-flex items-center gap-1.5"
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            fontWeight: 600,
-            color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            letterSpacing: '0.2px',
-          }}
-        >
-          <ModusWcIcon
-            name="lock"
-            size="xs"
-            decorative
-            style={{
-              color:
-                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          />
-          v{pointer + 1} · {totalEdits} of your edits
-        </span>
-        <button
-          type="button"
-          onClick={() => setAuditOpen((v) => !v)}
-          className="inline-flex items-center gap-1"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: 'var(--modus-wc-color-primary, #0063a3)',
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            fontWeight: 700,
-            letterSpacing: '0.2px',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-          }}
-        >
-          {auditOpen ? 'Hide audit' : 'View audit'}
-          <ModusWcIcon
-            name={auditOpen ? 'chevron_up' : 'chevron_down'}
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
-          />
-        </button>
-      </div>
+/* ── Showcase: render all 5 variants stacked ────────────────────── */
+const VARIANTS: Array<{ id: Variant; label: string; helper: string }> = [
+  {
+    id: 'a',
+    label: 'Option A — Circular icon buttons',
+    helper: 'Three large circles with white icons, label below. Matches the agriculture reference.',
+  },
+  {
+    id: 'b',
+    label: 'Option B — Tinted tiles (current)',
+    helper: 'Side-by-side tiles, top-left icon badge, bold label, helper text.',
+  },
+  {
+    id: 'c',
+    label: 'Option C — Stacked action rows',
+    helper: 'Three full-width rows, icon left, label + helper, chevron right.',
+  },
+  {
+    id: 'd',
+    label: 'Option D — Segmented toolbar',
+    helper: 'Single rounded bar split into three segments, no gaps.',
+  },
+  {
+    id: 'e',
+    label: 'Option E — Hierarchy: primary + outlined',
+    helper: 'Filled primary on the left, two slim outlined buttons stacked on the right.',
+  },
+];
 
-      {/* ── Audit log (collapsible) ─────────────────────────────── */}
-      {auditOpen && (
-        <div
-          className="flex flex-col"
-          style={{
-            maxHeight: '160px',
-            overflowY: 'auto',
-            borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            backgroundColor: '#ffffff',
-            borderBottomLeftRadius: '16px',
-            borderBottomRightRadius: '16px',
-          }}
-        >
-          {history
-            .slice()
-            .reverse()
-            .map((v, i, arr) => {
-              const idx = arr.length - 1 - i;
-              const isCurrent = idx === pointer;
-              return (
-                <div
-                  key={`v-${idx}`}
-                  className="flex items-start gap-2"
-                  style={{
-                    padding: '8px 16px',
-                    borderTop:
-                      i === 0
-                        ? 'none'
-                        : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-                    backgroundColor: isCurrent
-                      ? 'rgba(0, 99, 163, 0.04)'
-                      : 'transparent',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                      fontWeight: 600,
-                      color:
-                        'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                      width: '40px',
-                      flexShrink: 0,
-                      paddingTop: '2px',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {v.time}
-                  </span>
-                  <span
-                    className="inline-flex items-center gap-1 shrink-0"
-                    style={{
-                      height: '18px',
-                      padding: '0 6px',
-                      borderRadius: '1000px',
-                      backgroundColor:
-                        v.author === 'ai'
-                          ? 'var(--modus-wc-color-base-100, #f1f1f6)'
-                          : 'rgba(0, 99, 163, 0.10)',
-                      color:
-                        v.author === 'ai'
-                          ? 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)'
-                          : 'var(--modus-wc-color-primary, #0063a3)',
-                      fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                      fontWeight: 700,
-                      letterSpacing: '0.3px',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {v.author === 'ai' ? 'AI' : 'YOU'}
-                  </span>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span
-                      style={{
-                        fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                        fontWeight: 600,
-                        color: 'var(--modus-wc-color-base-content, #171c1e)',
-                        lineHeight: '18px',
-                      }}
-                    >
-                      {v.label} · {v.value} {UNIT}
-                    </span>
-                    {v.reason && (
-                      <span
-                        style={{
-                          fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                          color:
-                            'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                          lineHeight: '14px',
-                          marginTop: '2px',
-                        }}
-                      >
-                        {v.reason}
-                      </span>
-                    )}
-                  </div>
-                  {isCurrent && (
-                    <span
-                      style={{
-                        fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                        fontWeight: 700,
-                        color: 'var(--modus-wc-color-primary, #0063a3)',
-                        letterSpacing: '0.3px',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Current
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+export default function Pro4() {
+  return (
+    <div className="flex flex-col items-center" style={{ gap: '32px' }}>
+      <style>{`
+        @keyframes pro4RainbowShimmer {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
+      {VARIANTS.map((v) => (
+        <div key={v.id} className="flex flex-col items-center" style={{ gap: '10px' }}>
+          <div
+            className="flex flex-col items-center"
+            style={{ width: '380px', gap: '4px' }}
+          >
+            <span
+              style={{
+                fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+                fontWeight: 700,
+                letterSpacing: '0.6px',
+                textTransform: 'uppercase',
+                color:
+                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              }}
+            >
+              {v.label}
+            </span>
+            <span
+              style={{
+                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+                color:
+                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                textAlign: 'center',
+                lineHeight: '16px',
+              }}
+            >
+              {v.helper}
+            </span>
+          </div>
+          <Pro4Card variant={v.id} />
         </div>
-      )}
+      ))}
     </div>
   );
 }

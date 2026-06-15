@@ -11,14 +11,17 @@ import {
  *   trade-offs based on their priorities.
  *
  * Component layers (top → bottom):
- *   1. 3-thumb carousel (small / large-active / small) with chevrons,
- *      and an active caption beneath the focused thumb
- *   2. Rainbow-bordered comparison matrix
- *        – column headers per option, middle (active) highlighted green
- *        – one row per criterion, each cell tinted when its option is
- *          the active focus; small dot marks the row winner
- *        – legend strip beneath the rows
- *        – footer: context line + "Choose Option N" CTA
+ *   1. Three plan thumbnails, one above each option column. The
+ *      selected thumb is larger, accent-bordered and visually dips
+ *      into the top of the table. Options are never reordered — the
+ *      selection simply highlights option 1 / 2 / 3 in place.
+ *   2. Unified comparison matrix (one rounded table, not 5 cards):
+ *        – 5 columns: Criterion · Option 1 · Option 2 · Option 3 · Top pick
+ *        – one row per criterion; the active column gets a tinted
+ *          background + accent text and is marked by a thin coloured
+ *          stripe at its top; a small dot marks the row winner
+ *   3. A single "Select this" CTA below the table, centred under the
+ *      active column. Clicking it commits the choice.
  * ───────────────────────────────────────────────────────────────── */
 
 /* ── Data model ─────────────────────────────────────────────────── */
@@ -225,147 +228,87 @@ function PlanSVG({ option }: { option: Option }) {
   );
 }
 
-/* ── Shared layout constants (carousel + matrix) ────────────────── */
+/* ── Shared layout constants (carousel + matrix + CTA) ──────────── */
 
-/* Column widths are shared between the carousel row and the matrix
- * row so each option column sits exactly under its thumbnail. */
+/* Five-column grid template used by the carousel row, the matrix and
+ * the CTA row. The three option columns are equal width so the active
+ * highlight can pop in place (left / middle / right) without the
+ * layout reflowing. */
 const LABELS_W   = 140;
-const SMALL_W    = 180;  // matrix column width (small / inactive option)
-const LARGE_W    = 230;  // matrix column width (large / active option)
-const SUMMARY_W  = 140;  // mirrors LABELS_W on the right side
-const GAP        = 12;
-const HOST_W     =
-  LABELS_W + GAP + SMALL_W + GAP + LARGE_W + GAP + SMALL_W + GAP + SUMMARY_W;
+const OPT_W      = 220;
+const SUMMARY_W  = 140;
+const HOST_W     = LABELS_W + OPT_W * 3 + SUMMARY_W;
+const GRID_COLS  =
+  `${LABELS_W}px ${OPT_W}px ${OPT_W}px ${OPT_W}px ${SUMMARY_W}px`;
 
-/* Thumbnail dimensions are LARGER than the matrix column widths above.
- * Thumbs overflow their grid cells (centred horizontally) and we use
- * z-index stacking so the active (large) thumb sits above the side
- * thumbs, and the arrows sit above both. The matrix below is not
- * affected because it uses the column widths, not these. */
-const THUMB_SMALL_W = 230;
-const THUMB_SMALL_H = 165;
-const THUMB_LARGE_W = 310;
-const THUMB_LARGE_H = 220;
+/* Thumbnail dimensions. Inactive thumbs are smaller; the active thumb
+ * grows AND translates down so its bottom edge dips into the top of
+ * the table (matching the sketch). The active thumb is slightly wider
+ * than its column so it visibly overflows into neighbouring columns,
+ * but we keep a small clear gap to inactive thumbs. The matrix is a
+ * DOM sibling of the carousel so its `overflow: hidden` does NOT clip
+ * the overlap. */
+const THUMB_INACTIVE_W = 180;
+const THUMB_INACTIVE_H = 130;
+const THUMB_ACTIVE_W   = 240;
+const THUMB_ACTIVE_H   = 170;
+const THUMB_OVERLAP    = 16;  // px the active thumb dips into the table
 
 /* ── Carousel thumb ─────────────────────────────────────────────── */
 
 function CarouselThumb({
   option,
-  size,
+  isActive,
   onClick,
 }: {
   option: Option;
-  size: 'large' | 'small';
+  isActive: boolean;
   onClick: () => void;
 }) {
-  const isLarge = size === 'large';
-  const w = isLarge ? THUMB_LARGE_W : THUMB_SMALL_W;
-  const h = isLarge ? THUMB_LARGE_H : THUMB_SMALL_H;
+  const w = isActive ? THUMB_ACTIVE_W : THUMB_INACTIVE_W;
+  const h = isActive ? THUMB_ACTIVE_H : THUMB_INACTIVE_H;
+
+  /* Inactive thumb hover offset (a tiny -2px lift) AND the active
+   * thumb's downward dip (+OVERLAP) are both applied via transform so
+   * neither affects layout flow. */
+  const baseTransform = isActive ? `translateY(${THUMB_OVERLAP}px)` : 'translateY(0)';
 
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={isActive ? undefined : onClick}
       className="rounded-2xl flex shrink-0 overflow-hidden"
       style={{
         width: `${w}px`,
         height: `${h}px`,
+        padding: '8px',
         backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        border: isLarge
+        border: isActive
           ? `2px solid ${option.accent}`
           : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: isLarge
-          ? '0 14px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.05)'
+        boxShadow: isActive
+          ? '0 18px 36px rgba(0,0,0,0.16), 0 6px 12px rgba(0,0,0,0.08)'
           : '0 6px 14px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
-        cursor: isLarge ? 'default' : 'pointer',
-        padding: '8px',
+        cursor: isActive ? 'default' : 'pointer',
+        transform: baseTransform,
+        position: 'relative',
+        zIndex: isActive ? 3 : 2,
         transition:
-          'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease',
+          'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, width 0.22s ease, height 0.22s ease',
       }}
       onMouseEnter={(e) => {
-        if (isLarge) return;
+        if (isActive) return;
         e.currentTarget.style.transform = 'translateY(-2px)';
       }}
       onMouseLeave={(e) => {
-        if (isLarge) return;
-        e.currentTarget.style.transform = 'translateY(0)';
+        if (isActive) return;
+        e.currentTarget.style.transform = baseTransform;
       }}
-      aria-label={`${isLarge ? 'Selected — ' : 'Show '}${option.label}, ${option.caption}`}
+      aria-pressed={isActive}
+      aria-label={`${isActive ? 'Selected — ' : 'Select '}${option.label}, ${option.caption}`}
     >
       <PlanSVG option={option} />
     </button>
-  );
-}
-
-/* ── Carousel arrow ─────────────────────────────────────────────── */
-
-function CarouselArrow({
-  direction,
-  onClick,
-}: {
-  direction: 'left' | 'right';
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center justify-center rounded-full shrink-0"
-      style={{
-        width: '44px',
-        height: '44px',
-        backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-        cursor: 'pointer',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-1px)';
-        e.currentTarget.style.boxShadow =
-          '0 6px 14px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow =
-          '0 4px 10px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)';
-      }}
-      aria-label={direction === 'left' ? 'Previous option' : 'Next option'}
-    >
-      <ModusWcIcon
-        name={direction === 'left' ? 'chevron_left' : 'chevron_right'}
-        size="sm"
-        decorative
-        style={{ color: 'var(--modus-wc-color-base-content, #364153)' }}
-      />
-    </button>
-  );
-}
-
-/* ── Active option caption (under the large thumb) ──────────────── */
-
-function ActiveCaption({ option }: { option: Option }) {
-  return (
-    <div className="flex flex-col items-center" style={{ gap: '4px' }}>
-      <span
-        className="uppercase tracking-wide font-semibold"
-        style={{
-          fontSize: 'var(--modus-wc-font-size-md, 14px)',
-          color: option.accent,
-          letterSpacing: '0.05em',
-        }}
-      >
-        {option.label} · {option.caption}
-      </span>
-      <span
-        style={{
-          fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-          color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-        }}
-      >
-        {option.bestForLabel}
-      </span>
-    </div>
   );
 }
 
@@ -374,16 +317,19 @@ function ActiveCaption({ option }: { option: Option }) {
 /* Fixed heights so all 4 column cards line up across the gaps. */
 const HEADER_H = 64;
 const ROW_H    = 52;
-const CTA_H    = 76;
 
+/* All five matrix columns share this base; the rounded corners, outer
+ * border and outer shadow now live on the grid wrapper so the columns
+ * read as one continuous table. */
 const cardBase: React.CSSProperties = {
   backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
-  borderRadius: '14px',
   overflow: 'hidden',
   display: 'flex',
   flexDirection: 'column',
   height: '100%',
 };
+
+const COL_DIVIDER = '1px solid var(--modus-wc-color-base-200, #e0e1e9)';
 
 function computeRowWinners(): Record<CriterionId, number> {
   return CRITERIA.reduce((acc, c) => {
@@ -405,8 +351,8 @@ function LabelsCard() {
     <div
       style={{
         ...cardBase,
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+        borderTopLeftRadius: '14px',
+        borderBottomLeftRadius: '14px',
       }}
     >
       {/* Header */}
@@ -450,9 +396,6 @@ function LabelsCard() {
           {c.label}
         </div>
       ))}
-
-      {/* Spacer matching the CTA area on the option cards */}
-      <div style={{ height: `${CTA_H}px`, marginTop: 'auto' }} />
     </div>
   );
 }
@@ -466,8 +409,9 @@ function SummaryCard({
     <div
       style={{
         ...cardBase,
-        border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+        borderLeft: COL_DIVIDER,
+        borderTopRightRadius: '14px',
+        borderBottomRightRadius: '14px',
       }}
     >
       {/* Header */}
@@ -529,9 +473,6 @@ function SummaryCard({
           </div>
         );
       })}
-
-      {/* Spacer matching the CTA area on the option cards */}
-      <div style={{ height: `${CTA_H}px`, marginTop: 'auto' }} />
     </div>
   );
 }
@@ -540,27 +481,34 @@ function OptionCard({
   option,
   optIdx,
   isActive,
-  isChosen,
   rowWinners,
-  onChoose,
 }: {
   option: Option;
   optIdx: number;
   isActive: boolean;
-  isChosen: boolean;
   rowWinners: Record<CriterionId, number>;
-  onChoose: () => void;
 }) {
   return (
     <div
       style={{
         ...cardBase,
-        border: isActive
-          ? `2px solid ${option.accent}`
-          : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        /* When inactive the column uses the thin grey divider on its
+         * left; when active we drop the divider and let a spread
+         * box-shadow draw an accent frame on ALL FOUR sides outside
+         * the cell. Using box-shadow (instead of real `border`) means
+         * the cell's content area stays the exact same size as the
+         * other columns — no clipped rows — yet the column visibly
+         * pops forward as one framed, lifted unit. */
+        borderLeft: isActive ? 'none' : COL_DIVIDER,
+        /* Active column has fully square corners — the bottom was
+         * already square so the tab below could attach seamlessly,
+         * and now the top is square too. */
+        borderRadius: 0,
         boxShadow: isActive
-          ? '0 10px 22px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05)'
-          : '0 2px 6px rgba(0,0,0,0.04)',
+          ? `0 0 0 2px ${option.accent}, 0 14px 32px rgba(0,0,0,0.16), 0 4px 10px ${option.accent}55`
+          : 'none',
+        position: 'relative',
+        zIndex: isActive ? 5 : 1,
       }}
     >
       {/* Header */}
@@ -647,35 +595,6 @@ function OptionCard({
         );
       })}
 
-      {/* CTA section — only the active column shows the button */}
-      <div
-        className="flex items-center justify-center"
-        style={{
-          height: `${CTA_H}px`,
-          padding: '12px',
-          marginTop: 'auto',
-          backgroundColor: isActive ? option.accentSoft : 'transparent',
-          borderTop: isActive
-            ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
-            : 'none',
-        }}
-      >
-        {isActive && (isChosen ? (
-          <ModusWcButton size="md" color="secondary" variant="outlined" disabled>
-            <span className="flex items-center gap-1.5">
-              <ModusWcIcon name="check_circle" size="sm" decorative />
-              Chosen
-            </span>
-          </ModusWcButton>
-        ) : (
-          <ModusWcButton size="md" color="primary" onButtonClick={onChoose}>
-            <span className="flex items-center gap-1.5">
-              <ModusWcIcon name="check" size="sm" decorative />
-              Choose {option.label}
-            </span>
-          </ModusWcButton>
-        ))}
-      </div>
     </div>
   );
 }
@@ -686,85 +605,175 @@ export default function Creative4() {
   const [activeIdx, setActiveIdx] = useState(1);     // Option 2 selected by default
   const [chosenIdx, setChosenIdx] = useState<number | null>(null);
 
-  const N = OPTIONS.length;
-  const leftIdx   = (activeIdx - 1 + N) % N;
-  const rightIdx  = (activeIdx + 1) % N;
-  const leftOpt   = OPTIONS[leftIdx];
-  const centerOpt = OPTIONS[activeIdx];
-  const rightOpt  = OPTIONS[rightIdx];
-
   const rowWinners = useMemo(() => computeRowWinners(), []);
+  const activeOpt  = OPTIONS[activeIdx];
 
-  /* Layout
-   *   ┌─────────────────────────────────────────────────────────────┐
-   *   │   ◄  ▢ small   ▢▢▢ LARGE   ▢ small  ►   <- carousel (flex)  │
-   *   │                  caption                                    │
-   *   │   ┌labels┐ ┌opt-L┐ ┌  opt-C  ┐ ┌opt-R┐ ┌summary┐ <- matrix  │
-   *   └─────────────────────────────────────────────────────────────┘
+  /* Layout — three stacked grids sharing the same GRID_COLS template
+   * so the thumbnail, the matrix column and the tab below stay
+   * vertically aligned for whichever option is active.
    *
-   * The carousel is its own centred flex row so each thumb has real
-   * breathing room (gap between thumbs = `GAP`). The matrix below uses
-   * the unchanged 5-column grid. The carousel's centre aligns with the
-   * matrix's centre column; the side thumbs sit roughly above the side
-   * option columns.
+   *   ┌──────────────────────────────────────────────────────────────┐
+   *   │              ▢       ▢▢▢       ▢       <- carousel           │
+   *   │                                                              │
+   *   │   ┌labels┐ ┌opt-1┐ ┌─opt-2─┐ ┌opt-3┐ ┌summary┐ <- matrix     │
+   *   │                   │       │                                  │
+   *   │                   │ Select│ <- tab (active column extension) │
+   *   │                   └───────┘                                  │
+   *   └──────────────────────────────────────────────────────────────┘
+   *
+   * The active thumb dips DOWN into the table top, and the active
+   * column extends DOWN below the table as a rounded tab containing
+   * the CTA. Thumb + column + tab share the same accent treatment so
+   * they read as one continuous, popped-out unit.
+   *
+   * The matrix wrapper has `overflow: visible` and the corner cells
+   * (LabelsCard / SummaryCard) carry their own corner radii — that
+   * lets the active column's outer shadow + the tab below it bleed
+   * past the table edges without being clipped.
    */
   return (
     <div
       className="flex flex-col items-center"
-      style={{
-        width: `${HOST_W}px`,
-        rowGap: 'var(--modus-wc-spacing-xl, 24px)',
-      }}
+      style={{ width: `${HOST_W}px` }}
     >
-      {/* ── Carousel ─────────────────────────────────────────────── */}
-      <div className="flex items-center" style={{ gap: `${GAP}px` }}>
-        <CarouselArrow direction="left"  onClick={() => setActiveIdx(leftIdx)} />
-        <CarouselThumb option={leftOpt}   size="small" onClick={() => setActiveIdx(leftIdx)}  />
-        <CarouselThumb option={centerOpt} size="large" onClick={() => { /* already active */ }} />
-        <CarouselThumb option={rightOpt}  size="small" onClick={() => setActiveIdx(rightIdx)} />
-        <CarouselArrow direction="right" onClick={() => setActiveIdx(rightIdx)} />
-      </div>
-
-      {/* ── Active caption ───────────────────────────────────────── */}
-      <ActiveCaption option={centerOpt} />
-
-      {/* ── Matrix (unchanged 5-column grid) ─────────────────────── */}
+      {/* ── Carousel — one thumb above each option column ─────────── */}
       <div
         className="grid"
         style={{
           width: '100%',
-          gridTemplateColumns:
-            `${LABELS_W}px ${SMALL_W}px ${LARGE_W}px ${SMALL_W}px ${SUMMARY_W}px`,
-          columnGap: `${GAP}px`,
+          gridTemplateColumns: GRID_COLS,
+          columnGap: 0,
+          alignItems: 'end',
+          /* Bigger than before — pushes all thumbs up so there's a
+           * clear breathing gap between the inactive thumbs and the
+           * top of the table; the active thumb (translateY = +OVERLAP)
+           * still dips toward the table but no longer bites deep
+           * into it. */
+          paddingBottom: '14px',
+          position: 'relative',
+          zIndex: 2,
+        }}
+      >
+        <div />
+        {OPTIONS.map((opt, idx) => (
+          <div
+            key={`thumb-${opt.id}`}
+            className="flex justify-center items-end"
+          >
+            <CarouselThumb
+              option={opt}
+              isActive={idx === activeIdx}
+              onClick={() => setActiveIdx(idx)}
+            />
+          </div>
+        ))}
+        <div />
+      </div>
+
+      {/* ── Matrix — one unified 5-column table ──────────────────── */}
+      <div
+        className="grid"
+        style={{
+          width: '100%',
+          gridTemplateColumns: GRID_COLS,
+          columnGap: 0,
           alignItems: 'stretch',
+          borderRadius: '14px',
+          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+          /* NOTE: no `overflow: hidden` here — the active column's
+           * outer shadow needs room to bleed slightly past the table
+           * edges. The corner cells (LabelsCard / SummaryCard) each
+           * own their two outer corner radii so the table still reads
+           * as one rounded shape. */
+          backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         <LabelsCard />
-        <OptionCard
-          option={leftOpt}
-          optIdx={leftIdx}
-          isActive={false}
-          isChosen={chosenIdx === leftIdx}
-          rowWinners={rowWinners}
-          onChoose={() => setChosenIdx(leftIdx)}
-        />
-        <OptionCard
-          option={centerOpt}
-          optIdx={activeIdx}
-          isActive
-          isChosen={chosenIdx === activeIdx}
-          rowWinners={rowWinners}
-          onChoose={() => setChosenIdx(activeIdx)}
-        />
-        <OptionCard
-          option={rightOpt}
-          optIdx={rightIdx}
-          isActive={false}
-          isChosen={chosenIdx === rightIdx}
-          rowWinners={rowWinners}
-          onChoose={() => setChosenIdx(rightIdx)}
-        />
+        {OPTIONS.map((opt, idx) => (
+          <OptionCard
+            key={opt.id}
+            option={opt}
+            optIdx={idx}
+            isActive={idx === activeIdx}
+            rowWinners={rowWinners}
+          />
+        ))}
         <SummaryCard rowWinners={rowWinners} />
+      </div>
+
+      {/* ── Tab — the active column extends DOWN below the table as a
+        * rounded tab that contains the "Select this" button. The tab
+        * is pulled up to overlap the matrix's bottom border + the
+        * column's bottom shadow strip, so the column and tab merge
+        * into one continuous popped-out shape.
+        *
+        * Inactive cells render empty placeholders so the grid still
+        * spans the full table width.
+        */}
+      <div
+        className="grid"
+        style={{
+          width: '100%',
+          gridTemplateColumns: GRID_COLS,
+          columnGap: 0,
+          marginTop: '-3px',
+          position: 'relative',
+          zIndex: 6,
+          pointerEvents: 'none',
+        }}
+      >
+        <div />
+        {OPTIONS.map((opt, idx) => {
+          const isActive = idx === activeIdx;
+          if (!isActive) return <div key={`tab-${opt.id}`} />;
+
+          const isChosen = chosenIdx === idx;
+          return (
+            <div
+              key={`tab-${opt.id}`}
+              className="flex justify-center items-center"
+              style={{
+                pointerEvents: 'auto',
+                padding: '14px 12px 18px',
+                /* Square top so it joins the column above; rounded
+                 * bottom matching the column's top radius. */
+                borderRadius: '0 0 12px 12px',
+                backgroundColor: opt.accentSoft,
+                /* Same accent ring spread + accent-tinted lift shadow
+                 * as the active column, so the rings line up on the
+                 * left and right sides exactly. */
+                boxShadow:
+                  `0 0 0 2px ${opt.accent}, ` +
+                  `0 14px 28px rgba(0,0,0,0.14), ` +
+                  `0 4px 10px ${opt.accent}55`,
+              }}
+            >
+              {isChosen ? (
+                <ModusWcButton size="md" color="secondary" variant="outlined" disabled>
+                  <span className="flex items-center gap-1.5">
+                    <ModusWcIcon name="check_circle" size="sm" decorative />
+                    Chosen — {activeOpt.label}
+                  </span>
+                </ModusWcButton>
+              ) : (
+                <ModusWcButton
+                  size="md"
+                  color="primary"
+                  onButtonClick={() => setChosenIdx(idx)}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <ModusWcIcon name="check" size="sm" decorative />
+                    Select this
+                  </span>
+                </ModusWcButton>
+              )}
+            </div>
+          );
+        })}
+        <div />
       </div>
     </div>
   );

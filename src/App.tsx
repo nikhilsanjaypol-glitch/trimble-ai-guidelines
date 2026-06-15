@@ -178,8 +178,8 @@ const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
     body: "When AI doesn\u2019t know how to address a request, customers need it to explicitly mention this rather than hallucinating or providing generic or incorrect filler.",
   },
   expert6: {
-    purpose: "To direct attention to what needs a closer look.",
-    body: "The AI should call out anything that warrants additional human review \u2014 gaps in evidence, conflicting signals, or low-confidence findings \u2014 rather than presenting every output with the same weight.",
+    purpose: "To guide users to possible resolutions.",
+    body: "To ease user frustration when the AI is not confident of an outcome. It should clearly indicate approaches the user can take to investigate further to find the solution.",
   },
   pro1: {
     purpose: "To allow professionals to work with AI as equals.",

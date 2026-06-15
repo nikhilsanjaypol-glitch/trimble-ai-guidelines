@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import {
   ModusWcButton,
   ModusWcIcon,
@@ -9,13 +12,13 @@ import {
 /* ─────────────────────────────────────────────────────────────────
  * Pro 6 — VISUALIZE WORK DONE FOR ACCEPTANCE
  *
- * Full-bleed Three.js BIM viewport.  The structural frame renders
- * normally; the four AI-added moment-frame joints on the right wall
- * glow cyan with an emissive pulse so they are unmistakably "the
- * elements AI just edited".  A compact card pinned to the bottom of
- * the viewport explains what changed and offers an Accept Changes
- * action.  Accepting fades the cyan glow, locks the joints into
- * neutral steel, and flips the card to a confirmed state.
+ * Full-bleed Three.js BIM viewport.  AI-modified perimeter beams
+ * carry a continuously-glittering cyan edge outline (dashed lines
+ * with a marching-ants offset + a gentle opacity breath) so the
+ * affected members read as "the ones AI changed" from any orbit
+ * angle.  Clicking on any of those beams toggles the explanation
+ * card open, with an SVG line drawn from the beams' centroid to
+ * the card.  Accepting fades all of it to neutral steel.
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
@@ -26,11 +29,9 @@ const TRIMBLE_RAINBOW =
  * accent so the link between scene + card is unmistakable.  All other
  * surface, text, and status colours flow from Modus tokens. */
 const AI_ACCENT_NUM = 0x1fb1a7;
-const STEEL_GREY = new THREE.Color(0x6f7681);
 const TOKEN_AI_ACCENT = 'var(--modus-wc-color-info, #1FB1A7)';
 const TOKEN_BASE_PAGE = 'var(--modus-wc-color-base-page, #ffffff)';
 const TOKEN_BASE_100 = 'var(--modus-wc-color-base-100, #ffffff)';
-const TOKEN_BASE_200 = 'var(--modus-wc-color-base-200, #e0e1e9)';
 const TOKEN_TEXT = 'var(--modus-wc-color-base-content, #171c1e)';
 const TOKEN_TEXT_MUTED =
   'var(--modus-wc-color-base-content-low-contrast, #4a4f59)';
@@ -53,8 +54,654 @@ const Z0 = -BLDG_D / 2;
 const COL_SIZE = 0.42;
 const BEAM_SIZE = 0.32;
 
+/* Card placement constants — mirror SiteScene so the gap/margins
+ * read identically across the suite. */
+const CARD_WIDTH = 360;
+const CARD_MARGIN = 16;
+const CARD_GAP = 80;
+
+/* Anchor for the connector line — centroid of the two modified
+ * front-face beams in the upper construction zone (floors 4 and 5).
+ * Positive X = the short "front" face the camera looks at on load. */
+const ANCHOR = new THREE.Vector3(12.5, 4.5 * 3.2, 0);
+
+function addSiteSurroundings(scene: THREE.Scene): void {
+  const site = new THREE.Group();
+  scene.add(site);
+
+  const concreteMat = new THREE.MeshLambertMaterial({ color: 0xc4c8d0 });
+  const yellowMat = new THREE.MeshStandardMaterial({
+    color: 0xf2c33b,
+    roughness: 0.55,
+    metalness: 0.25,
+  });
+  const orangeMat = new THREE.MeshStandardMaterial({
+    color: 0xe06b2a,
+    roughness: 0.6,
+  });
+  const tireMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1c1f,
+    roughness: 0.95,
+  });
+  const cabGlass = new THREE.MeshStandardMaterial({
+    color: 0x7090a8,
+    transparent: true,
+    opacity: 0.55,
+    roughness: 0.1,
+  });
+  const containerWhite = new THREE.MeshLambertMaterial({ color: 0xe5e6e8 });
+  const containerBlue = new THREE.MeshStandardMaterial({
+    color: 0x2a5681,
+    roughness: 0.7,
+  });
+  const containerRust = new THREE.MeshStandardMaterial({
+    color: 0x83423a,
+    roughness: 0.78,
+  });
+  const containerGreen = new THREE.MeshStandardMaterial({
+    color: 0x3a6e3f,
+    roughness: 0.7,
+  });
+  const dirtMat = new THREE.MeshLambertMaterial({ color: 0x8d6a3a });
+  const gravelMat = new THREE.MeshLambertMaterial({ color: 0x747983 });
+  const sandMat = new THREE.MeshLambertMaterial({ color: 0xc8a96f });
+  const woodMat = new THREE.MeshStandardMaterial({
+    color: 0xb78a52,
+    roughness: 0.9,
+  });
+  const rebarMat = new THREE.MeshStandardMaterial({
+    color: 0xa67d4a,
+    roughness: 0.7,
+    metalness: 0.2,
+  });
+  const steelMat = new THREE.MeshStandardMaterial({
+    color: 0x6f7681,
+    roughness: 0.7,
+    metalness: 0.35,
+  });
+  const bagMat = new THREE.MeshLambertMaterial({ color: 0xb8a98a });
+  const cmuMat = new THREE.MeshLambertMaterial({ color: 0x9ea3aa });
+  const treeBark = new THREE.MeshStandardMaterial({
+    color: 0x5a3e2c,
+    roughness: 0.95,
+  });
+  const treeLeaves = new THREE.MeshStandardMaterial({
+    color: 0x4f8a4a,
+    roughness: 0.85,
+  });
+  const fenceFrameMat = new THREE.MeshStandardMaterial({
+    color: 0x5a5e64,
+    roughness: 0.7,
+  });
+  const meshMat = new THREE.MeshBasicMaterial({
+    color: 0x9ea2a8,
+    transparent: true,
+    opacity: 0.18,
+    side: THREE.DoubleSide,
+  });
+  const blackMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2d33,
+    roughness: 0.7,
+  });
+  const asphaltMat = new THREE.MeshLambertMaterial({ color: 0x4a4d52 });
+  const dumpsterMat = new THREE.MeshStandardMaterial({
+    color: 0x44663a,
+    roughness: 0.85,
+  });
+  const truckRedMat = new THREE.MeshStandardMaterial({
+    color: 0xa1322a,
+    roughness: 0.55,
+  });
+  const truckWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xe5e7eb,
+    roughness: 0.5,
+  });
+
+  function box(
+    w: number,
+    h: number,
+    d: number,
+    mat: THREE.Material,
+    x: number,
+    y: number,
+    z: number,
+    parent: THREE.Object3D = site,
+    ry = 0,
+  ): THREE.Mesh {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  }
+
+  function cyl(
+    r: number,
+    h: number,
+    mat: THREE.Material,
+    x: number,
+    y: number,
+    z: number,
+    axis: 'y' | 'x' | 'z' = 'y',
+    parent: THREE.Object3D = site,
+  ): THREE.Mesh {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 16), mat);
+    m.position.set(x, y, z);
+    if (axis === 'x') m.rotation.z = Math.PI / 2;
+    if (axis === 'z') m.rotation.x = Math.PI / 2;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  }
+
+  /* === Asphalt access road in front of the building === */
+  const road = new THREE.Mesh(
+    new THREE.PlaneGeometry(110, 14),
+    asphaltMat,
+  );
+  road.rotation.x = -Math.PI / 2;
+  road.position.set(0, 0.02, 28);
+  road.receiveShadow = true;
+  site.add(road);
+  for (let i = -50; i <= 50; i += 4) {
+    const stripe = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 0.25),
+      new THREE.MeshBasicMaterial({ color: 0xf2c33b }),
+    );
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(i, 0.03, 28);
+    site.add(stripe);
+  }
+
+  /* === Tower crane (left-rear) === */
+  {
+    const cx = -34;
+    const cz = -22;
+    box(3.8, 0.6, 3.8, concreteMat, cx, 0.3, cz);
+    const mastH = 26;
+    box(1.0, mastH, 1.0, yellowMat, cx, 0.6 + mastH / 2, cz);
+    for (let i = 0; i < 9; i++) {
+      box(1.06, 0.06, 1.06, blackMat, cx, 0.6 + (i + 0.5) * (mastH / 9), cz);
+    }
+    box(1.7, 1.6, 1.9, yellowMat, cx, 0.6 + mastH + 0.8, cz);
+    box(1.5, 0.75, 1.5, cabGlass, cx, 0.6 + mastH + 1.4, cz);
+    const jibLen = 24;
+    box(jibLen, 0.5, 0.5, yellowMat, cx + jibLen / 2 - 4, 0.6 + mastH + 1.55, cz);
+    box(jibLen, 0.06, 0.06, blackMat, cx + jibLen / 2 - 4, 0.6 + mastH + 2.1, cz);
+    box(8, 0.5, 0.5, yellowMat, cx - 5, 0.6 + mastH + 1.55, cz);
+    box(2.6, 1.4, 1.7, concreteMat, cx - 8.5, 0.6 + mastH + 2.1, cz);
+    const trolleyX = cx + 9;
+    box(0.7, 0.4, 0.8, blackMat, trolleyX, 0.6 + mastH + 1.15, cz);
+    const cableH = 17;
+    box(0.06, cableH, 0.06, blackMat, trolleyX, 0.6 + mastH + 0.95 - cableH / 2, cz);
+    box(0.55, 0.55, 0.55, blackMat, trolleyX, 0.6 + mastH + 0.95 - cableH, cz);
+    box(0.45, 4.5, 0.45, yellowMat, cx, 0.6 + mastH + 3.6, cz);
+  }
+
+  /* === Mobile crane (right-rear) === */
+  {
+    const cx = 30;
+    const cz = -16;
+    box(7.5, 1.0, 2.6, orangeMat, cx, 1.1, cz);
+    for (let w = -1; w <= 1; w += 2) {
+      for (let i = -3; i <= 3; i += 1.6) {
+        cyl(0.55, 0.4, tireMat, cx + i, 0.55, cz + w * 1.2, 'x');
+      }
+    }
+    box(1.8, 1.4, 2.2, orangeMat, cx + 2.6, 2.3, cz);
+    box(1.5, 0.8, 1.9, cabGlass, cx + 2.6, 3.0, cz);
+    box(1.4, 1.0, 1.0, blackMat, cx, 2.1, cz);
+    const boom = new THREE.Group();
+    boom.position.set(cx - 1, 2.5, cz);
+    boom.rotation.z = Math.PI / 5;
+    site.add(boom);
+    box(11, 0.6, 0.6, orangeMat, 5.5, 0, 0, boom);
+    box(8, 0.45, 0.45, yellowMat, 4, 0, 0, boom);
+    box(6, 0.32, 0.32, yellowMat, 3, 0, 0, boom);
+    for (let i = 0; i < 4; i++) {
+      box(0.8, 0.2, 0.4, blackMat, cx - 3.5 + i * 2.3, 0.2, cz + 1.6);
+      box(0.8, 0.2, 0.4, blackMat, cx - 3.5 + i * 2.3, 0.2, cz - 1.6);
+    }
+  }
+
+  /* === Excavator (front-right) === */
+  {
+    const cx = 24;
+    const cz = 18;
+    box(4.4, 0.5, 1.2, blackMat, cx, 0.35, cz - 1.0);
+    box(4.4, 0.5, 1.2, blackMat, cx, 0.35, cz + 1.0);
+    for (let w = -1; w <= 1; w += 2) {
+      for (let i = -1.6; i <= 1.6; i += 0.8) {
+        cyl(0.35, 0.45, blackMat, cx + i, 0.35, cz + w * 1.0, 'x');
+      }
+    }
+    box(3.2, 0.6, 2.4, yellowMat, cx, 0.95, cz);
+    box(2.4, 1.6, 1.8, yellowMat, cx - 0.4, 1.95, cz - 0.2);
+    box(1.6, 1.0, 1.6, cabGlass, cx + 0.6, 2.05, cz);
+    const arm = new THREE.Group();
+    arm.position.set(cx + 1.2, 1.6, cz);
+    site.add(arm);
+    const boom1 = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 0.5), yellowMat);
+    boom1.rotation.z = Math.PI / 4;
+    boom1.position.set(1.4, 1.4, 0);
+    boom1.castShadow = true;
+    arm.add(boom1);
+    const boom2 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 0.4), yellowMat);
+    boom2.rotation.z = -Math.PI / 5;
+    boom2.position.set(3.4, 2.6, 0);
+    boom2.castShadow = true;
+    arm.add(boom2);
+    const bucket = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.8, 1.4), blackMat);
+    bucket.position.set(4.6, 1.6, 0);
+    bucket.castShadow = true;
+    arm.add(bucket);
+  }
+
+  /* === Wheel loader (front) === */
+  {
+    const cx = 12;
+    const cz = 22;
+    box(3.4, 1.0, 1.8, yellowMat, cx, 1.0, cz);
+    box(1.5, 1.2, 1.5, yellowMat, cx + 0.4, 2.1, cz);
+    box(1.3, 0.8, 1.3, cabGlass, cx + 0.4, 2.6, cz);
+    for (let w = -1; w <= 1; w += 2) {
+      for (let i = -1; i <= 1; i += 2) {
+        cyl(0.65, 0.45, tireMat, cx + i * 1.2, 0.65, cz + w * 1.0, 'x');
+      }
+    }
+    const bucket = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.0, 1.9), yellowMat);
+    bucket.position.set(cx - 2.4, 0.7, cz);
+    bucket.rotation.z = -Math.PI / 8;
+    bucket.castShadow = true;
+    site.add(bucket);
+    box(0.2, 0.2, 1.6, yellowMat, cx - 2.0, 0.7, cz);
+  }
+
+  /* === Cement mixer truck (front) === */
+  {
+    const cx = -2;
+    const cz = 24;
+    box(7.5, 1.2, 2.4, truckRedMat, cx, 1.0, cz);
+    box(2.0, 1.4, 2.2, truckWhiteMat, cx + 2.8, 2.0, cz);
+    box(1.6, 0.8, 1.8, cabGlass, cx + 2.8, 2.6, cz);
+    for (let w = -1; w <= 1; w += 2) {
+      for (const i of [-2.5, 0.5, 1.7]) {
+        cyl(0.55, 0.4, tireMat, cx + i, 0.55, cz + w * 1.2, 'x');
+      }
+    }
+    const drum = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.4, 1.1, 3.5, 24),
+      yellowMat,
+    );
+    drum.position.set(cx - 1.5, 2.6, cz);
+    drum.rotation.z = Math.PI / 2.5;
+    drum.castShadow = true;
+    drum.receiveShadow = true;
+    site.add(drum);
+  }
+
+  /* === Concrete pump truck (front-left) === */
+  {
+    const cx = -16;
+    const cz = 22;
+    box(7.0, 1.0, 2.4, truckWhiteMat, cx, 1.0, cz);
+    box(1.8, 1.4, 2.2, truckWhiteMat, cx + 2.5, 2.1, cz);
+    box(1.5, 0.8, 1.8, cabGlass, cx + 2.5, 2.7, cz);
+    for (let w = -1; w <= 1; w += 2) {
+      for (const i of [-2.4, -0.6, 0.8, 2.0]) {
+        cyl(0.55, 0.4, tireMat, cx + i, 0.55, cz + w * 1.2, 'x');
+      }
+    }
+    box(2.2, 1.0, 2.0, blackMat, cx - 2.4, 2.1, cz);
+    const folded = new THREE.Group();
+    folded.position.set(cx - 1, 2.7, cz);
+    site.add(folded);
+    box(5.0, 0.4, 0.4, yellowMat, 1.2, 0.5, 0, folded);
+    box(3.6, 0.32, 0.32, yellowMat, 2.2, 1.2, 0, folded, Math.PI / 8);
+  }
+
+  /* === Forklift === */
+  {
+    const cx = 8;
+    const cz = 14;
+    box(1.6, 1.0, 1.0, orangeMat, cx, 0.7, cz);
+    box(1.0, 1.4, 1.0, orangeMat, cx + 0.1, 1.7, cz);
+    box(0.9, 0.8, 0.9, cabGlass, cx + 0.1, 2.2, cz);
+    for (let w = -1; w <= 1; w += 2) {
+      for (const i of [-0.6, 0.6]) {
+        cyl(0.35, 0.3, tireMat, cx + i, 0.35, cz + w * 0.5, 'x');
+      }
+    }
+    box(0.1, 1.6, 0.6, blackMat, cx - 0.6, 0.9, cz - 0.3);
+    box(0.1, 1.6, 0.6, blackMat, cx - 0.6, 0.9, cz + 0.3);
+    box(1.2, 0.08, 0.18, blackMat, cx - 1.3, 0.15, cz - 0.3);
+    box(1.2, 0.08, 0.18, blackMat, cx - 1.3, 0.15, cz + 0.3);
+  }
+
+  /* === Site office (white container with windows) === */
+  {
+    const cx = -28;
+    const cz = 20;
+    box(7.5, 2.6, 2.6, containerWhite, cx, 1.45, cz);
+    box(0.05, 1.0, 0.7, cabGlass, cx + 1.5, 1.7, cz - 1.32);
+    box(0.05, 1.0, 0.7, cabGlass, cx - 0.5, 1.7, cz - 1.32);
+    box(0.05, 1.0, 0.7, cabGlass, cx - 2.5, 1.7, cz - 1.32);
+    box(0.5, 1.6, 0.05, blackMat, cx + 2.6, 0.95, cz - 1.32);
+    box(0.5, 0.05, 1.6, woodMat, cx + 2.6, 0.18, cz - 2.0);
+    box(0.5, 0.05, 1.6, woodMat, cx + 2.6, 0.5, cz - 2.0);
+  }
+
+  /* === Storage container (rust) === */
+  box(6.0, 2.6, 2.4, containerRust, 30, 1.45, 22);
+  box(6.0, 2.6, 2.4, containerBlue, 30, 4.05, 22);
+
+  /* === Tool shed (smaller container) === */
+  box(4.0, 2.4, 2.2, containerGreen, -32, 1.35, 6);
+
+  /* === Porta potties === */
+  for (let i = 0; i < 3; i++) {
+    box(1.1, 2.2, 1.1, containerBlue, -34, 1.15, -2 + i * 1.3);
+    box(0.05, 0.7, 0.6, blackMat, -33.4, 1.15, -2 + i * 1.3);
+  }
+
+  /* === Dumpsters === */
+  box(3.6, 1.4, 2.0, dumpsterMat, 30, 0.75, 8);
+  box(3.6, 1.4, 2.0, dumpsterMat, 30, 0.75, 4);
+
+  /* === Stockpile: rebar bundles === */
+  {
+    const cx = -22;
+    const cz = 4;
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 2; c++) {
+        const bundle = new THREE.Group();
+        bundle.position.set(cx + c * 0.7, 0.25 + r * 0.45, cz);
+        site.add(bundle);
+        for (let b = 0; b < 7; b++) {
+          cyl(0.05, 6, rebarMat, -0.2 + (b % 3) * 0.13, (Math.floor(b / 3)) * 0.13, 0, 'z', bundle);
+        }
+        box(0.6, 0.04, 0.05, blackMat, 0, 0.2, -2.5, bundle);
+        box(0.6, 0.04, 0.05, blackMat, 0, 0.2, 2.5, bundle);
+      }
+    }
+  }
+
+  /* === Stockpile: lumber/plywood sheets === */
+  {
+    const cx = -20;
+    const cz = 12;
+    for (let r = 0; r < 8; r++) {
+      box(4, 0.05, 2.2, woodMat, cx, 0.1 + r * 0.06, cz);
+    }
+  }
+
+  /* === Stockpile: CMU blocks === */
+  {
+    const cx = -28;
+    const cz = 14;
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 5; c++) {
+        for (let h = 0; h < 3; h++) {
+          box(0.4, 0.2, 0.4, cmuMat, cx + c * 0.45 - 0.5, 0.1 + h * 0.21, cz + r * 0.45);
+        }
+      }
+    }
+  }
+
+  /* === Stockpile: bagged cement on pallets === */
+  {
+    const cx = 22;
+    const cz = 4;
+    for (let p = 0; p < 2; p++) {
+      const px = cx + p * 1.6;
+      box(1.4, 0.15, 1.2, woodMat, px, 0.075, cz);
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          for (let h = 0; h < 4; h++) {
+            box(0.4, 0.18, 0.32, bagMat, px - 0.45 + c * 0.45, 0.18 + h * 0.18, cz - 0.45 + r * 0.45);
+          }
+        }
+      }
+    }
+  }
+
+  /* === Stack of pipes === */
+  {
+    const cx = 28;
+    const cz = -4;
+    for (let r = 0; r < 3; r++) {
+      const yOff = 0.32 + r * 0.5;
+      for (let c = 0; c < 4 - r; c++) {
+        cyl(0.22, 5, blackMat, cx + c * 0.5 + r * 0.25 - 0.5, yOff, cz, 'z');
+      }
+    }
+  }
+
+  /* === Stack of I-beams === */
+  {
+    const cx = -28;
+    const cz = -10;
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 5; c++) {
+        box(7, 0.25, 0.25, steelMat, cx, 0.15 + r * 0.32, cz - 0.6 + c * 0.32);
+      }
+    }
+  }
+
+  /* === Pallet pile === */
+  {
+    const cx = 18;
+    const cz = 12;
+    for (let r = 0; r < 6; r++) {
+      box(1.2, 0.14, 1.2, woodMat, cx, 0.07 + r * 0.16, cz);
+    }
+  }
+
+  /* === Earth mounds === */
+  function mound(r: number, h: number, mat: THREE.Material, x: number, z: number) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.2), mat);
+    m.position.set(x, 0, z);
+    m.scale.set(1, h / r, 1);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    site.add(m);
+  }
+  mound(3.5, 1.6, dirtMat, -40, -10);
+  mound(3.0, 1.4, dirtMat, -42, -16);
+  mound(3.6, 1.5, gravelMat, 38, -22);
+  mound(2.8, 1.3, sandMat, -38, -22);
+  mound(2.4, 1.0, gravelMat, 42, -10);
+
+  /* === Generator on trailer === */
+  {
+    const cx = 28;
+    const cz = 14;
+    box(2.4, 1.0, 1.4, yellowMat, cx, 0.7, cz);
+    box(0.4, 0.6, 0.4, blackMat, cx - 0.6, 1.4, cz);
+    cyl(0.3, 0.2, tireMat, cx - 1.0, 0.3, cz + 0.7, 'x');
+    cyl(0.3, 0.2, tireMat, cx - 1.0, 0.3, cz - 0.7, 'x');
+  }
+
+  /* === Light towers (4 corners) === */
+  function lightTower(x: number, z: number) {
+    box(1.2, 0.4, 0.8, yellowMat, x, 0.2, z);
+    box(0.2, 6, 0.2, fenceFrameMat, x, 3.2, z);
+    box(1.6, 0.2, 1.0, blackMat, x, 6.3, z);
+    for (let i = -1; i <= 1; i += 2) {
+      for (let j = -1; j <= 1; j += 2) {
+        box(0.5, 0.3, 0.4, new THREE.MeshBasicMaterial({ color: 0xfff5cc }), x + i * 0.5, 6.3, z + j * 0.3);
+      }
+    }
+  }
+  lightTower(-40, 30);
+  lightTower(40, 30);
+  lightTower(-40, -30);
+  lightTower(40, -30);
+
+  /* === Jersey barriers (line the inner road edge) === */
+  for (let i = -22; i <= 22; i += 3.2) {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(3, 0.55, 0.35), concreteMat);
+    top.position.set(i, 0.85, 21);
+    top.castShadow = true;
+    top.receiveShadow = true;
+    site.add(top);
+    const bot = new THREE.Mesh(new THREE.BoxGeometry(3, 0.55, 0.6), concreteMat);
+    bot.position.set(i, 0.275, 21);
+    bot.castShadow = true;
+    bot.receiveShadow = true;
+    site.add(bot);
+  }
+
+  /* === Traffic cones === */
+  function cone(x: number, z: number) {
+    const c = new THREE.Mesh(
+      new THREE.ConeGeometry(0.25, 0.7, 12),
+      new THREE.MeshStandardMaterial({ color: 0xff6a18, roughness: 0.6 }),
+    );
+    c.position.set(x, 0.35, z);
+    c.castShadow = true;
+    site.add(c);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 0.45), blackMat);
+    base.position.set(x, 0.03, z);
+    site.add(base);
+  }
+  for (let i = -20; i <= 20; i += 2.5) {
+    cone(i, 19.6);
+  }
+  cone(14, 16);
+  cone(16, 16);
+  cone(-14, 16);
+  cone(-10, 14);
+
+  /* === Site fence (chain-link panels around the perimeter) === */
+  const FX = 46;
+  const FZ = 32;
+  function fencePanel(x1: number, z1: number, x2: number, z2: number) {
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    const cx = (x1 + x2) / 2;
+    const cz = (z1 + z2) / 2;
+    const ang = Math.atan2(z2 - z1, x2 - x1);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.06), fenceFrameMat);
+    top.position.set(cx, 2.0, cz);
+    top.rotation.y = -ang;
+    top.castShadow = true;
+    site.add(top);
+    const bot = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.06), fenceFrameMat);
+    bot.position.set(cx, 0.1, cz);
+    bot.rotation.y = -ang;
+    site.add(bot);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.85), meshMat);
+    mesh.position.set(cx, 1.05, cz);
+    mesh.rotation.y = -ang + Math.PI / 2;
+    site.add(mesh);
+  }
+  function fencePost(x: number, z: number) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.1, 0.1), fenceFrameMat);
+    p.position.set(x, 1.05, z);
+    p.castShadow = true;
+    site.add(p);
+  }
+  const segCount = 20;
+  for (let i = 0; i < segCount; i++) {
+    const t1 = i / segCount;
+    const t2 = (i + 1) / segCount;
+    fencePanel(-FX + 2 * FX * t1, -FZ, -FX + 2 * FX * t2, -FZ);
+    fencePanel(-FX + 2 * FX * t1, FZ, -FX + 2 * FX * t2, FZ);
+    fencePost(-FX + 2 * FX * t1, -FZ);
+    fencePost(-FX + 2 * FX * t1, FZ);
+  }
+  const segCountZ = 14;
+  for (let i = 0; i < segCountZ; i++) {
+    const t1 = i / segCountZ;
+    const t2 = (i + 1) / segCountZ;
+    fencePanel(-FX, -FZ + 2 * FZ * t1, -FX, -FZ + 2 * FZ * t2);
+    fencePanel(FX, -FZ + 2 * FZ * t1, FX, -FZ + 2 * FZ * t2);
+    fencePost(-FX, -FZ + 2 * FZ * t1);
+    fencePost(FX, -FZ + 2 * FZ * t1);
+  }
+  fencePost(-FX, FZ);
+  fencePost(FX, FZ);
+
+  /* === Site entry gate cutout (skip a panel near front-center) === */
+
+  /* === Pickup trucks (parked outside the building) === */
+  function pickup(cx: number, cz: number, mat: THREE.Material, ry = 0) {
+    const g = new THREE.Group();
+    g.position.set(cx, 0, cz);
+    g.rotation.y = ry;
+    site.add(g);
+    box(4.2, 1.0, 1.8, mat, 0, 0.85, 0, g);
+    box(1.6, 1.0, 1.7, mat, 0.8, 1.85, 0, g);
+    box(1.4, 0.7, 1.5, cabGlass, 0.8, 2.0, 0, g);
+    for (let w = -1; w <= 1; w += 2) {
+      for (const i of [-1.4, 1.0]) {
+        cyl(0.45, 0.35, tireMat, i, 0.45, w * 0.85, 'x', g);
+      }
+    }
+  }
+  pickup(-22, 26, truckRedMat);
+  pickup(-16, 26, truckWhiteMat);
+  pickup(20, 26, new THREE.MeshStandardMaterial({ color: 0x2a3550 }), 0);
+  pickup(28, -26, new THREE.MeshStandardMaterial({ color: 0x1f6f4f }));
+
+  /* === Trees outside the fence === */
+  function tree(x: number, z: number, scale = 1) {
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18 * scale, 0.22 * scale, 1.6 * scale, 10),
+      treeBark,
+    );
+    trunk.position.set(x, 0.8 * scale, z);
+    trunk.castShadow = true;
+    site.add(trunk);
+    const cone1 = new THREE.Mesh(
+      new THREE.ConeGeometry(1.6 * scale, 4.5 * scale, 12),
+      treeLeaves,
+    );
+    cone1.position.set(x, (1.6 + 2.25) * scale, z);
+    cone1.castShadow = true;
+    site.add(cone1);
+  }
+  tree(-50, 0, 1.1);
+  tree(-50, 10, 0.9);
+  tree(-50, -10, 1.0);
+  tree(50, 0, 1.0);
+  tree(50, 12, 1.2);
+  tree(50, -8, 0.95);
+  tree(-30, 38, 1.1);
+  tree(-15, 38, 0.95);
+  tree(0, 38, 1.0);
+  tree(15, 38, 1.05);
+  tree(30, 38, 1.0);
+  tree(-25, -38, 1.0);
+  tree(0, -38, 1.05);
+  tree(25, -38, 1.0);
+
+  /* === Bushes (low spheres) === */
+  function bush(x: number, z: number, r = 0.7) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), treeLeaves);
+    m.position.set(x, r * 0.85, z);
+    m.castShadow = true;
+    site.add(m);
+  }
+  for (let i = 0; i < 14; i++) {
+    bush(-50 + (i % 7) * 16, i < 7 ? 36 : -36, 0.6 + Math.random() * 0.4);
+  }
+  bush(-44, 4, 0.8);
+  bush(-44, -8, 0.9);
+  bush(44, 6, 0.7);
+  bush(44, -6, 0.8);
+
+}
+
 export default function Pro6() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const cardWrapRef = useRef<HTMLDivElement>(null);
+  const lineRef = useRef<SVGLineElement>(null);
+
+  const [open, setOpen] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const acceptedRef = useRef(false);
 
@@ -84,14 +731,18 @@ export default function Pro6() {
     scene.fog = new THREE.FogExp2(0xeef1f5, 0.013);
 
     const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 200);
-    camera.position.set(28, 18, 30);
+    /* Front-RIGHT ISO framing — camera primarily on the +x side
+     * (the front elevation that carries the AI highlights), rotated
+     * ~30° toward -z so the front face and the right-hand (-z) side
+     * face read together as a classic front-right iso. */
+    camera.position.set(44, 23, -24);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.target.set(0, BLDG_H / 2, 0);
     controls.minDistance = 18;
-    controls.maxDistance = 80;
+    controls.maxDistance = 150;
     controls.maxPolarAngle = Math.PI / 2.05;
     controls.update();
 
@@ -100,12 +751,12 @@ export default function Pro6() {
     scene.add(new THREE.HemisphereLight(0xddeeff, 0x8899aa, 0.45));
 
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.4);
-    sun.position.set(20, 35, 18);
+    sun.position.set(40, 60, 28);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 100;
-    const sc = 30;
+    sun.shadow.camera.far = 220;
+    const sc = 80;
     sun.shadow.camera.left = -sc;
     sun.shadow.camera.right = sc;
     sun.shadow.camera.top = sc;
@@ -129,12 +780,22 @@ export default function Pro6() {
     scene.add(grid);
 
     /* ── Materials ────────────────────────────────────────────── */
-    const colMat = new THREE.MeshStandardMaterial({
-      color: 0x6f7681,
-      roughness: 0.7,
-      metalness: 0.35,
+    const concreteMat = new THREE.MeshLambertMaterial({ color: 0xb6bbc3 });
+    const spandrelMat = new THREE.MeshLambertMaterial({ color: 0xc8ccd2 });
+    const podiumMat = new THREE.MeshLambertMaterial({ color: 0x8e9298 });
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x96b6cc,
+      transparent: true,
+      opacity: 0.32,
+      roughness: 0.06,
+      metalness: 0.1,
     });
-    const beamMat = new THREE.MeshStandardMaterial({
+    const mullionMat = new THREE.MeshStandardMaterial({
+      color: 0x3a3e44,
+      roughness: 0.55,
+      metalness: 0.45,
+    });
+    const steelMat = new THREE.MeshStandardMaterial({
       color: 0x6f7681,
       roughness: 0.7,
       metalness: 0.35,
@@ -144,19 +805,44 @@ export default function Pro6() {
       roughness: 0.85,
       metalness: 0.18,
     });
-    const slabMat = new THREE.MeshLambertMaterial({
-      color: 0xb6bbc3,
-      transparent: true,
-      opacity: 0.78,
+    const rebarMat = new THREE.MeshStandardMaterial({
+      color: 0xa67d4a,
+      roughness: 0.7,
+      metalness: 0.2,
+    });
+    const formworkMat = new THREE.MeshStandardMaterial({
+      color: 0xb78a52,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+    const guardMat = new THREE.MeshStandardMaterial({
+      color: 0xff8a3c,
+      roughness: 0.7,
     });
 
-    /* ── Build the structural frame ───────────────────────────── */
+    /* Floors 1 and 2 are the FINISHED building.  Floors 3, 4 and 5
+     * are the under-construction zone above it, separated by a
+     * structural slab (the construction deck). */
+    const BOUNDARY_FLOORS = 2; // # of completed storeys
+    const BOUNDARY_Y = BOUNDARY_FLOORS * STORY_H;
+
     const frameGroup = new THREE.Group();
     scene.add(frameGroup);
 
+    /* ── 1.  Foundation podium ────────────────────────────────── */
+    const podium = new THREE.Mesh(
+      new THREE.BoxGeometry(BLDG_W + 0.7, 0.4, BLDG_D + 0.7),
+      podiumMat,
+    );
+    podium.position.set(0, 0.2, 0);
+    podium.castShadow = true;
+    podium.receiveShadow = true;
+    frameGroup.add(podium);
+
+    /* ── 2.  Steel columns rising the FULL height ────────────── */
     function makeColumn(x: number, z: number, faint: boolean) {
       const geo = new THREE.BoxGeometry(COL_SIZE, BLDG_H, COL_SIZE);
-      const mesh = new THREE.Mesh(geo, faint ? faintMat : colMat);
+      const mesh = new THREE.Mesh(geo, faint ? faintMat : steelMat);
       mesh.position.set(x, BLDG_H / 2, z);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -166,130 +852,547 @@ export default function Pro6() {
       for (let k = 0; k <= BAYS_Z; k++) {
         const isFront = k === 0;
         const isRight = i === BAYS_X;
-        const isCorner = (i === 0 && k === BAYS_Z);
+        const isCorner = i === 0 && k === BAYS_Z;
         const visible = isFront || isRight || isCorner;
         makeColumn(X0 + i * BAY_W, Z0 + k * BAY_D, !visible);
       }
     }
 
-    function beamX(y: number, z: number, faint: boolean) {
+    /* ── 3.  Beams at every floor level ───────────────────────
+     *  Track which beams are AI-modified for raycasting / FX.
+     *  In the new layout, the AI is reinforcing 3 beams on the
+     *  upper construction zone: the FRONT-FACE beams at floors
+     *  3, 4 and 5 (the three storeys still being built). */
+    function beamX(y: number, z: number, faint: boolean): THREE.Mesh {
       const geo = new THREE.BoxGeometry(BLDG_W, BEAM_SIZE, BEAM_SIZE);
-      const mesh = new THREE.Mesh(geo, faint ? faintMat : beamMat);
+      const mesh = new THREE.Mesh(geo, faint ? faintMat : steelMat);
       mesh.position.set(0, y, z);
       mesh.castShadow = true;
       frameGroup.add(mesh);
+      return mesh;
     }
-    function beamZ(x: number, y: number, faint: boolean) {
+    function beamZ(x: number, y: number, faint: boolean): THREE.Mesh {
       const geo = new THREE.BoxGeometry(BEAM_SIZE, BEAM_SIZE, BLDG_D);
-      const mesh = new THREE.Mesh(geo, faint ? faintMat : beamMat);
+      const mesh = new THREE.Mesh(geo, faint ? faintMat : steelMat);
       mesh.position.set(x, y, 0);
       mesh.castShadow = true;
       frameGroup.add(mesh);
+      return mesh;
     }
+    const modifiedBeamMeshes: THREE.Mesh[] = [];
     for (let f = 1; f <= STORIES; f++) {
       const y = f * STORY_H;
       for (let k = 0; k <= BAYS_Z; k++) {
-        beamX(y, Z0 + k * BAY_D, k === BAYS_Z);
+        beamX(y, Z0 + k * BAY_D, k === 0);
       }
       for (let i = 0; i <= BAYS_X; i++) {
-        beamZ(X0 + i * BAY_W, y, i === 0);
+        const m = beamZ(X0 + i * BAY_W, y, i === 0);
+        if (f >= BOUNDARY_FLOORS + 2 && i === BAYS_X) modifiedBeamMeshes.push(m);
       }
     }
 
-    // Top floor slab
-    const topSlab = new THREE.Mesh(
-      new THREE.BoxGeometry(BLDG_W + 0.4, 0.2, BLDG_D + 0.4),
-      slabMat,
-    );
-    topSlab.position.set(0, BLDG_H + 0.12, 0);
-    topSlab.castShadow = true;
-    topSlab.receiveShadow = true;
-    frameGroup.add(topSlab);
+    /* ── 4.  COMPLETED building (floors 1 & 2) ────────────────
+     *  Solid concrete floor slabs + glass curtain wall on every
+     *  face, with horizontal/vertical mullions framing the glass
+     *  at every column line and at each floor break.  This is the
+     *  obviously-finished shell beneath the construction zone. */
 
-    // X-bracing on the right wall, rear bay (matches reference image)
-    function makeBrace(
-      x1: number, y1: number, z1: number,
-      x2: number, y2: number, z2: number,
+    // Concrete floor slabs on completed floors
+    for (let f = 1; f <= BOUNDARY_FLOORS; f++) {
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(BLDG_W + 0.4, 0.18, BLDG_D + 0.4),
+        concreteMat,
+      );
+      slab.position.set(0, f * STORY_H - 0.09, 0);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
+      frameGroup.add(slab);
+    }
+
+    // Concrete spandrel band at the top of each finished floor
+    // (the visible concrete strip between the windows)
+    const spandrelH = 0.55;
+    function makeSpandrel(
+      width: number,
+      depth: number,
+      pos: THREE.Vector3,
     ) {
-      const dir = new THREE.Vector3(x2 - x1, y2 - y1, z2 - z1);
-      const len = dir.length();
-      const geo = new THREE.BoxGeometry(0.14, len, 0.14);
-      const mesh = new THREE.Mesh(geo, faintMat);
-      mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
-      // Orient the box along the brace direction.
-      const up = new THREE.Vector3(0, 1, 0);
-      mesh.quaternion.setFromUnitVectors(up, dir.clone().normalize());
-      frameGroup.add(mesh);
+      const sp = new THREE.Mesh(
+        new THREE.BoxGeometry(width, spandrelH, depth),
+        spandrelMat,
+      );
+      sp.position.copy(pos);
+      sp.castShadow = true;
+      sp.receiveShadow = true;
+      frameGroup.add(sp);
     }
-    const rightX = X0 + BLDG_W;
-    const braceZ1 = Z0 + (BAYS_Z - 1) * BAY_D;
-    const braceZ2 = Z0 + BAYS_Z * BAY_D;
-    for (let f = 0; f < STORIES; f++) {
-      const y1 = f * STORY_H;
-      const y2 = (f + 1) * STORY_H;
-      makeBrace(rightX, y1, braceZ1, rightX, y2, braceZ2);
-      makeBrace(rightX, y2, braceZ1, rightX, y1, braceZ2);
+    for (let f = 1; f <= BOUNDARY_FLOORS; f++) {
+      const yTop = f * STORY_H;
+      const spY = yTop - 0.45;
+      // Front + rear spandrels (run along x)
+      makeSpandrel(
+        BLDG_W + 0.3,
+        0.2,
+        new THREE.Vector3(0, spY, Z0),
+      );
+      makeSpandrel(
+        BLDG_W + 0.3,
+        0.2,
+        new THREE.Vector3(0, spY, Z0 + BLDG_D),
+      );
+      // Left + right spandrels (run along z)
+      makeSpandrel(
+        0.2,
+        BLDG_D - 0.05,
+        new THREE.Vector3(X0, spY, 0),
+      );
+      makeSpandrel(
+        0.2,
+        BLDG_D - 0.05,
+        new THREE.Vector3(X0 + BLDG_W, spY, 0),
+      );
     }
 
-    /* ── AI-added moment-frame joints (the cyan elements) ─────── */
-    const jointMaterials: THREE.MeshStandardMaterial[] = [];
-    const jointMeshes: THREE.Mesh[] = [];
-    for (let f = 1; f < STORIES; f++) {
-      const x = X0 + BLDG_W + 0.05;
-      const y = f * STORY_H;
-      const z = Z0 + 1.5 * BAY_D;
-      const mat = new THREE.MeshStandardMaterial({
+    // Glass curtain wall — one panel per face per finished floor.
+    // Sits between the floor slab below and the spandrel above,
+    // recessed slightly so the slab/spandrel read as projecting.
+    const glassH = STORY_H - 0.55 - 0.18; // story – spandrel – slab
+    function makeGlass(
+      width: number,
+      depth: number,
+      pos: THREE.Vector3,
+    ) {
+      const gl = new THREE.Mesh(
+        new THREE.BoxGeometry(width, glassH, depth),
+        glassMat,
+      );
+      gl.position.copy(pos);
+      gl.receiveShadow = true;
+      frameGroup.add(gl);
+    }
+    for (let f = 1; f <= BOUNDARY_FLOORS; f++) {
+      const slabTop = (f - 1) * STORY_H + 0.09;
+      const glassY = slabTop + glassH / 2;
+      // Front
+      makeGlass(BLDG_W - 0.1, 0.06, new THREE.Vector3(0, glassY, Z0));
+      // Rear
+      makeGlass(
+        BLDG_W - 0.1,
+        0.06,
+        new THREE.Vector3(0, glassY, Z0 + BLDG_D),
+      );
+      // Left
+      makeGlass(
+        0.06,
+        BLDG_D - 0.1,
+        new THREE.Vector3(X0, glassY, 0),
+      );
+      // Right
+      makeGlass(
+        0.06,
+        BLDG_D - 0.1,
+        new THREE.Vector3(X0 + BLDG_W, glassY, 0),
+      );
+    }
+
+    // Vertical mullions at every column line on every face,
+    // running floor-1 floor-level → boundary deck.
+    function makeMullion(
+      pos: THREE.Vector3,
+      face: 'x' | 'z',
+    ) {
+      const w = face === 'x' ? 0.08 : 0.16;
+      const d = face === 'x' ? 0.16 : 0.08;
+      const mu = new THREE.Mesh(
+        new THREE.BoxGeometry(w, BOUNDARY_Y - 0.18, d),
+        mullionMat,
+      );
+      mu.position.copy(pos);
+      mu.position.y = BOUNDARY_Y / 2 + 0.09;
+      frameGroup.add(mu);
+    }
+    for (let i = 0; i <= BAYS_X; i++) {
+      const x = X0 + i * BAY_W;
+      makeMullion(new THREE.Vector3(x, 0, Z0), 'z'); // front face
+      makeMullion(new THREE.Vector3(x, 0, Z0 + BLDG_D), 'z'); // rear face
+    }
+    for (let k = 0; k <= BAYS_Z; k++) {
+      const z = Z0 + k * BAY_D;
+      makeMullion(new THREE.Vector3(X0, 0, z), 'x'); // left face
+      makeMullion(new THREE.Vector3(X0 + BLDG_W, 0, z), 'x'); // right face
+    }
+
+    /* ── 5.  CONSTRUCTION DECK at the boundary (top of floor 2) ──
+     *  Slightly thicker, slightly oversized slab — reads as the
+     *  hand-off between the finished envelope below and the bare
+     *  steel skeleton above. */
+    const deckSlab = new THREE.Mesh(
+      new THREE.BoxGeometry(BLDG_W + 0.6, 0.3, BLDG_D + 0.6),
+      concreteMat,
+    );
+    deckSlab.position.set(0, BOUNDARY_Y - 0.15, 0);
+    deckSlab.castShadow = true;
+    deckSlab.receiveShadow = true;
+    frameGroup.add(deckSlab);
+
+    /* ── 6.  Safety railing around the construction deck ─────── */
+    const guardYBase = BOUNDARY_Y;
+    const guardOffset = 0.05;
+    function makeGuardRail(
+      length: number,
+      orientation: 'x' | 'z',
+      pos: THREE.Vector3,
+    ) {
+      const w = orientation === 'x' ? length : 0.04;
+      const d = orientation === 'x' ? 0.04 : length;
+      const top = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.05, d),
+        guardMat,
+      );
+      top.position.copy(pos);
+      top.position.y = guardYBase + 1.05;
+      frameGroup.add(top);
+      const mid = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.05, d),
+        guardMat,
+      );
+      mid.position.copy(pos);
+      mid.position.y = guardYBase + 0.55;
+      frameGroup.add(mid);
+    }
+    // Top rails on all 4 sides
+    makeGuardRail(
+      BLDG_W + 0.6,
+      'x',
+      new THREE.Vector3(0, 0, Z0 - guardOffset),
+    );
+    makeGuardRail(
+      BLDG_W + 0.6,
+      'x',
+      new THREE.Vector3(0, 0, Z0 + BLDG_D + guardOffset),
+    );
+    makeGuardRail(
+      BLDG_D + 0.6,
+      'z',
+      new THREE.Vector3(X0 - guardOffset, 0, 0),
+    );
+    makeGuardRail(
+      BLDG_D + 0.6,
+      'z',
+      new THREE.Vector3(X0 + BLDG_W + guardOffset, 0, 0),
+    );
+    // Posts at every column line on the perimeter
+    for (let i = 0; i <= BAYS_X; i++) {
+      const x = X0 + i * BAY_W;
+      for (const z of [Z0 - guardOffset, Z0 + BLDG_D + guardOffset]) {
+        const post = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, 1.1, 0.05),
+          guardMat,
+        );
+        post.position.set(x, guardYBase + 0.55, z);
+        post.castShadow = true;
+        frameGroup.add(post);
+      }
+    }
+    for (let k = 0; k <= BAYS_Z; k++) {
+      const z = Z0 + k * BAY_D;
+      for (const x of [X0 - guardOffset, X0 + BLDG_W + guardOffset]) {
+        const post = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, 1.1, 0.05),
+          guardMat,
+        );
+        post.position.set(x, guardYBase + 0.55, z);
+        post.castShadow = true;
+        frameGroup.add(post);
+      }
+    }
+
+    /* ── 7.  Construction-in-progress on floor 3 ──────────────
+     *  Left half is poured concrete deck.  Right half is exposed
+     *  rebar mat awaiting the next pour.  A wooden form holds the
+     *  live edge of the pour, with rebar protrusions sticking up. */
+    const wipFloor = BOUNDARY_FLOORS + 1; // floor 3
+    const wipY = wipFloor * STORY_H;
+
+    const wipDeckMat = new THREE.MeshLambertMaterial({ color: 0x8c9097 });
+    const partialDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(BLDG_W * 0.55, 0.12, BLDG_D + 0.3),
+      wipDeckMat,
+    );
+    partialDeck.position.set(-BLDG_W * 0.225, wipY - 0.06, 0);
+    partialDeck.castShadow = true;
+    partialDeck.receiveShadow = true;
+    frameGroup.add(partialDeck);
+
+    // Wooden edge formwork at the live edge of the pour
+    const wipEdge = -BLDG_W / 2 + BLDG_W * 0.55;
+    const formwork = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.3, BLDG_D + 0.3),
+      formworkMat,
+    );
+    formwork.position.set(wipEdge, wipY + 0.06, 0);
+    formwork.castShadow = true;
+    frameGroup.add(formwork);
+
+    // Vertical rebar protrusions just past the formwork
+    for (let r = 0; r < 6; r++) {
+      const rebar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.55, 0.06),
+        rebarMat,
+      );
+      rebar.position.set(
+        wipEdge + 0.4,
+        wipY + 0.18,
+        Z0 + 1 + r * (BLDG_D / 6),
+      );
+      rebar.castShadow = true;
+      frameGroup.add(rebar);
+    }
+
+    // Horizontal rebar mat on the un-poured right side
+    const wipDeckLength = BLDG_W / 2 - wipEdge;
+    const wipDeckCenterX = (wipEdge + BLDG_W / 2) / 2;
+    const rebarY = wipY + 0.04;
+    for (let r = 0; r < 8; r++) {
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(wipDeckLength + 0.4, 0.04, 0.04),
+        rebarMat,
+      );
+      bar.position.set(
+        wipDeckCenterX,
+        rebarY,
+        Z0 + 0.4 + r * ((BLDG_D - 0.8) / 7),
+      );
+      frameGroup.add(bar);
+    }
+    const transverseCount = Math.max(3, Math.round(wipDeckLength / 1.1));
+    for (let r = 0; r < transverseCount; r++) {
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.04, BLDG_D - 0.4),
+        rebarMat,
+      );
+      const tx = wipEdge + (wipDeckLength * (r + 0.5)) / transverseCount;
+      bar.position.set(tx, rebarY + 0.05, 0);
+      frameGroup.add(bar);
+    }
+
+    /* ── 8.  Construction site surroundings ─────────────────────────
+     *  Heavy equipment, material stockpiles, site facilities, safety
+     *  perimeter and landscaping — composed from primitive geometry
+     *  so the building reads as part of an active jobsite. */
+    addSiteSurroundings(scene);
+
+    /* ── AI-modified beams — solid neon outline + sweeping scan line ─
+     *  Each modified beam gets four steady cyan border lines (the
+     *  long edges of the beam, screen-space anti-aliased) wrapped
+     *  tight to the steel.  A thin cyan slab travels along the beam
+     *  length on a 3.5 s loop — the "scan" — to read as an active
+     *  AI edit.  Both fade to invisible when the user accepts. */
+
+    const INFLATE = 0.04;
+    const beamYs: number[] = [];
+    for (let f = BOUNDARY_FLOORS + 2; f <= STORIES; f++) {
+      beamYs.push(f * STORY_H);
+    }
+    const aiBeamX = X0 + BAYS_X * BAY_W; // +x face
+
+    /* Geometry: only the FOUR long edges of a unit cube along the
+     * z-axis (the beam's length axis), so the outline traces just
+     * the beam's borders without drawing end-cap rectangles that
+     * would overlap the corner columns. */
+    const longBorderEdges = [
+      // bottom-front edge (x = -0.5, y = -0.5)
+      -0.5, -0.5, -0.5,  -0.5, -0.5,  0.5,
+      // bottom-back  edge (x = +0.5, y = -0.5)
+       0.5, -0.5, -0.5,   0.5, -0.5,  0.5,
+      // top-front    edge (x = -0.5, y = +0.5)
+      -0.5,  0.5, -0.5,  -0.5,  0.5,  0.5,
+      // top-back     edge (x = +0.5, y = +0.5)
+       0.5,  0.5, -0.5,   0.5,  0.5,  0.5,
+    ];
+    const borderEdgeGeometry = new LineSegmentsGeometry();
+    borderEdgeGeometry.setPositions(longBorderEdges);
+
+    const neonGroup = new THREE.Group();
+    scene.add(neonGroup);
+    const solidMaterials: LineMaterial[] = [];
+    const scanMeshes: THREE.Mesh[] = [];
+    const scanMaterials: THREE.MeshBasicMaterial[] = [];
+
+    for (const y of beamYs) {
+      const mat = new LineMaterial({
         color: AI_ACCENT_NUM,
-        emissive: AI_ACCENT_NUM,
-        emissiveIntensity: 0.7,
-        roughness: 0.32,
-        metalness: 0.55,
+        linewidth: 3.0, // pixels (screen-space)
+        transparent: true,
+        opacity: 1.0,
+        depthTest: true,
+        worldUnits: false,
+        dashed: false,
       });
-      const geo = new THREE.BoxGeometry(0.55, 1.15, 1.7);
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      frameGroup.add(mesh);
-      jointMaterials.push(mat);
-      jointMeshes.push(mesh);
+      mat.resolution.set(W, H);
+      solidMaterials.push(mat);
+
+      const outline = new LineSegments2(borderEdgeGeometry, mat);
+      outline.scale.set(
+        BEAM_SIZE + INFLATE,
+        BEAM_SIZE + INFLATE,
+        BLDG_D + INFLATE,
+      );
+      outline.position.set(aiBeamX, y, 0);
+      outline.renderOrder = 5;
+      neonGroup.add(outline);
+
+      // Scan slab — thin cyan plane swept along the beam length
+      const scanMat = new THREE.MeshBasicMaterial({
+        color: AI_ACCENT_NUM,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const scan = new THREE.Mesh(
+        new THREE.BoxGeometry(BEAM_SIZE * 1.7, BEAM_SIZE * 1.7, 0.12),
+        scanMat,
+      );
+      scan.position.set(aiBeamX, y, -BLDG_D / 2);
+      scan.renderOrder = 6;
+      neonGroup.add(scan);
+      scanMeshes.push(scan);
+      scanMaterials.push(scanMat);
+    }
+
+    /* ── Raycaster — click on a modified beam to toggle the card ── */
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const dragMonitor = { downX: 0, downY: 0, dragging: false };
+
+    function setNDCFromEvent(event: PointerEvent) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function hitsModifiedBeam(): boolean {
+      raycaster.setFromCamera(ndc, camera);
+      return (
+        raycaster.intersectObjects(modifiedBeamMeshes, false).length > 0
+      );
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      dragMonitor.downX = event.clientX;
+      dragMonitor.downY = event.clientY;
+      dragMonitor.dragging = false;
+    }
+    function onPointerMove(event: PointerEvent) {
+      // Distinguish a click from an OrbitControls drag.
+      if (event.buttons !== 0) {
+        const dx = event.clientX - dragMonitor.downX;
+        const dy = event.clientY - dragMonitor.downY;
+        if (dx * dx + dy * dy > 25) dragMonitor.dragging = true;
+      }
+      if (acceptedRef.current) {
+        renderer.domElement.style.cursor = '';
+        return;
+      }
+      setNDCFromEvent(event);
+      renderer.domElement.style.cursor = hitsModifiedBeam()
+        ? 'pointer'
+        : '';
+    }
+    function onPointerUp(event: PointerEvent) {
+      if (dragMonitor.dragging) return;
+      if (acceptedRef.current) return;
+      setNDCFromEvent(event);
+      if (hitsModifiedBeam()) setOpen((o) => !o);
+    }
+
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    renderer.domElement.addEventListener('pointermove', onPointerMove);
+    renderer.domElement.addEventListener('pointerup', onPointerUp);
+
+    /* ── Card / line projection ───────────────────────────────────
+     *  Project the centroid anchor every frame; place the card
+     *  next to its screen position (right side preferred, left if
+     *  no room, otherwise clamped vertically) and rewrite the SVG
+     *  line endpoints from anchor → card centre. */
+    const tmp = new THREE.Vector3();
+    function updateOverlay() {
+      const card = cardWrapRef.current;
+      const line = lineRef.current;
+      if (!card) return;
+
+      tmp.copy(ANCHOR).project(camera);
+      const sx = (tmp.x * 0.5 + 0.5) * W;
+      const sy = (-tmp.y * 0.5 + 0.5) * H;
+
+      const cardW = card.offsetWidth || CARD_WIDTH;
+      const cardH = card.offsetHeight || 360;
+
+      let cardLeft: number;
+      if (sx + CARD_GAP + cardW + CARD_MARGIN <= W) {
+        cardLeft = sx + CARD_GAP;
+      } else if (sx - CARD_GAP - cardW - CARD_MARGIN >= 0) {
+        cardLeft = sx - CARD_GAP - cardW;
+      } else {
+        cardLeft = Math.max(
+          CARD_MARGIN,
+          Math.min(W - cardW - CARD_MARGIN, sx - cardW / 2),
+        );
+      }
+
+      let cardTop = sy - cardH / 2;
+      cardTop = Math.max(
+        CARD_MARGIN,
+        Math.min(H - cardH - CARD_MARGIN, cardTop),
+      );
+
+      const cardLeftPx = Math.round(cardLeft);
+      const cardTopPx = Math.round(cardTop);
+      card.style.transform = `translate3d(${cardLeftPx}px, ${cardTopPx}px, 0)`;
+
+      if (line) {
+        const cx = cardLeftPx + cardW / 2;
+        const cy = cardTopPx + cardH / 2;
+        line.setAttribute('x1', String(Math.round(sx)));
+        line.setAttribute('y1', String(Math.round(sy)));
+        line.setAttribute('x2', String(Math.round(cx)));
+        line.setAttribute('y2', String(Math.round(cy)));
+      }
     }
 
     /* ── Animation loop ───────────────────────────────────────── */
     let frameId = 0;
-    let elapsed = 0;
-    const cyanColor = new THREE.Color(AI_ACCENT_NUM);
 
     function animate(t: number) {
       frameId = requestAnimationFrame(animate);
-      const dt = Math.min(0.05, (t - elapsed) / 1000);
-      elapsed = t;
 
       controls.update();
 
-      // Pulse the joints when not accepted; fade to neutral when accepted.
-      const pulse = 0.55 + 0.25 * Math.sin(t / 320);
-      const targetIntensity = acceptedRef.current ? 0 : pulse;
-      const targetColor = acceptedRef.current ? STEEL_GREY : cyanColor;
-      const lerpRate = 1 - Math.pow(0.001, dt); // ~smooth easing per second
+      const tSec = t / 1000;
+      const acceptedNow = acceptedRef.current;
 
-      jointMaterials.forEach((mat) => {
-        mat.emissiveIntensity +=
-          (targetIntensity - mat.emissiveIntensity) * lerpRate;
-        mat.color.lerp(targetColor, lerpRate * 0.6);
-        mat.emissive.lerp(targetColor, lerpRate * 0.6);
+      /* Solid neon outline — fade opacity to 0 once accepted. */
+      solidMaterials.forEach((mat) => {
+        const target = acceptedNow ? 0 : 0.95;
+        mat.opacity += (target - mat.opacity) * 0.10;
+        mat.visible = mat.opacity > 0.02;
       });
 
-      // Subtle bob on the joints when not accepted, drawing the eye.
-      jointMeshes.forEach((mesh, idx) => {
-        const baseY = (idx + 1) * STORY_H;
-        if (!acceptedRef.current) {
-          mesh.position.y = baseY + Math.sin(t / 540 + idx * 0.6) * 0.04;
-        } else {
-          mesh.position.y += (baseY - mesh.position.y) * 0.08;
-        }
+      /* Scan slab — sweeps along the beam's z-axis on a 3.5 s loop,
+       * with a small per-beam phase offset so they don't move in
+       * lock-step.  Slab opacity fades on accept. */
+      const scanPeriod = 3.5;
+      scanMeshes.forEach((mesh, idx) => {
+        const phase = ((tSec + idx * 0.7) % scanPeriod) / scanPeriod;
+        mesh.position.z = -BLDG_D / 2 + phase * BLDG_D;
+      });
+      scanMaterials.forEach((mat) => {
+        const target = acceptedNow ? 0 : 0.85;
+        mat.opacity += (target - mat.opacity) * 0.10;
       });
 
+      updateOverlay();
       renderer.render(scene, camera);
     }
     frameId = requestAnimationFrame(animate);
@@ -301,13 +1404,23 @@ export default function Pro6() {
       camera.aspect = W / H;
       camera.updateProjectionMatrix();
       renderer.setSize(W, H);
+      // Screen-space LineMaterial needs the latest viewport size to
+      // keep the linewidth at a constant pixel thickness.
+      solidMaterials.forEach((mat) => mat.resolution.set(W, H));
     }
     window.addEventListener('resize', onResize);
 
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener('resize', onResize);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerup', onPointerUp);
       controls.dispose();
+      scene.remove(neonGroup);
+      solidMaterials.forEach((m) => m.dispose());
+      scanMaterials.forEach((m) => m.dispose());
+      borderEdgeGeometry.dispose();
       if (mount.contains(renderer.domElement))
         mount.removeChild(renderer.domElement);
       renderer.dispose();
@@ -327,79 +1440,50 @@ export default function Pro6() {
       {/* Three.js mount */}
       <div ref={mountRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
-      {/* Project label — top left */}
-      <div
+      {/* SVG connector line — only visible when the card is open */}
+      <svg
         style={{
           position: 'absolute',
-          top: 24,
-          left: 28,
-          zIndex: 6,
+          inset: 0,
+          width: '100%',
+          height: '100%',
           pointerEvents: 'none',
+          zIndex: 5,
+          opacity: open && !accepted ? 1 : 0,
+          transition: 'opacity 0.18s ease',
         }}
       >
-        <div
-          style={{
-            fontSize: 'var(--modus-wc-font-size-xs, 10px)',
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            color: TOKEN_TEXT_MUTED,
-            lineHeight: '14px',
-          }}
-        >
-          Cedar Hills · Phase 2 · Block C
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--modus-wc-font-size-md, 14px)',
-            fontWeight: 700,
-            color: TOKEN_TEXT,
-            lineHeight: '20px',
-          }}
-        >
-          BIM viewport · Structural
-        </div>
-      </div>
+        <line
+          ref={lineRef}
+          stroke={TOKEN_AI_ACCENT}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeDasharray="4 4"
+          opacity={0.85}
+          shapeRendering="geometricPrecision"
+        />
+      </svg>
 
-      {/* Camera controls hint — bottom left */}
+      {/* AI changes card — positioned next to the modified beams' centroid via updateOverlay */}
       <div
+        ref={cardWrapRef}
         style={{
           position: 'absolute',
-          bottom: 22,
-          left: 22,
-          padding: '8px 12px',
-          borderRadius: 8,
-          backgroundColor: TOKEN_BASE_100,
-          border: `1px solid ${TOKEN_BASE_200}`,
-          color: TOKEN_TEXT,
-          fontSize: 'var(--modus-wc-font-size-sm, 12px)',
-          zIndex: 6,
-          lineHeight: 1.5,
-          boxShadow: '0px 4px 12px rgba(20, 24, 32, 0.08)',
-        }}
-      >
-        <div style={{ fontWeight: 700, marginBottom: 2, color: TOKEN_TEXT }}>
-          Camera controls
-        </div>
-        <div style={{ color: TOKEN_TEXT_MUTED }}>
-          Drag — orbit · Right-drag — pan · Scroll — zoom
-        </div>
-      </div>
-
-      {/* AI changes card — bottom center, with Trimble rainbow gradient border */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 28,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: 0,
+          top: 0,
           zIndex: 10,
-          width: 380,
+          width: CARD_WIDTH,
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease',
+          willChange: 'transform',
         }}
       >
         <div
+          className="pro6-card-glow"
           style={{
             background: TRIMBLE_RAINBOW,
+            backgroundSize: '200% 200%',
             padding: 2,
             borderRadius: 16,
             boxShadow:
@@ -440,7 +1524,7 @@ export default function Pro6() {
                   lineHeight: '20px',
                 }}
               >
-                {accepted ? 'Changes accepted' : 'Added Structural joints'}
+                {accepted ? 'Changes accepted' : 'Reinforced perimeter beams'}
               </span>
               <span
                 style={{
@@ -456,7 +1540,7 @@ export default function Pro6() {
                   lineHeight: '14px',
                 }}
               >
-                4 elements
+                2 beams
               </span>
             </div>
 
@@ -471,8 +1555,8 @@ export default function Pro6() {
               }}
             >
               {accepted
-                ? '4 moment-frame connections were applied to the right-wall beam-column intersections.'
-                : 'AI added 4 moment-frame connections at right-wall beam-column intersections to satisfy the lateral seismic check.'}
+                ? '2 perimeter beams at the top of the structure were upsized to W14×38 sections.'
+                : 'AI upsized 2 perimeter beams at the top of the structure (floors 4-5) to W14×38 sections to satisfy the lateral seismic check.'}
             </p>
 
             {/* Actions */}
@@ -496,6 +1580,7 @@ export default function Pro6() {
                   color="secondary"
                   variant="outlined"
                   size="md"
+                  onButtonClick={() => setOpen(false)}
                 >
                   Reject
                 </ModusWcButton>

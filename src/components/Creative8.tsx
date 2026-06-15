@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
+import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
    Creative 8 — Give professionals control

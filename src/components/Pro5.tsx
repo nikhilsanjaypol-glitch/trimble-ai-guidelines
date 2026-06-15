@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
@@ -6,17 +6,22 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
  *
  * To ensure traceability & integrity.
  *
- * The source document sits in the background as the relevant
- * context. Three passages are highlighted in distinct colors —
- * pink (Site conditions), green (Weather), blue (Materials) —
- * and clicking any one updates the foreground Cited-Insight card
- * to show the AI's paraphrased claim alongside the verbatim source
- * quote.
+ * Two-column layout:
  *
- * The card's accent (sparkle icon, blockquote border, attribution
- * chip, "Open" link) re-tints to match the active highlight, so
- * the visual link between the AI's claim and its source is always
- * obvious at a glance.
+ *   LEFT — a stack of readable AI Insight cards (one per citation).
+ *          The active card is elevated and expands to show its
+ *          short follow-up description. Each card has the colored
+ *          left stripe matching its source passage.
+ *
+ *   RIGHT — the full source document (Daily Field Report). Clicking
+ *           an insight card on the left dynamically:
+ *             • emphasizes the cited passage in the document
+ *             • smooth-scrolls the document body so the cited
+ *               passage is centered in view
+ *
+ * The professional reads the AI's summary on the left and traces
+ * any claim back to the exact words in the source on the right —
+ * the citation is one click away.
  * ───────────────────────────────────────────────────────────────── */
 
 type CColor = 'pink' | 'green' | 'blue';
@@ -92,7 +97,7 @@ const CITATIONS: Citation[] = [
   },
 ];
 
-/* ── Citable highlight in the source document ──────────────────── */
+/* ── Citable highlight inside the source document ──────────────── */
 function Hl({
   color,
   active,
@@ -127,7 +132,7 @@ function Hl({
         cursor: 'pointer',
         outline: 'none',
         transition:
-          'background-color 150ms ease, box-shadow 150ms ease',
+          'background-color 180ms ease, box-shadow 180ms ease',
         boxShadow: active ? `inset 0 -2px 0 0 ${c.border}` : 'none',
         boxDecorationBreak: 'clone',
         WebkitBoxDecorationBreak: 'clone',
@@ -196,27 +201,218 @@ function Section({
   );
 }
 
-/* ── Pro 5 — Cited insight, driven by source document ──────────── */
+/* ── Stacked AI Insight card (left column item) ────────────────── */
+function InsightCard({
+  citation,
+  active,
+  index,
+  total,
+  onClick,
+  registerRef,
+}: {
+  citation: Citation;
+  active: boolean;
+  index: number;
+  total: number;
+  onClick: () => void;
+  registerRef?: (el: HTMLButtonElement | null) => void;
+}) {
+  const c = COLORS[citation.color];
+  return (
+    <button
+      ref={registerRef}
+      type="button"
+      onClick={onClick}
+      className="flex flex-col text-left"
+      style={{
+        width: '100%',
+        padding: '16px 18px',
+        gap: '10px',
+        backgroundColor: '#ffffff',
+        borderTop:
+          '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        borderRight:
+          '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        borderBottom:
+          '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+        borderLeft: `4px solid ${c.border}`,
+        borderRadius: '8px',
+        boxShadow: active
+          ? '0 8px 22px rgba(0,0,0,0.14)'
+          : '0 1px 3px rgba(0,0,0,0.05)',
+        cursor: 'pointer',
+        transition: 'box-shadow 180ms ease, transform 180ms ease',
+        transform: active ? 'translateX(0)' : 'translateX(0)',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.boxShadow =
+            '0 3px 10px rgba(0,0,0,0.08)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.boxShadow =
+            '0 1px 3px rgba(0,0,0,0.05)';
+        }
+      }}
+    >
+      {/* Header: sparkle + label + counter */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center" style={{ gap: '6px' }}>
+          <ModusWcIcon
+            name="sparkle"
+            size="xs"
+            decorative
+            style={{ color: c.accent }}
+          />
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color:
+                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          >
+            AI Insight · Cited
+          </span>
+        </div>
+        <span
+          style={{
+            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
+            fontWeight: 600,
+            color:
+              'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          }}
+        >
+          {index} of {total}
+        </span>
+      </div>
+
+      {/* The AI's paraphrased claim */}
+      <p
+        style={{
+          margin: 0,
+          fontSize: 'var(--modus-wc-font-size-md, 15px)',
+          fontWeight: 500,
+          lineHeight: '22px',
+          color: 'var(--modus-wc-color-base-content, #171c1e)',
+          whiteSpace: 'pre-line',
+        }}
+      >
+        {citation.claim}
+      </p>
+
+      {/* Short descriptive follow-up — only on the active card */}
+      {active && (
+        <p
+          style={{
+            margin: 0,
+            fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+            lineHeight: '18px',
+            color:
+              'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+          }}
+        >
+          {citation.description}
+        </p>
+      )}
+    </button>
+  );
+}
+
+/* ── Pro 5 — Insights column drives the source document on the right */
 export default function Pro5() {
   const [selected, setSelected] = useState<number>(1);
-  const citation = CITATIONS.find((c) => c.id === selected)!;
-  const accent = COLORS[citation.color];
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const hlRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-  const [cardTop, setCardTop] = useState<number>(120);
+  const docBodyRef = useRef<HTMLDivElement | null>(null);
 
-  /* Position the card so its top aligns with the active highlight.
-     useLayoutEffect runs before the browser paints, so the card lands
-     at the correct top on first render (no flash). */
-  useLayoutEffect(() => {
+  /* Smooth-scroll the source-doc body so the active citation is
+     centered in view. Runs after each selection change. */
+  useEffect(() => {
     const hlEl = hlRefs.current[selected];
-    const containerEl = containerRef.current;
-    if (!hlEl || !containerEl) return;
+    const scrollEl = docBodyRef.current;
+    if (!hlEl || !scrollEl) return;
     const hlRect = hlEl.getBoundingClientRect();
-    const containerRect = containerEl.getBoundingClientRect();
-    setCardTop(Math.max(20, hlRect.top - containerRect.top - 10));
+    const scrollRect = scrollEl.getBoundingClientRect();
+    const targetTop =
+      scrollEl.scrollTop +
+      (hlRect.top - scrollRect.top) -
+      scrollRect.height / 2 +
+      hlRect.height / 2;
+    scrollEl.scrollTo({ top: targetTop, behavior: 'smooth' });
   }, [selected]);
+
+  /* Geometry of the connector line that runs from the active
+     insight card on the left to the cited passage on the right.
+     Recomputed whenever the selection changes or the source doc
+     body scrolls (so the line stays attached during smooth scroll). */
+  const [line, setLine] = useState<{
+    path: string;
+    endX: number;
+    endY: number;
+    color: string;
+  } | null>(null);
+
+  const activeCitation =
+    CITATIONS.find((c) => c.id === selected) ?? CITATIONS[0];
+
+  useLayoutEffect(() => {
+    const computeLine = () => {
+      const container = containerRef.current;
+      const card = cardRefs.current[selected];
+      const hl = hlRefs.current[selected];
+      const docBody = docBodyRef.current;
+      if (!container || !card || !hl || !docBody) {
+        setLine(null);
+        return;
+      }
+      const cr = container.getBoundingClientRect();
+      const cardR = card.getBoundingClientRect();
+      const hlR = hl.getBoundingClientRect();
+      const docR = docBody.getBoundingClientRect();
+
+      const x1 = cardR.right - cr.left;
+      const y1 = cardR.top + cardR.height / 2 - cr.top;
+
+      // Clamp the right-side endpoint vertically to the visible
+      // portion of the scrollable document body — keeps the line
+      // visually pinned to the body even while smooth-scrolling.
+      const rawY2 = hlR.top + hlR.height / 2 - cr.top;
+      const docTop = docR.top - cr.top + 4;
+      const docBottom = docR.bottom - cr.top - 4;
+      const y2 = Math.max(docTop, Math.min(docBottom, rawY2));
+      const x2 = hlR.left - cr.left;
+
+      const dx = Math.max(40, x2 - x1);
+      const cx1 = x1 + dx * 0.55;
+      const cx2 = x2 - dx * 0.55;
+
+      setLine({
+        path: `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`,
+        endX: x2,
+        endY: y2,
+        color: COLORS[activeCitation.color].border,
+      });
+    };
+
+    computeLine();
+
+    const docBody = docBodyRef.current;
+    if (docBody) {
+      docBody.addEventListener('scroll', computeLine, { passive: true });
+    }
+    window.addEventListener('resize', computeLine);
+    return () => {
+      if (docBody) docBody.removeEventListener('scroll', computeLine);
+      window.removeEventListener('resize', computeLine);
+    };
+  }, [selected, activeCitation.color]);
 
   return (
     <div
@@ -224,12 +420,38 @@ export default function Pro5() {
       className="relative"
       style={{ width: '900px', height: '720px' }}
     >
-      {/* Source document — formal field-report form */}
+      {/* LEFT — AI Insights column */}
+      <div
+        className="absolute flex flex-col justify-center"
+        style={{
+          top: '20px',
+          left: '0',
+          width: '340px',
+          height: '680px',
+          gap: '16px',
+        }}
+      >
+        {CITATIONS.map((c, i) => (
+          <InsightCard
+            key={c.id}
+            citation={c}
+            active={selected === c.id}
+            index={i + 1}
+            total={CITATIONS.length}
+            onClick={() => setSelected(c.id)}
+            registerRef={(el) => {
+              cardRefs.current[c.id] = el;
+            }}
+          />
+        ))}
+      </div>
+
+      {/* RIGHT — Source document (Daily Field Report) */}
       <div
         className="absolute bg-white flex flex-col"
         style={{
           top: '20px',
-          left: '0',
+          right: '0',
           width: '520px',
           height: '680px',
           boxShadow: '0px 8px 24px 0px rgba(0,0,0,0.10)',
@@ -345,8 +567,9 @@ export default function Pro5() {
           ))}
         </div>
 
-        {/* Document body — numbered sections */}
+        {/* Document body — scrollable; numbered sections */}
         <div
+          ref={docBodyRef}
           style={{
             flex: 1,
             padding: '20px 32px',
@@ -354,7 +577,8 @@ export default function Pro5() {
             fontSize: '14px',
             lineHeight: '22px',
             color: 'var(--modus-wc-color-base-content, #171c1e)',
-            overflow: 'hidden',
+            overflowY: 'auto',
+            scrollBehavior: 'smooth',
           }}
         >
           <Section number={1} label="Site conditions">
@@ -409,7 +633,26 @@ export default function Pro5() {
 
           <Section number={4} label="Manpower">
             Crew of 8 on site through 16:00. Concrete crew released
-            early pending pour permit.
+            early pending pour permit. Two laborers reassigned to
+            formwork prep on Block D.
+          </Section>
+
+          <Section number={5} label="Equipment">
+            Crane CK-12 cleared morning inspection. Concrete pump
+            P-04 on standby pending pour permit. Compactor unit
+            scheduled for re-test run on May 19 at 07:30.
+          </Section>
+
+          <Section number={6} label="Safety">
+            No incidents reported. PPE compliance verified at the
+            09:00 toolbox talk. Wet-weather walkway boards staged at
+            access points B and D.
+          </Section>
+
+          <Section number={7} label="Notes">
+            Coordinate with civil for storm-drain inlet relocation on
+            grid line C5 before the next pour cycle. QC review of
+            forms 14–17 scheduled for May 19 at 08:00.
           </Section>
         </div>
 
@@ -474,91 +717,42 @@ export default function Pro5() {
         </div>
       </div>
 
-      {/* Cited Insight card — foreground, slides to align with the
-          active highlight on the left */}
-      <div
-        className="absolute bg-white rounded-xl flex flex-col"
+      {/* Connector line — runs from the active insight card on the
+          left to the cited passage on the right. Sits above both
+          columns and ignores pointer events so it never blocks
+          clicks. Re-routes on selection change and on doc scroll. */}
+      <svg
         style={{
-          top: `${cardTop}px`,
-          right: '0',
-          width: '340px',
-          padding: '20px 20px 20px 24px',
-          gap: '14px',
-          boxShadow: '0px 10px 28px 0px rgba(0,0,0,0.18)',
-          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          borderRight: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          borderBottom:
-            '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          borderLeft: `4px solid ${accent.border}`,
-          transition:
-            'top 320ms cubic-bezier(0.4, 0, 0.2, 1), border-left-color 180ms ease',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          overflow: 'visible',
+          zIndex: 10,
         }}
+        aria-hidden
       >
-        {/* Header tag + citation counter */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center" style={{ gap: '6px' }}>
-            <ModusWcIcon
-              name="sparkle"
-              size="xs"
-              decorative
-              style={{
-                color: accent.accent,
-                transition: 'color 180ms ease',
-              }}
+        {line && (
+          <g style={{ transition: 'opacity 180ms ease' }}>
+            <path
+              d={line.path}
+              stroke={line.color}
+              strokeWidth={1.75}
+              fill="none"
+              strokeLinecap="round"
+              opacity={0.9}
             />
-            <span
-              style={{
-                fontSize:
-                  'var(--modus-wc-font-size-xxs, 10px)',
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color:
-                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            >
-              AI Insight · Cited
-            </span>
-          </div>
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-              fontWeight: 600,
-              color:
-                'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          >
-            {selected} of {CITATIONS.length}
-          </span>
-        </div>
-
-        {/* The AI's paraphrased claim */}
-        <p
-          style={{
-            margin: 0,
-            fontSize: 'var(--modus-wc-font-size-md, 15px)',
-            fontWeight: 500,
-            lineHeight: '22px',
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-            whiteSpace: 'pre-line',
-          }}
-        >
-          {citation.claim}
-        </p>
-
-        {/* Short descriptive follow-up */}
-        <p
-          style={{
-            margin: 0,
-            fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-            lineHeight: '18px',
-            color:
-              'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-          }}
-        >
-          {citation.description}
-        </p>
-      </div>
+            <circle
+              cx={line.endX}
+              cy={line.endY}
+              r={3.5}
+              fill={line.color}
+            />
+          </g>
+        )}
+      </svg>
     </div>
   );
 }
