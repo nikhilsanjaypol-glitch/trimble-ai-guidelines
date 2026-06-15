@@ -473,3 +473,29 @@ button.modus-wc-btn.modus-wc-btn-neutral.modus-wc-btn-outline {
 .pro6-card-glow {
   animation: creative7RainbowShimmer 4s ease-in-out infinite;
 }
+
+/* ── Pro 6 — Grey Reject button ───────────────────────────────────
+   Hard-locked grey for the Reject action. !important is used here on
+   purpose — Modus's button colour rules are theme-attribute-prefixed
+   and win on specificity, and the app's resolved `secondary` token
+   in this codebase reads as warm/orange rather than grey. This rule
+   short-circuits all of that and guarantees a flat grey fill, white
+   text, and a darker hover, regardless of theme or daisy variables. */
+button.modus-wc-btn.pro6-reject-grey {
+  background-color: #62666c !important;
+  border-color: #62666c !important;
+  color: #ffffff !important;
+}
+button.modus-wc-btn.pro6-reject-grey:hover {
+  background-color: #4a4d52 !important;
+  border-color: #4a4d52 !important;
+  color: #ffffff !important;
+}
+button.modus-wc-btn.pro6-reject-grey:active,
+button.modus-wc-btn.pro6-reject-grey[aria-pressed='true'] {
+  background-color: #353a3f !important;
+  border-color: #353a3f !important;
+}
+button.modus-wc-btn.pro6-reject-grey:focus-visible {
+  box-shadow: 0 0 0 0.25rem rgba(98, 102, 108, 0.4) !important;
+}

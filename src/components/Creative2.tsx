@@ -188,13 +188,15 @@ export default function Creative2() {
   }
 
   /**
-   * Prompt-bar submission → applies the requested modification on
+   * "Edit with AI" prompt → applies the requested modification on
    * top of the widget's *current* state. The widget is never
    * regenerated; we mutate `ccs` / `display` in place so each
-   * iteration explicitly builds on the previous one. Currently
-   * understands colour / palette requests.
+   * iteration explicitly builds on the previous one.
+   *
+   * Returns a short AI acknowledgement string that the chat panel
+   * renders as the AI's bubble for that turn.
    */
-  function applyPromptEdit(p: string): void {
+  function applyPromptEdit(p: string): string {
     const lower = p.toLowerCase();
     if (/(colou?r|differentiate|distinguish|distinct|hue|palette)/.test(lower)) {
       const colors = PALETTES.distinct;
@@ -202,7 +204,9 @@ export default function Creative2() {
       setCcs((prev) =>
         prev.map((cc, i) => ({ ...cc, color: colors[i] ?? cc.color })),
       );
+      return 'Done — refreshed the palette so each cost centre is visually distinct.';
     }
+    return "I didn't catch a specific edit. Try asking about colours, totals, or labels.";
   }
 
   /* When the dropdown is on a single cost center, filter the cost-center
@@ -247,21 +251,16 @@ export default function Creative2() {
 
       <div style={{ marginTop: '10px' }}>
         <div style={{ position: 'relative', width: '720px' }}>
-          {/* AI's output — shimmering rainbow border marks it as a live
-           * AI artifact. There is no settings overlay in this variant. */}
+          {/* AI's output — neutral Modus card. The rainbow / AI signal
+           * lives on the "Edit with AI" pill below; the widget card
+           * itself stays calm so the data reads first. */}
           <div
             style={{
               width: '720px',
               boxSizing: 'border-box',
-              border: '2px solid transparent',
+              border: `1px solid ${COLORS.border}`,
               borderRadius: '16px',
-              backgroundImage:
-                `linear-gradient(${COLORS.white}, ${COLORS.white}), ` +
-                'linear-gradient(90deg, #00d7c0 0%, #0094f0 35%, #b73efa 68%, #ff5a8c 100%)',
-              backgroundSize: '100% 100%, 200% 100%',
-              backgroundOrigin: 'border-box',
-              backgroundClip: 'padding-box, border-box',
-              animation: 'creative2RainbowShimmer 3.6s ease-in-out infinite',
+              backgroundColor: COLORS.white,
               boxShadow:
                 '0 1px 3px rgba(15,23,42,0.08), 0 8px 28px rgba(15,23,42,0.06)',
               overflow: 'hidden',
@@ -1643,21 +1642,33 @@ function ForecastPopover({ ccs, anchorTop, onClose }: ForecastPopoverProps) {
 }
 
 /* ── AI Edit prompt ─────────────────────────────────────────── */
-/* Same shape as the Creative 1 footer prompt bar — a 560 px Photoshop-
- * style floating pill with the Modus text input on the left and the
- * Send button on the right. Always visible (no collapsed state); the
- * Edit / Save cluster from Creative 1 is intentionally omitted because
- * Creative 2's whole premise is "modified with prompt only".
+/* Two states:
+ *
+ *   1. Collapsed — a single rainbow-bordered "Edit with AI" pill,
+ *                  sitting where a toolbar normally would. Nothing
+ *                  else is visible.
+ *   2. Expanded  — a chat-shaped column. A 560 px Creative-1-style
+ *                  prompt pill at the bottom (Modus text input +
+ *                  Send), past turns rendered above as alternating
+ *                  user / AI bubbles, and a "Try this prompt" chip
+ *                  underneath that types the demo prompt into the
+ *                  bar (user still has to hit Send).
  *
  * Each submission calls `onSubmit` with the raw prompt text; the
- * parent applies the change directly on top of the widget's current
- * state, so every iteration builds on the last one. A "Try this
- * prompt" chip sits below the bar before the first submission to make
- * the colour-differentiation demo path obvious. */
+ * parent applies the change on top of the widget's current state and
+ * returns a short AI acknowledgement which we render as the AI bubble
+ * for that turn. The chat history makes the build-on-existing-work
+ * pattern explicit — every iteration sits on top of the previous
+ * one, with a visible record of what changed. */
 interface AiEditPromptProps {
   widgetWidth: number;
   suggestion: string;
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string) => string;
+}
+
+interface ChatTurn {
+  user: string;
+  ai: string;
 }
 
 function AiEditPrompt({
@@ -1665,25 +1676,194 @@ function AiEditPrompt({
   suggestion,
   onSubmit,
 }: AiEditPromptProps) {
+  const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
-  const [submittedOnce, setSubmittedOnce] = useState(false);
+  const [history, setHistory] = useState<ChatTurn[]>([]);
 
   const isPromptEmpty = text.trim().length === 0;
 
   function handleSubmit(p?: string) {
     const v = (p ?? text).trim();
     if (!v) return;
-    onSubmit(v);
-    setSubmittedOnce(true);
+    const ai = onSubmit(v);
+    setHistory((h) => [...h, { user: v, ai }]);
     setText('');
   }
 
+  /* Collapsed — a single inviting pill. The rainbow border picks up
+   * the same gradient used on the widget so they read as paired AI
+   * surfaces. Clicking opens the dedicated prompt panel below. */
+  if (!open) {
+    return (
+      <div
+        className="flex items-center justify-center"
+        style={{ width: `${widgetWidth}px` }}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Edit with AI"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px 16px',
+            border: '1.5px solid transparent',
+            borderRadius: '999px',
+            /* Dual-gradient ring: white fill on top of a 200%-wide
+             * rainbow layer that's slowly scrolled by the
+             * `creative2RainbowShimmer` keyframes. The widget card
+             * is neutral now, so the AI affordance lives entirely
+             * on this pill. */
+            backgroundImage:
+              `linear-gradient(${COLORS.white}, ${COLORS.white}), ` +
+              'linear-gradient(90deg, #00d7c0 0%, #0094f0 35%, #b73efa 68%, #ff5a8c 100%)',
+            backgroundSize: '100% 100%, 200% 100%',
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            animation: 'creative2RainbowShimmer 3.6s ease-in-out infinite',
+            fontSize: '14px',
+            fontWeight: 700,
+            color: COLORS.text,
+            letterSpacing: '0.15px',
+            cursor: 'pointer',
+            boxShadow:
+              '0 1px 2px rgba(15,23,42,0.06), 0 8px 24px rgba(15,23,42,0.10)',
+            fontFamily: 'inherit',
+            transition: 'transform 120ms ease, box-shadow 120ms ease',
+          }}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget as HTMLButtonElement;
+            el.style.transform = 'translateY(-1px)';
+            el.style.boxShadow =
+              '0 2px 4px rgba(15,23,42,0.08), 0 12px 28px rgba(15,23,42,0.14)';
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget as HTMLButtonElement;
+            el.style.transform = 'translateY(0)';
+            el.style.boxShadow =
+              '0 1px 2px rgba(15,23,42,0.06), 0 8px 24px rgba(15,23,42,0.10)';
+          }}
+        >
+          {/* Trimble AI brand mark replaces the generic edit icon.
+           * Rendered at 40×28 (its native 10:7 ratio) but pulled in
+           * vertically with a -4 px top/bottom margin so its layout
+           * height stays at 20 px — same as the 14 px label's line
+           * height. The logo is visually larger, the pill keeps the
+           * exact same height it had before. */}
+          <img
+            src="/assets/trimble-ai-logo.png"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            style={{
+              width: '40px',
+              height: '28px',
+              margin: '-4px 0',
+              display: 'block',
+              objectFit: 'contain',
+              flexShrink: 0,
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          />
+          Edit with AI
+        </button>
+      </div>
+    );
+  }
+
+  /* Expanded — chat-shaped column under the widget. */
   return (
     <div
       className="flex flex-col items-center"
-      style={{ gap: '10px', width: `${widgetWidth}px` }}
+      style={{ gap: '12px', width: `${widgetWidth}px` }}
     >
-      {/* Photoshop-style floating prompt pill — copied from the
+      {/* Chat history — past turns rendered top-to-bottom, oldest
+       * first, so the most recent edit sits closest to the input.
+       * Constrained to the same 560 px column as the prompt bar so
+       * the chat reads as one cohesive panel. */}
+      {history.length > 0 && (
+        <div
+          className="flex flex-col"
+          style={{ gap: '12px', width: '560px' }}
+        >
+          {history.map((turn, i) => (
+            <div key={i} className="flex flex-col" style={{ gap: '6px' }}>
+              {/* User bubble (right-aligned, neutral fill) */}
+              <div className="flex justify-end">
+                <div
+                  style={{
+                    maxWidth: '420px',
+                    backgroundColor: COLORS.bgLight,
+                    borderRadius: '14px 14px 2px 14px',
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    lineHeight: '18px',
+                    color: COLORS.text,
+                    letterSpacing: '0.15px',
+                  }}
+                >
+                  {turn.user}
+                </div>
+              </div>
+
+              {/* AI bubble (left-aligned). The Trimble AI brand mark
+               * is anchored to the bubble's top-left so the logo +
+               * reply read as one continuous unit instead of an
+               * avatar floating beside it. The squared 2 px BL
+               * corner "points" toward the message anchor. */}
+              {/* `marginLeft: -12px` slides the whole bubble 12 px
+               * to the left of the column gutter so the logo's left
+               * edge (at 12 px inside the bubble) lands flush with
+               * the left edge of the prompt bar below. */}
+              <div
+                className="inline-flex items-center self-start"
+                style={{
+                  position: 'relative',
+                  backgroundColor: COLORS.white,
+                  borderRadius: '14px 14px 14px 2px',
+                  padding: '10px 14px 10px 70px',
+                  marginLeft: '-12px',
+                  whiteSpace: 'nowrap',
+                  width: 'fit-content',
+                }}
+              >
+                <img
+                  src="/assets/trimble-ai-logo.png"
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '12px',
+                    transform: 'translateY(-50%)',
+                    width: '50px',
+                    height: '36px',
+                    display: 'block',
+                    objectFit: 'contain',
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '13px',
+                    lineHeight: '18px',
+                    color: COLORS.text,
+                    letterSpacing: '0.15px',
+                  }}
+                >
+                  {turn.ai}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Photoshop-style floating prompt pill — same shape as the
        * Creative 1 footer. Modus base-200 border, base-page fill,
        * 12 px radius and a soft drop shadow so it reads as a
        * floating contextual surface. Enter submits. */}
@@ -1736,9 +1916,8 @@ function AiEditPrompt({
           />
         </div>
 
-        {/* Send (Enter) — circular icon button, same asset as the rest
-         * of the AI surfaces in the app. Disabled state stays the same
-         * shape so the pill never reflows. */}
+        {/* Send — circular icon button. Disabled state keeps the same
+         * footprint so the pill never reflows. */}
         <button
           type="button"
           aria-label="Send prompt"
@@ -1776,11 +1955,11 @@ function AiEditPrompt({
         </button>
       </div>
 
-      {/* Try-this suggestion — only shown until the user submits
-       * something. Click *populates* the prompt bar with the
-       * suggestion text instead of submitting; the user still has
-       * to hit Send (or Enter) so the demo prompt feels typed. */}
-      {!submittedOnce && (
+      {/* Try-this suggestion — only shown before the first turn so it
+       * doesn't keep nagging once the user has started chatting. Click
+       * *populates* the prompt bar with the suggestion text rather
+       * than submitting, so the demo prompt feels typed. */}
+      {history.length === 0 && (
         <button
           type="button"
           onClick={() => setText(suggestion)}

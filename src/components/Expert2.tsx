@@ -12,22 +12,17 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
  *
  * Layout
  * ------
- * 1. A compact landscape trigger card floats on the page background.
- *    At a glance the user reads the metric, the count of underlying
- *    factors, and the confidence level (vertical "LOW" ribbon).
+ * 1. A landscape "Completion confidence / LOW" trigger card floats on
+ *    the page background. Click → details panel opens below.
  *
- *      ┌────────────────────────────────────────────────┐
- *      │  Completion confidence                  L      │
- *      │                                         O      │
- *      │  3 risk factors ▼                       W      │
- *      └────────────────────────────────────────────────┘
- *
- * 2. Click the card → a details panel slides open underneath:
- *      • One-line summary of the decision.
- *      • "What I found" — short bullets. Each bullet has a citation
- *        marker; clicking it expands an inline source preview with
- *        the source name, freshness, snippet, and a link out, so the
- *        user can trace back to the original material.
+ * 2. Details panel:
+ *      • One-line summary of the decision (with the guideline info
+ *        icon for the design pattern).
+ *      • "I reached this conclusion by analyzing the following:"
+ *      • A list of category cards. Each row has a chevron button;
+ *        click → the row expands to a crisp finding plus a clickable
+ *        source link with a launch icon, so the user can trace back
+ *        to the original material.
  *      • A single recommendation with Apply / Dismiss actions.
  *
  * No chat frame, no prompt input — the insight stands on its own.
@@ -35,51 +30,42 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 const CARD_WIDTH = 540;
 
-interface Source {
-  title: string;
-  updated: string;
-  snippet: string;
-}
-
 interface Finding {
   id: string;
-  text: string;
-  citation: number;
-  source: Source;
+  title: string;
+  detail: string;
+  source: { title: string; updated: string };
 }
 
 const FINDINGS: Finding[] = [
   {
     id: 'resource',
-    text: 'Crew is 20% under target headcount on Falcon.',
-    citation: 1,
+    title: 'Resource Allocation',
+    detail:
+      'Crews are 20% under target headcount this sprint, with the largest gap on form-work crews.',
     source: {
       title: 'Crew schedule · falcon-sprint-12.csv',
       updated: 'Updated 2 hours ago',
-      snippet:
-        'Form-work crew Alpha is 4 below target; Crew Bravo is 2 below target. No replacements scheduled for the remainder of the sprint.',
     },
   },
   {
     id: 'change',
-    text: '7 change orders are pending owner approval.',
-    citation: 2,
+    title: 'Pending Change Orders',
+    detail:
+      '7 change orders are pending owner approval. 3 of them block sequencing on the south facade.',
     source: {
       title: 'Change order log · ProjectVue',
       updated: 'Updated 4 hours ago',
-      snippet:
-        '3 of 7 open change orders block sequencing on the south facade. Average owner approval cycle is 6 days.',
     },
   },
   {
     id: 'pricing',
-    text: 'Concrete is 30% above the bid baseline.',
-    citation: 3,
+    title: 'Supply Chain Pricing',
+    detail:
+      'Concrete is quoted 30% above the bid baseline across all four regional suppliers.',
     source: {
       title: 'Supplier quotes · Q2 2026',
       updated: 'Updated yesterday',
-      snippet:
-        'All 4 regional suppliers are quoting between $128 and $135 per cubic yard, versus a $98 baseline.',
     },
   },
 ];
@@ -211,145 +197,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
   );
 }
 
-/* ── Citation marker — small superscript-style numbered badge ───── */
-function CitationMarker({
-  number,
-  active,
-  onClick,
-}: {
-  number: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={`Source ${number}`}
-      aria-expanded={active}
-      onClick={onClick}
-      className="inline-flex items-center justify-center transition-colors align-middle"
-      style={{
-        width: '20px',
-        height: '20px',
-        marginLeft: '4px',
-        borderRadius: '999px',
-        border: 'none',
-        background: active
-          ? 'var(--modus-wc-color-primary, #0063a3)'
-          : 'rgba(0, 99, 163, 0.10)',
-        color: active ? '#fff' : 'var(--modus-wc-color-primary, #0063a3)',
-        fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-        fontWeight: 700,
-        cursor: 'pointer',
-        flexShrink: 0,
-      }}
-      onMouseEnter={(e) => {
-        if (active) return;
-        e.currentTarget.style.background = 'rgba(0, 99, 163, 0.18)';
-      }}
-      onMouseLeave={(e) => {
-        if (active) return;
-        e.currentTarget.style.background = 'rgba(0, 99, 163, 0.10)';
-      }}
-    >
-      {number}
-    </button>
-  );
-}
-
-/* ── Source detail (inline citation expansion) ──────────────────── */
-function SourceDetail({
-  source,
-  citation,
-  onOpen,
-}: {
-  source: Source;
-  citation: number;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      className="flex flex-col"
-      style={{
-        gap: '6px',
-        marginTop: '6px',
-        marginLeft: '20px',
-        padding: '10px 12px',
-        background: 'var(--modus-wc-color-base-100, #f1f1f6)',
-        borderRadius: '8px',
-        borderLeft: '3px solid var(--modus-wc-color-primary, #0063a3)',
-      }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-col" style={{ gap: '2px' }}>
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-              fontWeight: 600,
-              color: 'var(--modus-wc-color-base-content, #171c1e)',
-              lineHeight: '18px',
-            }}
-          >
-            <span style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}>
-              [{citation}]
-            </span>
-            {' '}
-            {source.title}
-          </span>
-          <span
-            style={{
-              fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              lineHeight: '14px',
-            }}
-          >
-            {source.updated}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-label={`Open ${source.title}`}
-          className="flex items-center justify-center rounded-md shrink-0"
-          style={{
-            width: '24px',
-            height: '24px',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background =
-              'var(--modus-wc-color-base-200, #e0e1e9)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-          }}
-        >
-          <ModusWcIcon
-            name="launch"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
-          />
-        </button>
-      </div>
-      <p
-        style={{
-          fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-          color: 'var(--modus-wc-color-base-content, #171c1e)',
-          lineHeight: '18px',
-          margin: 0,
-          fontStyle: 'italic',
-        }}
-      >
-        “{source.snippet}”
-      </p>
-    </div>
-  );
-}
-
-/* ── Finding row (text + citation, with inline source expansion) ─ */
+/* ── Finding row — collapsible category card with chevron ───────── */
 function FindingRow({
   finding,
   expanded,
@@ -362,43 +210,106 @@ function FindingRow({
   onOpenSource: () => void;
 }) {
   return (
-    <div className="flex flex-col">
-      <div className="flex items-start gap-2">
+    <div
+      className="rounded-lg"
+      style={{
+        background: 'var(--modus-wc-color-base-100, #f1f1f6)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="flex items-center w-full"
+        style={{
+          gap: '12px',
+          padding: '12px 14px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          borderRadius: '8px',
+        }}
+      >
         <span
-          aria-hidden
-          style={{
-            display: 'inline-block',
-            width: '4px',
-            height: '4px',
-            borderRadius: '50%',
-            backgroundColor:
-              'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            marginTop: '10px',
-            flexShrink: 0,
-          }}
-        />
-        <span
-          className="flex-1"
+          className="flex-1 truncate"
           style={{
             fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+            fontWeight: 500,
             color: 'var(--modus-wc-color-base-content, #171c1e)',
-            lineHeight: '22px',
+            lineHeight: '20px',
           }}
         >
-          {finding.text}
-          <CitationMarker
-            number={finding.citation}
-            active={expanded}
-            onClick={onToggle}
+          {finding.title}
+        </span>
+        <span
+          aria-hidden
+          className="flex items-center justify-center shrink-0"
+          style={{
+            width: '26px',
+            height: '26px',
+            borderRadius: '6px',
+            background: 'rgba(0, 0, 0, 0.08)',
+            transition: 'transform 220ms ease',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          }}
+        >
+          <ModusWcIcon
+            name="chevron_right"
+            size="sm"
+            decorative
+            style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}
           />
         </span>
-      </div>
+      </button>
       {expanded && (
-        <SourceDetail
-          source={finding.source}
-          citation={finding.citation}
-          onOpen={onOpenSource}
-        />
+        <div
+          className="flex flex-col"
+          style={{
+            gap: '8px',
+            padding: '0 14px 12px 14px',
+          }}
+        >
+          <p
+            style={{
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              lineHeight: '20px',
+              margin: 0,
+            }}
+          >
+            {finding.detail}
+          </p>
+          <button
+            type="button"
+            onClick={onOpenSource}
+            aria-label={`Open ${finding.source.title}`}
+            className="inline-flex items-center self-start"
+            style={{
+              gap: '6px',
+              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+              fontWeight: 600,
+              color: 'var(--modus-wc-color-primary, #0063a3)',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+          >
+            <ModusWcIcon name="launch" size="xs" decorative />
+            {finding.source.title}
+            <span
+              style={{
+                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                fontWeight: 400,
+              }}
+            >
+              · {finding.source.updated}
+            </span>
+          </button>
+        </div>
       )}
     </div>
   );
@@ -502,7 +413,7 @@ function TriggerCard({
 /* ── Expert 2 — Communicate the Work ────────────────────────────── */
 export default function Expert2() {
   const [expanded, setExpanded] = useState(true);
-  const [openCitations, setOpenCitations] = useState<Record<string, boolean>>({});
+  const [openFindings, setOpenFindings] = useState<Record<string, boolean>>({});
   const [recStatus, setRecStatus] = useState<'pending' | 'applied' | 'dismissed'>(
     'pending',
   );
@@ -519,8 +430,8 @@ export default function Expert2() {
     window.setTimeout(() => setToast(null), 1600);
   }
 
-  function toggleCitation(id: string) {
-    setOpenCitations((prev) => ({ ...prev, [id]: !prev[id] }));
+  function toggleFinding(id: string) {
+    setOpenFindings((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   return (
@@ -573,30 +484,29 @@ export default function Expert2() {
             <GuidelineInfo />
           </div>
 
-          {/* What I found */}
+          {/* Section heading */}
+          <span
+            style={{
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              fontWeight: 600,
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
+              lineHeight: '20px',
+            }}
+          >
+            I reached this conclusion by analyzing the following:
+          </span>
+
+          {/* Collapsible category cards */}
           <div className="flex flex-col" style={{ gap: '8px' }}>
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                fontWeight: 700,
-                letterSpacing: '0.4px',
-                textTransform: 'uppercase',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            >
-              What I found
-            </span>
-            <div className="flex flex-col" style={{ gap: '4px' }}>
-              {FINDINGS.map((f) => (
-                <FindingRow
-                  key={f.id}
-                  finding={f}
-                  expanded={!!openCitations[f.id]}
-                  onToggle={() => toggleCitation(f.id)}
-                  onOpenSource={() => showToast(`Opening ${f.source.title}`)}
-                />
-              ))}
-            </div>
+            {FINDINGS.map((f) => (
+              <FindingRow
+                key={f.id}
+                finding={f}
+                expanded={!!openFindings[f.id]}
+                onToggle={() => toggleFinding(f.id)}
+                onOpenSource={() => showToast(`Opening ${f.source.title}`)}
+              />
+            ))}
           </div>
 
           {/* Recommendation */}

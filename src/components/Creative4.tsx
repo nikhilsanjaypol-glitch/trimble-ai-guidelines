@@ -248,8 +248,8 @@ const GRID_COLS  =
  * but we keep a small clear gap to inactive thumbs. The matrix is a
  * DOM sibling of the carousel so its `overflow: hidden` does NOT clip
  * the overlap. */
-const THUMB_INACTIVE_W = 180;
-const THUMB_INACTIVE_H = 130;
+const THUMB_INACTIVE_W = 190;
+const THUMB_INACTIVE_H = 138;
 const THUMB_ACTIVE_W   = 240;
 const THUMB_ACTIVE_H   = 170;
 const THUMB_OVERLAP    = 16;  // px the active thumb dips into the table
@@ -287,12 +287,17 @@ function CarouselThumb({
           ? `2px solid ${option.accent}`
           : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
         boxShadow: isActive
-          ? '0 18px 36px rgba(0,0,0,0.16), 0 6px 12px rgba(0,0,0,0.08)'
-          : '0 6px 14px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
+          ? '0 18px 36px rgba(0,0,0,0.11), 0 6px 12px rgba(0,0,0,0.05)'
+          : '0 6px 14px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)',
         cursor: isActive ? 'default' : 'pointer',
         transform: baseTransform,
         position: 'relative',
         zIndex: isActive ? 3 : 2,
+        /* Width / height animate smoothly between active (240×170)
+         * and inactive (180×130). The carousel cells are locked to
+         * THUMB_ACTIVE_H so the row never resizes while two thumbs
+         * interpolate past each other — no jitter, just a clean
+         * grow / shrink. */
         transition:
           'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, width 0.22s ease, height 0.22s ease',
       }}
@@ -351,6 +356,10 @@ function LabelsCard() {
     <div
       style={{
         ...cardBase,
+        /* Whole criterion column tinted the same light grey as the
+         * column headers (and the Top pick header), so the labels
+         * column reads as a "header column" of the table. */
+        backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
         borderTopLeftRadius: '14px',
         borderBottomLeftRadius: '14px',
       }}
@@ -389,8 +398,11 @@ function LabelsCard() {
                 ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
                 : 'none',
             fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-            fontWeight: 500,
-            color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+            /* Bold + full-contrast text colour so the criterion
+             * labels carry the same visual weight as the Option 1/2/3
+             * column headers across from them. */
+            fontWeight: 600,
+            color: 'var(--modus-wc-color-base-content, #101828)',
           }}
         >
           {c.label}
@@ -410,13 +422,19 @@ function SummaryCard({
       style={{
         ...cardBase,
         borderLeft: COL_DIVIDER,
+        /* The grid (940px of fixed columns) overflows the wrapper's
+         * border-box content area (938px) by 2px on the right, which
+         * hides the wrapper's outer right border behind the
+         * SummaryCard's background. We restore the missing line by
+         * giving the SummaryCard its own 1px right border. */
+        borderRight: COL_DIVIDER,
         borderTopRightRadius: '14px',
         borderBottomRightRadius: '14px',
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center"
+        className="flex items-center justify-center"
         style={{
           height: `${HEADER_H}px`,
           padding: '0 18px',
@@ -509,6 +527,10 @@ function OptionCard({
           : 'none',
         position: 'relative',
         zIndex: isActive ? 5 : 1,
+        /* Smooth the accent ring + lift shadow as the active column
+         * changes. Box-shadow can transition between values, so the
+         * frame fades in/out gracefully when the selection moves. */
+        transition: 'box-shadow 0.22s ease',
       }}
     >
       {/* Header */}
@@ -521,6 +543,7 @@ function OptionCard({
             ? option.accentSoft
             : 'var(--modus-wc-color-base-100, #f7f8fa)',
           borderBottom: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          transition: 'background-color 0.22s ease',
         }}
       >
         <span
@@ -530,6 +553,7 @@ function OptionCard({
             color: isActive
               ? option.accent
               : 'var(--modus-wc-color-base-content, #101828)',
+            transition: 'color 0.22s ease',
           }}
         >
           {option.label}
@@ -560,6 +584,7 @@ function OptionCard({
                 i > 0
                   ? '1px solid var(--modus-wc-color-base-200, #e0e1e9)'
                   : 'none',
+              transition: 'background-color 0.22s ease',
             }}
           >
             <span
@@ -570,6 +595,7 @@ function OptionCard({
                 color: isActive
                   ? option.accent
                   : 'var(--modus-wc-color-base-content, #101828)',
+                transition: 'color 0.22s ease',
               }}
             >
               {option.values[c.id].display}
@@ -602,11 +628,14 @@ function OptionCard({
 /* ── Host component ─────────────────────────────────────────────── */
 
 export default function Creative4() {
-  const [activeIdx, setActiveIdx] = useState(1);     // Option 2 selected by default
+  // Nothing is active/selected on first open — the user has to click a
+  // thumbnail to focus an option. While `activeIdx` is null, all three
+  // thumbs render at the inactive size, no matrix column is framed,
+  // and no popped CTA tab is shown.
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [chosenIdx, setChosenIdx] = useState<number | null>(null);
 
   const rowWinners = useMemo(() => computeRowWinners(), []);
-  const activeOpt  = OPTIONS[activeIdx];
 
   /* Layout — three stacked grids sharing the same GRID_COLS template
    * so the thumbnail, the matrix column and the tab below stay
@@ -659,6 +688,13 @@ export default function Creative4() {
           <div
             key={`thumb-${opt.id}`}
             className="flex justify-center items-end"
+            /* Lock each thumb cell to the active-thumb height so the
+             * carousel row keeps a constant height while one thumb
+             * is shrinking (170 → 130) and another is growing
+             * (130 → 170). Without this the row's max-height
+             * recalculates every frame and the whole carousel
+             * appears to shake. */
+            style={{ height: `${THUMB_ACTIVE_H}px` }}
           >
             <CarouselThumb
               option={opt}
@@ -728,50 +764,132 @@ export default function Creative4() {
         <div />
         {OPTIONS.map((opt, idx) => {
           const isActive = idx === activeIdx;
-          if (!isActive) return <div key={`tab-${opt.id}`} />;
-
           const isChosen = chosenIdx === idx;
-          return (
-            <div
-              key={`tab-${opt.id}`}
-              className="flex justify-center items-center"
-              style={{
-                pointerEvents: 'auto',
-                padding: '14px 12px 18px',
-                /* Square top so it joins the column above; rounded
-                 * bottom matching the column's top radius. */
-                borderRadius: '0 0 12px 12px',
-                backgroundColor: opt.accentSoft,
-                /* Same accent ring spread + accent-tinted lift shadow
-                 * as the active column, so the rings line up on the
-                 * left and right sides exactly. */
-                boxShadow:
-                  `0 0 0 2px ${opt.accent}, ` +
-                  `0 14px 28px rgba(0,0,0,0.14), ` +
-                  `0 4px 10px ${opt.accent}55`,
-              }}
-            >
-              {isChosen ? (
-                <ModusWcButton size="md" color="secondary" variant="outlined" disabled>
-                  <span className="flex items-center gap-1.5">
-                    <ModusWcIcon name="check_circle" size="sm" decorative />
-                    Chosen — {activeOpt.label}
-                  </span>
-                </ModusWcButton>
-              ) : (
-                <ModusWcButton
-                  size="md"
-                  color="primary"
-                  onButtonClick={() => setChosenIdx(idx)}
+
+          /* Case 1 — active option: the popped tab with the CTA. */
+          if (isActive) {
+            return (
+              <div
+                key={`tab-${opt.id}`}
+                style={{
+                  pointerEvents: 'auto',
+                  padding: '14px 12px 18px',
+                  borderRadius: '0 0 12px 12px',
+                  backgroundColor: opt.accentSoft,
+                  boxShadow:
+                    `0 0 0 2px ${opt.accent}, ` +
+                    `0 14px 28px rgba(0,0,0,0.14), ` +
+                    `0 4px 10px ${opt.accent}55`,
+                  /* Explicit flex centering — `ModusWcButton` is a
+                   * web component that can lay out unpredictably in
+                   * a Tailwind flex parent, so we force the cell to
+                   * use inline-style flex with a 100% width context
+                   * and centre the button via `text-align: center`
+                   * + `margin: 0 auto` as belt-and-braces. */
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                }}
+              >
+                {isChosen ? (
+                  /* "Action completed" state — instead of the muted
+                   * grey disabled look, render a custom pill coloured
+                   * with the option's own accent (orange for Option 1,
+                   * green for Option 2, blue for Option 3) so the
+                   * selection is communicated in-context with the
+                   * highlighted column. We use a native `<button>`
+                   * (with `disabled`) because `ModusWcButton`'s built-in
+                   * colour palette is limited and its `disabled`
+                   * styling always overrides custom backgrounds. */
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      margin: '0 auto',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 18px',
+                      minHeight: '40px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: opt.accent,
+                      color: '#ffffff',
+                      fontSize: 'var(--modus-wc-font-size-md, 14px)',
+                      fontWeight: 600,
+                      lineHeight: 1,
+                      cursor: 'default',
+                      boxShadow:
+                        `0 1px 2px ${opt.accent}40, ` +
+                        `0 4px 10px ${opt.accent}33`,
+                      transition: 'background-color 0.22s ease',
+                    }}
+                  >
+                    <ModusWcIcon
+                      name="check_circle"
+                      size="sm"
+                      decorative
+                      style={{ color: '#ffffff' }}
+                    />
+                    Selected
+                  </button>
+                ) : (
+                  <ModusWcButton
+                    size="md"
+                    color="primary"
+                    onButtonClick={() => setChosenIdx(idx)}
+                    style={{ margin: '0 auto' }}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <ModusWcIcon name="check" size="sm" decorative />
+                      Select this
+                    </span>
+                  </ModusWcButton>
+                )}
+              </div>
+            );
+          }
+
+          /* Case 2 — inactive but previously chosen: small "Selected"
+           * pill below the column so the user can still see which
+           * option they had committed to after navigating away. */
+          if (isChosen) {
+            return (
+              <div
+                key={`tab-${opt.id}`}
+                className="flex justify-center items-start"
+                style={{ paddingTop: '14px' }}
+              >
+                <span
+                  className="inline-flex items-center"
+                  style={{
+                    gap: '4px',
+                    padding: '4px 12px',
+                    borderRadius: '999px',
+                    backgroundColor: opt.accentSoft,
+                    color: opt.accent,
+                    fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+                    fontWeight: 600,
+                    border: `1px solid ${opt.accent}`,
+                    whiteSpace: 'nowrap',
+                  }}
                 >
-                  <span className="flex items-center gap-1.5">
-                    <ModusWcIcon name="check" size="sm" decorative />
-                    Select this
-                  </span>
-                </ModusWcButton>
-              )}
-            </div>
-          );
+                  <ModusWcIcon
+                    name="check_circle"
+                    size="xs"
+                    decorative
+                    style={{ color: opt.accent }}
+                  />
+                  Selected
+                </span>
+              </div>
+            );
+          }
+
+          /* Case 3 — inactive, not chosen: empty placeholder. */
+          return <div key={`tab-${opt.id}`} />;
         })}
         <div />
       </div>

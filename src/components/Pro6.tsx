@@ -60,10 +60,11 @@ const CARD_WIDTH = 360;
 const CARD_MARGIN = 16;
 const CARD_GAP = 80;
 
-/* Anchor for the connector line — centroid of the two modified
+/* Default anchor for the connector line — centroid of the modified
  * front-face beams in the upper construction zone (floors 4 and 5).
- * Positive X = the short "front" face the camera looks at on load. */
-const ANCHOR = new THREE.Vector3(12.5, 4.5 * 3.2, 0);
+ * The runtime anchor (anchorRef) is updated to the *specific* beam the
+ * user clicks so the card always pops up next to that beam. */
+const DEFAULT_ANCHOR = new THREE.Vector3(12.5, 4.5 * 3.2, 0);
 
 function addSiteSurroundings(scene: THREE.Scene): void {
   const site = new THREE.Group();
@@ -705,6 +706,15 @@ export default function Pro6() {
   const [accepted, setAccepted] = useState(false);
   const acceptedRef = useRef(false);
 
+  /* Runtime card anchor — updated on click to the centroid of the
+   * specific beam the user picked, so the connector line and card pop
+   * up *next to that beam* rather than at a fixed centroid. */
+  const anchorRef = useRef<THREE.Vector3>(DEFAULT_ANCHOR.clone());
+  /* Index (into modifiedBeamMeshes) of the beam currently driving the
+   * card. -1 means "card not bound to a beam" (closed). Re-clicking the
+   * same beam closes the card; clicking a different beam moves it. */
+  const activeBeamIdxRef = useRef<number>(-1);
+
   useEffect(() => {
     acceptedRef.current = accepted;
   }, [accepted]);
@@ -1182,12 +1192,11 @@ export default function Pro6() {
      *  so the building reads as part of an active jobsite. */
     addSiteSurroundings(scene);
 
-    /* ── AI-modified beams — solid neon outline + sweeping scan line ─
+    /* ── AI-modified beams — solid neon border outline ──────────────
      *  Each modified beam gets four steady cyan border lines (the
      *  long edges of the beam, screen-space anti-aliased) wrapped
-     *  tight to the steel.  A thin cyan slab travels along the beam
-     *  length on a 3.5 s loop — the "scan" — to read as an active
-     *  AI edit.  Both fade to invisible when the user accepts. */
+     *  tight to the steel.  Lines fade to invisible when the user
+     *  accepts. */
 
     const INFLATE = 0.04;
     const beamYs: number[] = [];
@@ -1216,8 +1225,6 @@ export default function Pro6() {
     const neonGroup = new THREE.Group();
     scene.add(neonGroup);
     const solidMaterials: LineMaterial[] = [];
-    const scanMeshes: THREE.Mesh[] = [];
-    const scanMaterials: THREE.MeshBasicMaterial[] = [];
 
     for (const y of beamYs) {
       const mat = new LineMaterial({
@@ -1241,24 +1248,6 @@ export default function Pro6() {
       outline.position.set(aiBeamX, y, 0);
       outline.renderOrder = 5;
       neonGroup.add(outline);
-
-      // Scan slab — thin cyan plane swept along the beam length
-      const scanMat = new THREE.MeshBasicMaterial({
-        color: AI_ACCENT_NUM,
-        transparent: true,
-        opacity: 0.85,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      });
-      const scan = new THREE.Mesh(
-        new THREE.BoxGeometry(BEAM_SIZE * 1.7, BEAM_SIZE * 1.7, 0.12),
-        scanMat,
-      );
-      scan.position.set(aiBeamX, y, -BLDG_D / 2);
-      scan.renderOrder = 6;
-      neonGroup.add(scan);
-      scanMeshes.push(scan);
-      scanMaterials.push(scanMat);
     }
 
     /* ── Raycaster — click on a modified beam to toggle the card ── */
@@ -1272,11 +1261,19 @@ export default function Pro6() {
       ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
-    function hitsModifiedBeam(): boolean {
+    /** Raycast against modified beams and return the first hit (mesh +
+     *  its index in modifiedBeamMeshes) or null when nothing is hit.
+     *  Returning the actual hit lets us anchor the card to the *specific*
+     *  beam the user clicked instead of a fixed centroid. */
+    function hitsModifiedBeam():
+      | { mesh: THREE.Mesh; idx: number }
+      | null {
       raycaster.setFromCamera(ndc, camera);
-      return (
-        raycaster.intersectObjects(modifiedBeamMeshes, false).length > 0
-      );
+      const hits = raycaster.intersectObjects(modifiedBeamMeshes, false);
+      if (hits.length === 0) return null;
+      const mesh = hits[0].object as THREE.Mesh;
+      const idx = modifiedBeamMeshes.indexOf(mesh);
+      return { mesh, idx };
     }
 
     function onPointerDown(event: PointerEvent) {
@@ -1296,15 +1293,27 @@ export default function Pro6() {
         return;
       }
       setNDCFromEvent(event);
-      renderer.domElement.style.cursor = hitsModifiedBeam()
-        ? 'pointer'
-        : '';
+      renderer.domElement.style.cursor =
+        hitsModifiedBeam() != null ? 'pointer' : '';
     }
     function onPointerUp(event: PointerEvent) {
       if (dragMonitor.dragging) return;
       if (acceptedRef.current) return;
       setNDCFromEvent(event);
-      if (hitsModifiedBeam()) setOpen((o) => !o);
+      const hit = hitsModifiedBeam();
+      if (!hit) return;
+
+      if (activeBeamIdxRef.current === hit.idx) {
+        // Re-clicking the active beam closes the card.
+        activeBeamIdxRef.current = -1;
+        setOpen(false);
+      } else {
+        // Move the anchor to the clicked beam's world centroid so the
+        // connector line and card pop up right next to that beam.
+        hit.mesh.getWorldPosition(anchorRef.current);
+        activeBeamIdxRef.current = hit.idx;
+        setOpen(true);
+      }
     }
 
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
@@ -1322,7 +1331,7 @@ export default function Pro6() {
       const line = lineRef.current;
       if (!card) return;
 
-      tmp.copy(ANCHOR).project(camera);
+      tmp.copy(anchorRef.current).project(camera);
       const sx = (tmp.x * 0.5 + 0.5) * W;
       const sy = (-tmp.y * 0.5 + 0.5) * H;
 
@@ -1364,12 +1373,11 @@ export default function Pro6() {
     /* ── Animation loop ───────────────────────────────────────── */
     let frameId = 0;
 
-    function animate(t: number) {
+    function animate() {
       frameId = requestAnimationFrame(animate);
 
       controls.update();
 
-      const tSec = t / 1000;
       const acceptedNow = acceptedRef.current;
 
       /* Solid neon outline — fade opacity to 0 once accepted. */
@@ -1377,19 +1385,6 @@ export default function Pro6() {
         const target = acceptedNow ? 0 : 0.95;
         mat.opacity += (target - mat.opacity) * 0.10;
         mat.visible = mat.opacity > 0.02;
-      });
-
-      /* Scan slab — sweeps along the beam's z-axis on a 3.5 s loop,
-       * with a small per-beam phase offset so they don't move in
-       * lock-step.  Slab opacity fades on accept. */
-      const scanPeriod = 3.5;
-      scanMeshes.forEach((mesh, idx) => {
-        const phase = ((tSec + idx * 0.7) % scanPeriod) / scanPeriod;
-        mesh.position.z = -BLDG_D / 2 + phase * BLDG_D;
-      });
-      scanMaterials.forEach((mat) => {
-        const target = acceptedNow ? 0 : 0.85;
-        mat.opacity += (target - mat.opacity) * 0.10;
       });
 
       updateOverlay();
@@ -1419,7 +1414,6 @@ export default function Pro6() {
       controls.dispose();
       scene.remove(neonGroup);
       solidMaterials.forEach((m) => m.dispose());
-      scanMaterials.forEach((m) => m.dispose());
       borderEdgeGeometry.dispose();
       if (mount.contains(renderer.domElement))
         mount.removeChild(renderer.domElement);
@@ -1499,13 +1493,15 @@ export default function Pro6() {
               padding: '16px 18px 16px',
             }}
           >
-            {/* Title row */}
+            {/* Header meta row — sparkle/accepted icon on the left,
+             *  count badge on the right. Lives in its own row so the
+             *  title beneath it can sit flush against the card's left
+             *  padding (aligning with the description paragraph). */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                marginBottom: 8,
+                marginBottom: 6,
               }}
             >
               <ModusWcIcon
@@ -1516,16 +1512,6 @@ export default function Pro6() {
                   color: accepted ? TOKEN_SUCCESS : TOKEN_AI_ACCENT,
                 }}
               />
-              <span
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-md, 14px)',
-                  fontWeight: 700,
-                  color: TOKEN_TEXT,
-                  lineHeight: '20px',
-                }}
-              >
-                {accepted ? 'Changes accepted' : 'Reinforced perimeter beams'}
-              </span>
               <span
                 style={{
                   marginLeft: 'auto',
@@ -1544,6 +1530,19 @@ export default function Pro6() {
               </span>
             </div>
 
+            {/* Title — flush left so it aligns with the description. */}
+            <div
+              style={{
+                fontSize: 'var(--modus-wc-font-size-md, 14px)',
+                fontWeight: 700,
+                color: TOKEN_TEXT,
+                lineHeight: '20px',
+                marginBottom: 8,
+              }}
+            >
+              {accepted ? 'Changes accepted' : 'Reinforced perimeter beams'}
+            </div>
+
             {/* Description */}
             <p
               style={{
@@ -1559,31 +1558,40 @@ export default function Pro6() {
                 : 'AI upsized 2 perimeter beams at the top of the structure (floors 4-5) to W14×38 sections to satisfy the lateral seismic check.'}
             </p>
 
-            {/* Actions */}
+            {/* Actions — both buttons share the card's full width 50/50,
+             *  with Reject (grey) on the left and primary Accept Changes
+             *  on the right. */}
             {!accepted ? (
-              <div className="flex items-center" style={{ gap: 8 }}>
-                <ModusWcButton
-                  color="primary"
-                  size="md"
-                  onButtonClick={() => setAccepted(true)}
-                  style={{ flex: 1 }}
-                >
-                  <span
-                    className="flex items-center justify-center"
-                    style={{ gap: 6, width: '100%' }}
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <ModusWcButton
+                    size="md"
+                    customClass="pro6-reject-grey"
+                    style={{ width: '100%' }}
+                    onButtonClick={() => {
+                      // Detach the card from any specific beam so the
+                      // next click on a beam (even the same one)
+                      // re-opens it at that beam's position.
+                      activeBeamIdxRef.current = -1;
+                      setOpen(false);
+                    }}
                   >
-                    <ModusWcIcon name="check" size="sm" decorative />
-                    Accept Changes
-                  </span>
-                </ModusWcButton>
-                <ModusWcButton
-                  color="secondary"
-                  variant="outlined"
-                  size="md"
-                  onButtonClick={() => setOpen(false)}
-                >
-                  Reject
-                </ModusWcButton>
+                    Reject
+                  </ModusWcButton>
+                </div>
+                <div className="flex-1">
+                  <ModusWcButton
+                    size="md"
+                    color="primary"
+                    style={{ width: '100%' }}
+                    onButtonClick={() => setAccepted(true)}
+                  >
+                    <span className="flex items-center justify-center gap-1.5">
+                      <ModusWcIcon name="check" size="sm" decorative />
+                      Accept Changes
+                    </span>
+                  </ModusWcButton>
+                </div>
               </div>
             ) : (
               <ModusWcButton

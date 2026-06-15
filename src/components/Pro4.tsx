@@ -1,4 +1,3 @@
-import type { ReactElement } from 'react';
 import { useState } from 'react';
 import {
   ModusWcButton,
@@ -9,144 +8,26 @@ import {
 /* ─────────────────────────────────────────────────────────────────
  * Pro 4 — SUPPORT INTERVENTION
  *
- * The /pro4 route renders five identical cards stacked vertically,
- * one per button-layout variant, so the engineer can compare them
- * head-to-head and pick the one that wins.
+ * The professional stays the ultimate authority. The AI proposes
+ * an optimized fleet route (Trimble Maps); the user can Modify,
+ * Revert, or Override at any point, with full undo / redo history.
  * ───────────────────────────────────────────────────────────────── */
 
 const TRIMBLE_RAINBOW =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
 
 type Mode = 'idle' | 'modifying' | 'overriding';
-type PathKind = 'ai' | 'modified' | 'original' | 'overridden';
-type Variant = 'a' | 'b' | 'c' | 'd' | 'e';
+type AuthorityState = 'ai' | 'modified' | 'original' | 'overridden';
 
 interface Version {
-  kind: PathKind;
+  state: AuthorityState;
   reason?: string;
 }
 
-const INITIAL_VERSION: Version = { kind: 'ai' };
+const INITIAL_VERSION: Version = { state: 'ai' };
 
-/* ── Aerial backdrop (shared) ───────────────────────────────────── */
-function FieldBackdrop() {
-  return (
-    <g>
-      <rect x="0" y="0" width="320" height="200" fill="#8db35a" />
-      <rect x="0" y="0" width="110" height="140" fill="#4f6a39" />
-      <circle cx="40" cy="40" r="22" fill="#3f5a2c" />
-      <circle cx="80" cy="58" r="18" fill="#446530" />
-      <circle cx="20" cy="100" r="20" fill="#3f5a2c" />
-      <circle cx="70" cy="118" r="16" fill="#446530" />
-      <circle cx="100" cy="36" r="14" fill="#3f5a2c" />
-      <rect x="0" y="140" width="320" height="60" fill="#a78f5f" />
-      <rect x="110" y="128" width="210" height="14" fill="#bda072" opacity="0.9" />
-      <path
-        d="M0 170 L120 140 L320 145"
-        stroke="#8b7142"
-        strokeWidth="6"
-        fill="none"
-        opacity="0.55"
-      />
-      <g opacity="0.18" stroke="#5a7a3a" strokeWidth="1">
-        {Array.from({ length: 28 }).map((_, i) => (
-          <line key={i} x1={110 + i * 8} y1="0" x2={110 + i * 8} y2="140" />
-        ))}
-      </g>
-    </g>
-  );
-}
-
-function PathOverlay({ kind }: { kind: PathKind }) {
-  if (kind === 'original') {
-    return (
-      <g stroke="#a8e670" strokeWidth="2.4" fill="none" strokeLinecap="round">
-        {Array.from({ length: 8 }).map((_, i) => {
-          const x = 130 + i * 20;
-          return <line key={i} x1={x} y1="12" x2={x} y2="140" opacity={0.95} />;
-        })}
-      </g>
-    );
-  }
-  const tightness = kind === 'modified' ? 16 : 18;
-  const arc = kind === 'modified' ? -18 : -22;
-  return (
-    <g stroke="#a8e670" strokeWidth="2.4" fill="none" strokeLinecap="round">
-      {Array.from({ length: 9 }).map((_, i) => {
-        const x = 120 + i * tightness;
-        return (
-          <path
-            key={i}
-            d={`M ${x} 12 C ${x + 10} 60, ${x + arc} 110, ${x + 4} 140`}
-            opacity={0.95}
-          />
-        );
-      })}
-    </g>
-  );
-}
-
-function TractorMarker({ kind }: { kind: PathKind }) {
-  if (kind === 'original') {
-    return (
-      <g transform="translate(170 88)">
-        <rect x="-4" y="-6" width="8" height="46" fill="#13b9d9" opacity="0.9" />
-        <polygon
-          points="0,-30 -14,-6 14,-6"
-          fill="#13b9d9"
-          stroke="#ffffff"
-          strokeWidth="1.4"
-        />
-      </g>
-    );
-  }
-  return (
-    <g transform="translate(192 92)">
-      <polygon
-        points="0,-14 -10,8 10,8"
-        fill="#13b9d9"
-        stroke="#ffffff"
-        strokeWidth="1.4"
-      />
-    </g>
-  );
-}
-
-function OverrideMarker() {
-  return (
-    <g transform="translate(245 50)">
-      <circle r="14" fill="#ffffff" opacity="0.92" />
-      <circle r="14" fill="rgba(152,82,0,0.18)" />
-      <text
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize="13"
-        fontWeight="700"
-        fill="#985200"
-      >
-        !
-      </text>
-    </g>
-  );
-}
-
-function PathMap({ kind }: { kind: PathKind }) {
-  return (
-    <svg
-      viewBox="0 0 320 200"
-      preserveAspectRatio="xMidYMid slice"
-      className="block w-full h-full"
-    >
-      <FieldBackdrop />
-      <PathOverlay kind={kind} />
-      <TractorMarker kind={kind} />
-      {kind === 'overridden' && <OverrideMarker />}
-    </svg>
-  );
-}
-
-function previewBorder(kind: PathKind): string {
-  switch (kind) {
+function previewBorder(state: AuthorityState): string {
+  switch (state) {
     case 'ai':
       return TRIMBLE_RAINBOW;
     case 'modified':
@@ -157,6 +38,67 @@ function previewBorder(kind: PathKind): string {
     default:
       return 'var(--modus-wc-color-base-200, #e0e1e9)';
   }
+}
+
+/* ── Trimble Maps · Fleet route optimization ────────────────────── */
+function FleetPreview() {
+  const stops = [
+    { x: 60, y: 60, n: '1' },
+    { x: 160, y: 60, n: '2' },
+    { x: 160, y: 130, n: '3' },
+    { x: 250, y: 130, n: '4' },
+    { x: 250, y: 200, n: '5' },
+    { x: 60, y: 200, n: '6' },
+  ];
+  return (
+    <svg
+      viewBox="0 0 320 240"
+      preserveAspectRatio="xMidYMid slice"
+      className="block w-full h-full"
+    >
+      <rect width="320" height="240" fill="#f4ede0" />
+      <ellipse cx="80" cy="100" rx="55" ry="32" fill="#cae0a8" opacity="0.55" />
+      <ellipse cx="220" cy="170" rx="28" ry="14" fill="#a3c9e6" opacity="0.6" />
+      <g stroke="#c9c3b6" strokeWidth="9" fill="none" strokeLinecap="round">
+        <path d="M 10 60 L 310 60" />
+        <path d="M 10 130 L 310 130" />
+        <path d="M 10 200 L 310 200" />
+        <path d="M 60 30 L 60 220" />
+        <path d="M 160 30 L 160 220" />
+        <path d="M 250 30 L 250 220" />
+      </g>
+      <g stroke="#ffffff" strokeWidth="5" fill="none" strokeLinecap="round">
+        <path d="M 10 60 L 310 60" />
+        <path d="M 10 130 L 310 130" />
+        <path d="M 10 200 L 310 200" />
+        <path d="M 60 30 L 60 220" />
+        <path d="M 160 30 L 160 220" />
+        <path d="M 250 30 L 250 220" />
+      </g>
+      <path
+        d="M 60 60 L 160 60 L 160 130 L 250 130 L 250 200 L 60 200"
+        stroke="#0063a3"
+        strokeWidth="3.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {stops.map((s, i) => (
+        <g key={i}>
+          <circle cx={s.x} cy={s.y} r="11" fill="rgba(0,99,163,0.18)" />
+          <circle cx={s.x} cy={s.y} r="9" fill="#ffffff" stroke="#0063a3" strokeWidth="2" />
+          <text x={s.x} y={s.y + 3.5} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0063a3">{s.n}</text>
+        </g>
+      ))}
+      <rect x="14" y="14" width="172" height="22" rx="4" fill="rgba(255,255,255,0.92)" />
+      <text x="22" y="29" fontSize="10" fontWeight="700" fill="#0063a3" letterSpacing="0.5">ROUTE-12 · 6 STOPS · 28 MIN</text>
+      <g transform="translate(294, 30)">
+        <circle r="14" fill="#ffffff" stroke="#999" strokeWidth="0.7" />
+        <polygon points="0,-9 -3.5,0 0,-3 3.5,0" fill="#0063a3" />
+        <text x="0" y="-12" textAnchor="middle" fontSize="8" fontWeight="700" fill="#0063a3">N</text>
+      </g>
+    </svg>
+  );
 }
 
 /* ── Header icon button (undo / redo) ───────────────────────────── */
@@ -278,77 +220,8 @@ const BUTTONS: Array<{
   },
 ];
 
-/* ── Variant A — Circular icon buttons ──────────────────────────── */
-function ButtonsA(h: ButtonHandlers) {
-  return (
-    <div
-      className="flex items-start justify-around"
-      style={{ padding: '16px 16px 22px' }}
-    >
-      {BUTTONS.map((b) => {
-        const t = TONE_TOKENS[b.tone];
-        const isRevert = b.action === 'onRevert';
-        const disabled = isRevert && h.revertDisabled;
-        return (
-          <button
-            key={b.label}
-            type="button"
-            onClick={disabled ? undefined : h[b.action]}
-            disabled={disabled}
-            className="flex flex-col items-center gap-2 transition-transform"
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '4px',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              opacity: disabled ? 0.45 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (disabled) return;
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <span
-              className="flex items-center justify-center rounded-full"
-              style={{
-                width: '56px',
-                height: '56px',
-                backgroundColor: t.iconBg,
-                boxShadow:
-                  b.tone === 'neutral'
-                    ? '0 1px 2px rgba(0,0,0,0.06), inset 0 0 0 1px var(--modus-wc-color-base-200, #e0e1e9)'
-                    : '0 6px 14px -4px rgba(0,0,0,0.20)',
-              }}
-            >
-              <ModusWcIcon
-                name={b.icon}
-                size="md"
-                decorative
-                style={{ color: t.iconFg }}
-              />
-            </span>
-            <span
-              className="font-bold"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-                lineHeight: '18px',
-              }}
-            >
-              {b.label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ── Variant B — Tinted tiles (current) ─────────────────────────── */
-function ButtonsB(h: ButtonHandlers) {
+/* ── Intervention buttons (tinted tiles) ────────────────────────── */
+function InterventionButtons(h: ButtonHandlers) {
   return (
     <div
       className="flex items-stretch gap-2"
@@ -435,294 +308,8 @@ function ButtonsB(h: ButtonHandlers) {
   );
 }
 
-/* ── Variant C — Stacked action rows ────────────────────────────── */
-function ButtonsC(h: ButtonHandlers) {
-  return (
-    <div
-      className="flex flex-col gap-2"
-      style={{ padding: '14px 16px 16px' }}
-    >
-      {BUTTONS.map((b) => {
-        const t = TONE_TOKENS[b.tone];
-        const isRevert = b.action === 'onRevert';
-        const disabled = isRevert && h.revertDisabled;
-        return (
-          <button
-            key={b.label}
-            type="button"
-            onClick={disabled ? undefined : h[b.action]}
-            disabled={disabled}
-            className="flex items-center gap-3 text-left transition-colors"
-            style={{
-              padding: '12px 14px',
-              borderRadius: '10px',
-              border: `1px solid ${t.border}`,
-              backgroundColor: t.tileBg,
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              opacity: disabled ? 0.45 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (disabled) return;
-              e.currentTarget.style.backgroundColor = t.tileBgHover;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = t.tileBg;
-            }}
-          >
-            <span
-              className="flex items-center justify-center rounded-md shrink-0"
-              style={{
-                width: '36px',
-                height: '36px',
-                backgroundColor: t.iconBg,
-              }}
-            >
-              <ModusWcIcon
-                name={b.icon}
-                size="sm"
-                decorative
-                style={{ color: t.iconFg }}
-              />
-            </span>
-            <div className="flex flex-col flex-1 min-w-0">
-              <span
-                className="font-bold"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '18px',
-                }}
-              >
-                {b.label}
-              </span>
-              <span
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
-                  color:
-                    'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  lineHeight: '14px',
-                  marginTop: '2px',
-                }}
-              >
-                {b.helper}
-              </span>
-            </div>
-            <ModusWcIcon
-              name="chevron_right"
-              size="xs"
-              decorative
-              style={{
-                color:
-                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ── Variant D — Segmented toolbar ──────────────────────────────── */
-function ButtonsD(h: ButtonHandlers) {
-  return (
-    <div style={{ padding: '14px 16px 16px' }}>
-      <div
-        className="flex items-stretch overflow-hidden"
-        style={{
-          borderRadius: '12px',
-          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          backgroundColor: '#ffffff',
-        }}
-      >
-        {BUTTONS.map((b, i) => {
-          const t = TONE_TOKENS[b.tone];
-          const isRevert = b.action === 'onRevert';
-          const disabled = isRevert && h.revertDisabled;
-          return (
-            <button
-              key={b.label}
-              type="button"
-              onClick={disabled ? undefined : h[b.action]}
-              disabled={disabled}
-              className="flex-1 flex flex-col items-center gap-1.5 transition-colors"
-              style={{
-                padding: '14px 4px',
-                borderLeft:
-                  i === 0
-                    ? 'none'
-                    : '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-                borderTop: 'none',
-                borderRight: 'none',
-                borderBottom: 'none',
-                backgroundColor: 'transparent',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                opacity: disabled ? 0.45 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (disabled) return;
-                e.currentTarget.style.backgroundColor = t.tileBgHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <ModusWcIcon
-                name={b.icon}
-                size="md"
-                decorative
-                style={{ color: t.iconBg }}
-              />
-              <span
-                className="font-semibold"
-                style={{
-                  fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  lineHeight: '18px',
-                }}
-              >
-                {b.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ── Variant E — Hierarchy: primary + outlined ──────────────────── */
-function ButtonsE(h: ButtonHandlers) {
-  const tPrimary = TONE_TOKENS.primary;
-  const tWarning = TONE_TOKENS.warning;
-  return (
-    <div className="flex gap-2" style={{ padding: '14px 16px 16px' }}>
-      <button
-        type="button"
-        onClick={h.onModify}
-        className="flex flex-col items-start text-left transition-all"
-        style={{
-          flex: 1.4,
-          padding: '14px 16px',
-          borderRadius: '12px',
-          border: 'none',
-          backgroundColor: tPrimary.iconBg,
-          color: '#ffffff',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px -4px rgba(0, 99, 163, 0.40)',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow =
-            '0 8px 18px -6px rgba(0, 99, 163, 0.45)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow =
-            '0 4px 12px -4px rgba(0, 99, 163, 0.40)';
-        }}
-      >
-        <span
-          className="flex items-center justify-center rounded-lg"
-          style={{
-            width: '36px',
-            height: '36px',
-            backgroundColor: 'rgba(255,255,255,0.18)',
-            marginBottom: '8px',
-          }}
-        >
-          <ModusWcIcon
-            name="edit_combination"
-            size="md"
-            decorative
-            style={{ color: '#ffffff' }}
-          />
-        </span>
-        <span
-          className="font-bold"
-          style={{ fontSize: 16, color: '#ffffff', lineHeight: '20px' }}
-        >
-          Modify
-        </span>
-        <span
-          style={{
-            fontSize: 11,
-            color: 'rgba(255,255,255,0.85)',
-            lineHeight: '14px',
-            marginTop: '2px',
-          }}
-        >
-          Edit the plan
-        </span>
-      </button>
-
-      <div className="flex-1 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={h.revertDisabled ? undefined : h.onRevert}
-          disabled={h.revertDisabled}
-          className="flex items-center gap-2 transition-colors"
-          style={{
-            flex: 1,
-            padding: '0 12px',
-            borderRadius: '10px',
-            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-            backgroundColor: '#ffffff',
-            color: 'var(--modus-wc-color-base-content, #171c1e)',
-            cursor: h.revertDisabled ? 'not-allowed' : 'pointer',
-            opacity: h.revertDisabled ? 0.45 : 1,
-            fontWeight: 600,
-            fontSize: 13,
-          }}
-          onMouseEnter={(e) => {
-            if (h.revertDisabled) return;
-            e.currentTarget.style.backgroundColor =
-              'var(--modus-wc-color-base-100, #f8f9fa)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff';
-          }}
-        >
-          <ModusWcIcon name="refresh" size="xs" decorative />
-          Revert
-        </button>
-        <button
-          type="button"
-          onClick={h.onOverride}
-          className="flex items-center gap-2 transition-colors"
-          style={{
-            flex: 1,
-            padding: '0 12px',
-            borderRadius: '10px',
-            border: `1px solid ${tWarning.border}`,
-            backgroundColor: '#ffffff',
-            color: 'var(--modus-wc-color-status-warning, #985200)',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: 13,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = tWarning.tileBgHover;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff';
-          }}
-        >
-          <ModusWcIcon
-            name="lock"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-status-warning, #985200)' }}
-          />
-          Override
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Pro 4 Card (one per variant) ───────────────────────────────── */
-function Pro4Card({ variant }: { variant: Variant }) {
+/* ── Pro 4 Card (one per Trimble-product variant) ───────────────── */
+function Pro4Card() {
   const [history, setHistory] = useState<Version[]>([INITIAL_VERSION]);
   const [pointer, setPointer] = useState(0);
   const [mode, setMode] = useState<Mode>('idle');
@@ -750,16 +337,16 @@ function Pro4Card({ variant }: { variant: Variant }) {
   }
   function commitModify() {
     if (draftSummary.trim() === '') return;
-    pushVersion({ kind: 'modified' });
+    pushVersion({ state: 'modified' });
     setMode('idle');
   }
   function commitOverride() {
     if (draftSummary.trim() === '' || reason.trim() === '') return;
-    pushVersion({ kind: 'overridden', reason: reason.trim() });
+    pushVersion({ state: 'overridden', reason: reason.trim() });
     setMode('idle');
   }
   function revert() {
-    pushVersion({ kind: 'original' });
+    pushVersion({ state: 'original' });
   }
   function undo() {
     if (canUndo) setPointer((p) => p - 1);
@@ -772,17 +359,9 @@ function Pro4Card({ variant }: { variant: Variant }) {
     onModify: startModify,
     onRevert: revert,
     onOverride: startOverride,
-    revertDisabled: current.kind === 'original',
+    revertDisabled: current.state === 'original',
   };
 
-  const ButtonsByVariant: Record<Variant, (h: ButtonHandlers) => ReactElement> = {
-    a: ButtonsA,
-    b: ButtonsB,
-    c: ButtonsC,
-    d: ButtonsD,
-    e: ButtonsE,
-  };
-  const ButtonsRenderer = ButtonsByVariant[variant];
 
   return (
     <div
@@ -808,7 +387,7 @@ function Pro4Card({ variant }: { variant: Variant }) {
             fontWeight: 500,
           }}
         >
-          Path optimization
+          Route optimization
         </span>
         <div className="flex items-center gap-0.5 shrink-0">
           <HeaderIconButton
@@ -832,15 +411,15 @@ function Pro4Card({ variant }: { variant: Variant }) {
           className="relative overflow-hidden"
           style={{
             borderRadius: '12px',
-            padding: current.kind === 'original' ? '1px' : '2px',
-            ...(current.kind === 'ai'
+            padding: current.state === 'original' ? '1px' : '2px',
+            ...(current.state === 'ai'
               ? {
                   backgroundImage: TRIMBLE_RAINBOW,
                   backgroundSize: '200% 100%',
                   animation:
                     'pro4RainbowShimmer 3.6s ease-in-out infinite',
                 }
-              : { background: previewBorder(current.kind) }),
+              : { background: previewBorder(current.state) }),
           }}
         >
           <div
@@ -851,7 +430,57 @@ function Pro4Card({ variant }: { variant: Variant }) {
               backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
             }}
           >
-            <PathMap kind={current.kind} />
+            <FleetPreview />
+            {current.state === 'overridden' && (
+              <div
+                className="absolute"
+                style={{
+                  top: 10,
+                  right: 10,
+                  height: 24,
+                  padding: '0 10px',
+                  borderRadius: 1000,
+                  backgroundColor: 'rgba(152, 82, 0, 0.92)',
+                  color: '#ffffff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                }}
+              >
+                <ModusWcIcon name="lock" size="xs" decorative />
+                Overridden
+              </div>
+            )}
+            {current.state === 'modified' && (
+              <div
+                className="absolute"
+                style={{
+                  top: 10,
+                  right: 10,
+                  height: 24,
+                  padding: '0 10px',
+                  borderRadius: 1000,
+                  backgroundColor: 'rgba(0, 99, 163, 0.92)',
+                  color: '#ffffff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                }}
+              >
+                <ModusWcIcon name="edit" size="xs" decorative />
+                Your edits
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -872,7 +501,7 @@ function Pro4Card({ variant }: { variant: Variant }) {
             label="What did you change?"
             value={draftSummary}
             size="sm"
-            placeholder="e.g. Tightened row spacing by 0.4 m"
+            placeholder="e.g. Service stop 4 before 11 AM"
             onInputChange={(e: CustomEvent) =>
               setDraftSummary(e.detail?.target?.value ?? '')
             }
@@ -914,7 +543,7 @@ function Pro4Card({ variant }: { variant: Variant }) {
             label="Forced plan"
             value={draftSummary}
             size="sm"
-            placeholder="e.g. Switch to standard straight rows"
+            placeholder="e.g. Driver-preferred return route"
             onInputChange={(e: CustomEvent) =>
               setDraftSummary(e.detail?.target?.value ?? '')
             }
@@ -956,44 +585,15 @@ function Pro4Card({ variant }: { variant: Variant }) {
         </div>
       )}
 
-      {/* Variant button section */}
-      {mode === 'idle' && <ButtonsRenderer {...handlers} />}
+      {/* Intervention buttons */}
+      {mode === 'idle' && <InterventionButtons {...handlers} />}
     </div>
   );
 }
 
-/* ── Showcase: render all 5 variants stacked ────────────────────── */
-const VARIANTS: Array<{ id: Variant; label: string; helper: string }> = [
-  {
-    id: 'a',
-    label: 'Option A — Circular icon buttons',
-    helper: 'Three large circles with white icons, label below. Matches the agriculture reference.',
-  },
-  {
-    id: 'b',
-    label: 'Option B — Tinted tiles (current)',
-    helper: 'Side-by-side tiles, top-left icon badge, bold label, helper text.',
-  },
-  {
-    id: 'c',
-    label: 'Option C — Stacked action rows',
-    helper: 'Three full-width rows, icon left, label + helper, chevron right.',
-  },
-  {
-    id: 'd',
-    label: 'Option D — Segmented toolbar',
-    helper: 'Single rounded bar split into three segments, no gaps.',
-  },
-  {
-    id: 'e',
-    label: 'Option E — Hierarchy: primary + outlined',
-    helper: 'Filled primary on the left, two slim outlined buttons stacked on the right.',
-  },
-];
-
 export default function Pro4() {
   return (
-    <div className="flex flex-col items-center" style={{ gap: '32px' }}>
+    <>
       <style>{`
         @keyframes pro4RainbowShimmer {
           0%   { background-position: 0% 50%; }
@@ -1001,39 +601,7 @@ export default function Pro4() {
           100% { background-position: 0% 50%; }
         }
       `}</style>
-      {VARIANTS.map((v) => (
-        <div key={v.id} className="flex flex-col items-center" style={{ gap: '10px' }}>
-          <div
-            className="flex flex-col items-center"
-            style={{ width: '380px', gap: '4px' }}
-          >
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-                fontWeight: 700,
-                letterSpacing: '0.6px',
-                textTransform: 'uppercase',
-                color:
-                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            >
-              {v.label}
-            </span>
-            <span
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                color:
-                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                textAlign: 'center',
-                lineHeight: '16px',
-              }}
-            >
-              {v.helper}
-            </span>
-          </div>
-          <Pro4Card variant={v.id} />
-        </div>
-      ))}
-    </div>
+      <Pro4Card />
+    </>
   );
 }
