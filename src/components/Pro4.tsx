@@ -16,12 +16,11 @@ import {
 const TRIMBLE_RAINBOW =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
 
-type Mode = 'idle' | 'modifying' | 'overriding';
-type AuthorityState = 'ai' | 'modified' | 'original' | 'overridden';
+type Mode = 'idle' | 'modifying';
+type AuthorityState = 'ai' | 'modified' | 'original' | 'accepted';
 
 interface Version {
   state: AuthorityState;
-  reason?: string;
 }
 
 const INITIAL_VERSION: Version = { state: 'ai' };
@@ -32,8 +31,8 @@ function previewBorder(state: AuthorityState): string {
       return TRIMBLE_RAINBOW;
     case 'modified':
       return 'var(--modus-wc-color-primary, #0063a3)';
-    case 'overridden':
-      return 'var(--modus-wc-color-status-warning, #985200)';
+    case 'accepted':
+      return 'var(--modus-wc-color-status-success, #1e7e34)';
     case 'original':
     default:
       return 'var(--modus-wc-color-base-200, #e0e1e9)';
@@ -94,8 +93,17 @@ function FleetPreview() {
       <text x="22" y="29" fontSize="10" fontWeight="700" fill="#0063a3" letterSpacing="0.5">ROUTE-12 · 6 STOPS · 28 MIN</text>
       <g transform="translate(294, 30)">
         <circle r="14" fill="#ffffff" stroke="#999" strokeWidth="0.7" />
-        <polygon points="0,-9 -3.5,0 0,-3 3.5,0" fill="#0063a3" />
-        <text x="0" y="-12" textAnchor="middle" fontSize="8" fontWeight="700" fill="#0063a3">N</text>
+        <text
+          x="0"
+          y="0"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="12"
+          fontWeight="700"
+          fill="#0063a3"
+        >
+          N
+        </text>
       </g>
     </svg>
   );
@@ -148,7 +156,7 @@ function HeaderIconButton({
 }
 
 /* ── Tone tokens (used by every variant) ────────────────────────── */
-type Tone = 'primary' | 'neutral' | 'warning';
+type Tone = 'primary' | 'neutral' | 'success';
 
 const TONE_TOKENS: Record<
   Tone,
@@ -174,20 +182,21 @@ const TONE_TOKENS: Record<
     tileBg: '#ffffff',
     tileBgHover: 'var(--modus-wc-color-base-100, #f8f9fa)',
   },
-  warning: {
+  success: {
     iconFg: '#ffffff',
-    iconBg: 'var(--modus-wc-color-status-warning, #985200)',
-    border: 'rgba(152, 82, 0, 0.28)',
-    tileBg: 'rgba(152, 82, 0, 0.04)',
-    tileBgHover: 'rgba(152, 82, 0, 0.10)',
+    iconBg: 'var(--modus-wc-color-status-success, #1e7e34)',
+    border: 'rgba(30, 126, 52, 0.28)',
+    tileBg: 'rgba(30, 126, 52, 0.04)',
+    tileBgHover: 'rgba(30, 126, 52, 0.10)',
   },
 };
 
 interface ButtonHandlers {
   onModify: () => void;
   onRevert: () => void;
-  onOverride: () => void;
+  onAccept: () => void;
   revertDisabled: boolean;
+  acceptDisabled: boolean;
 }
 
 const BUTTONS: Array<{
@@ -195,10 +204,10 @@ const BUTTONS: Array<{
   label: string;
   helper: string;
   tone: Tone;
-  action: keyof Pick<ButtonHandlers, 'onModify' | 'onRevert' | 'onOverride'>;
+  action: keyof Pick<ButtonHandlers, 'onModify' | 'onRevert' | 'onAccept'>;
 }> = [
   {
-    icon: 'edit_combination',
+    icon: 'tune',
     label: 'Modify',
     helper: 'Edit the plan',
     tone: 'primary',
@@ -212,11 +221,11 @@ const BUTTONS: Array<{
     action: 'onRevert',
   },
   {
-    icon: 'lock',
-    label: 'Override',
-    helper: 'Force with reason',
-    tone: 'warning',
-    action: 'onOverride',
+    icon: 'check_circle',
+    label: 'Accept',
+    helper: 'Confirm as final',
+    tone: 'success',
+    action: 'onAccept',
   },
 ];
 
@@ -229,8 +238,9 @@ function InterventionButtons(h: ButtonHandlers) {
     >
       {BUTTONS.map((b) => {
         const t = TONE_TOKENS[b.tone];
-        const isRevert = b.action === 'onRevert';
-        const disabled = isRevert && h.revertDisabled;
+        const disabled =
+          (b.action === 'onRevert' && h.revertDisabled) ||
+          (b.action === 'onAccept' && h.acceptDisabled);
         return (
           <button
             key={b.label}
@@ -297,6 +307,7 @@ function InterventionButtons(h: ButtonHandlers) {
                 color:
                   'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
                 lineHeight: '14px',
+                whiteSpace: 'nowrap',
               }}
             >
               {b.helper}
@@ -314,7 +325,6 @@ function Pro4Card() {
   const [pointer, setPointer] = useState(0);
   const [mode, setMode] = useState<Mode>('idle');
   const [draftSummary, setDraftSummary] = useState('');
-  const [reason, setReason] = useState('');
 
   const current = history[pointer];
   const canUndo = pointer > 0;
@@ -330,23 +340,16 @@ function Pro4Card() {
     setDraftSummary('');
     setMode('modifying');
   }
-  function startOverride() {
-    setDraftSummary('');
-    setReason('');
-    setMode('overriding');
-  }
   function commitModify() {
     if (draftSummary.trim() === '') return;
     pushVersion({ state: 'modified' });
     setMode('idle');
   }
-  function commitOverride() {
-    if (draftSummary.trim() === '' || reason.trim() === '') return;
-    pushVersion({ state: 'overridden', reason: reason.trim() });
-    setMode('idle');
-  }
   function revert() {
     pushVersion({ state: 'original' });
+  }
+  function accept() {
+    pushVersion({ state: 'accepted' });
   }
   function undo() {
     if (canUndo) setPointer((p) => p - 1);
@@ -358,8 +361,9 @@ function Pro4Card() {
   const handlers: ButtonHandlers = {
     onModify: startModify,
     onRevert: revert,
-    onOverride: startOverride,
+    onAccept: accept,
     revertDisabled: current.state === 'original',
+    acceptDisabled: current.state === 'accepted',
   };
 
 
@@ -380,11 +384,12 @@ function Pro4Card() {
         style={{ padding: '16px 16px 12px' }}
       >
         <span
+          className="font-bold"
           style={{
             fontSize: 'var(--modus-wc-font-size-lg, 18px)',
             color: 'var(--modus-wc-color-base-content, #171c1e)',
             letterSpacing: '0.1px',
-            fontWeight: 500,
+            fontWeight: 700,
           }}
         >
           Route optimization
@@ -431,7 +436,7 @@ function Pro4Card() {
             }}
           >
             <FleetPreview />
-            {current.state === 'overridden' && (
+            {current.state === 'accepted' && (
               <div
                 className="absolute"
                 style={{
@@ -440,7 +445,7 @@ function Pro4Card() {
                   height: 24,
                   padding: '0 10px',
                   borderRadius: 1000,
-                  backgroundColor: 'rgba(152, 82, 0, 0.92)',
+                  backgroundColor: 'rgba(30, 126, 52, 0.92)',
                   color: '#ffffff',
                   fontSize: 10,
                   fontWeight: 700,
@@ -452,8 +457,8 @@ function Pro4Card() {
                   boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
                 }}
               >
-                <ModusWcIcon name="lock" size="xs" decorative />
-                Overridden
+                <ModusWcIcon name="check_circle" size="xs" decorative />
+                Accepted
               </div>
             )}
             {current.state === 'modified' && (
@@ -522,64 +527,6 @@ function Pro4Card() {
               onButtonClick={commitModify}
             >
               Save my plan
-            </ModusWcButton>
-          </div>
-        </div>
-      )}
-
-      {/* Inline override form */}
-      {mode === 'overriding' && (
-        <div
-          className="flex flex-col gap-2"
-          style={{
-            margin: '14px 16px 16px',
-            padding: '12px',
-            borderRadius: '10px',
-            backgroundColor: 'rgba(152, 82, 0, 0.06)',
-            border: '1px solid rgba(152, 82, 0, 0.30)',
-          }}
-        >
-          <ModusWcTextInput
-            label="Forced plan"
-            value={draftSummary}
-            size="sm"
-            placeholder="e.g. Driver-preferred return route"
-            onInputChange={(e: CustomEvent) =>
-              setDraftSummary(e.detail?.target?.value ?? '')
-            }
-          />
-          <ModusWcTextInput
-            label="Reason (recorded)"
-            value={reason}
-            size="sm"
-            placeholder="e.g. Equipment limitation"
-            onInputChange={(e: CustomEvent) =>
-              setReason(e.detail?.target?.value ?? '')
-            }
-          />
-          <div className="flex items-center justify-end gap-2">
-            <ModusWcButton
-              size="sm"
-              color="tertiary"
-              variant="outlined"
-              onButtonClick={() => setMode('idle')}
-            >
-              Cancel
-            </ModusWcButton>
-            <ModusWcButton
-              size="sm"
-              color="warning"
-              disabled={
-                draftSummary.trim() === '' ||
-                reason.trim() === '' ||
-                undefined
-              }
-              onButtonClick={commitOverride}
-            >
-              <span className="flex items-center gap-1">
-                <ModusWcIcon name="lock" size="xs" decorative />
-                Override AI
-              </span>
             </ModusWcButton>
           </div>
         </div>

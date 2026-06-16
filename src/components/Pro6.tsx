@@ -29,13 +29,14 @@ const TRIMBLE_RAINBOW =
  * accent so the link between scene + card is unmistakable.  All other
  * surface, text, and status colours flow from Modus tokens. */
 const AI_ACCENT_NUM = 0x1fb1a7;
+const REJECT_COLOR_NUM = 0xd11717; // mirrors Modus status-error red
 const TOKEN_AI_ACCENT = 'var(--modus-wc-color-info, #1FB1A7)';
 const TOKEN_BASE_PAGE = 'var(--modus-wc-color-base-page, #ffffff)';
-const TOKEN_BASE_100 = 'var(--modus-wc-color-base-100, #ffffff)';
 const TOKEN_TEXT = 'var(--modus-wc-color-base-content, #171c1e)';
 const TOKEN_TEXT_MUTED =
   'var(--modus-wc-color-base-content-low-contrast, #4a4f59)';
 const TOKEN_SUCCESS = 'var(--modus-wc-color-status-success, #1e7e34)';
+const TOKEN_DANGER = 'var(--modus-wc-color-status-error, #d11717)';
 
 /* ── Building parameters ───────────────────────────────────────── */
 const BAYS_X = 5;
@@ -704,7 +705,14 @@ export default function Pro6() {
 
   const [open, setOpen] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [rejected, setRejected] = useState(false);
   const acceptedRef = useRef(false);
+  const rejectedRef = useRef(false);
+  /* Wall-clock time (ms via performance.now) when Reject was clicked.
+   * The animate loop reads this to drive a short, dramatic red flash
+   * on the highlighted beams + outlines before they fade out. Null
+   * means "no rejection in progress". */
+  const rejectStartRef = useRef<number | null>(null);
 
   /* Runtime card anchor — updated on click to the centroid of the
    * specific beam the user picked, so the connector line and card pop
@@ -718,6 +726,10 @@ export default function Pro6() {
   useEffect(() => {
     acceptedRef.current = accepted;
   }, [accepted]);
+
+  useEffect(() => {
+    rejectedRef.current = rejected;
+  }, [rejected]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -900,6 +912,17 @@ export default function Pro6() {
         if (f >= BOUNDARY_FLOORS + 2 && i === BAYS_X) modifiedBeamMeshes.push(m);
       }
     }
+    /* Give the AI-modified beams their *own* (cloned) material so the
+     * rejection animation can flash them red without tinting every
+     * other beam in the building (which all share `steelMat`).        */
+    const modifiedBeamMaterials: THREE.MeshStandardMaterial[] = [];
+    modifiedBeamMeshes.forEach((mesh) => {
+      const cloned = (
+        mesh.material as THREE.MeshStandardMaterial
+      ).clone();
+      mesh.material = cloned;
+      modifiedBeamMaterials.push(cloned);
+    });
 
     /* ── 4.  COMPLETED building (floors 1 & 2) ────────────────
      *  Solid concrete floor slabs + glass curtain wall on every
@@ -1288,7 +1311,7 @@ export default function Pro6() {
         const dy = event.clientY - dragMonitor.downY;
         if (dx * dx + dy * dy > 25) dragMonitor.dragging = true;
       }
-      if (acceptedRef.current) {
+      if (acceptedRef.current || rejectedRef.current) {
         renderer.domElement.style.cursor = '';
         return;
       }
@@ -1298,7 +1321,7 @@ export default function Pro6() {
     }
     function onPointerUp(event: PointerEvent) {
       if (dragMonitor.dragging) return;
-      if (acceptedRef.current) return;
+      if (acceptedRef.current || rejectedRef.current) return;
       setNDCFromEvent(event);
       const hit = hitsModifiedBeam();
       if (!hit) return;
@@ -1372,6 +1395,19 @@ export default function Pro6() {
 
     /* ── Animation loop ───────────────────────────────────────── */
     let frameId = 0;
+    const animStart = performance.now();
+    /* Reusable colour vectors so the per-frame lerp doesn't allocate. */
+    const ACCENT_COLOR_OBJ = new THREE.Color(AI_ACCENT_NUM);
+    const REJECT_COLOR_OBJ = new THREE.Color(REJECT_COLOR_NUM);
+    /* Capture the steel colour for each cloned mesh material once, so
+     * we can lerp the rejected flash back to whatever the original
+     * beam tone was (clones may have been re-toned later).             */
+    const modifiedBeamBaseColors = modifiedBeamMaterials.map((m) =>
+      m.color.clone(),
+    );
+    /* Rejection animation timing (seconds). */
+    const REJECT_FLASH_HOLD = 0.35; // peak red flash duration
+    const REJECT_BEAM_TINT_DURATION = 0.7; // beam mesh red-wash window
 
     function animate() {
       frameId = requestAnimationFrame(animate);
@@ -1379,14 +1415,66 @@ export default function Pro6() {
       controls.update();
 
       const acceptedNow = acceptedRef.current;
+      const rejectedNow = rejectedRef.current;
+      const tSec = (performance.now() - animStart) / 1000;
+      const rejectStart = rejectStartRef.current;
+      const tSinceReject =
+        rejectStart !== null ? (performance.now() - rejectStart) / 1000 : 0;
 
-      /* Solid neon outline — fade opacity to 0 once accepted. */
-      solidMaterials.forEach((mat) => {
-        const target = acceptedNow ? 0 : 0.95;
-        mat.opacity += (target - mat.opacity) * 0.10;
+      /* Neon outline — three modes:
+       *   • Pending  → cyan twinkle (sin-wave opacity + linewidth,
+       *                 phase-staggered per beam so they shimmer).
+       *   • Accepted → cyan lerps to opacity 0 (clean fade-out).
+       *   • Rejected → snap to bright red + thicker, hold for
+       *                REJECT_FLASH_HOLD, then fade out.               */
+      solidMaterials.forEach((mat, idx) => {
+        if (acceptedNow) {
+          mat.color.lerp(ACCENT_COLOR_OBJ, 0.1);
+          mat.opacity += (0 - mat.opacity) * 0.1;
+          mat.linewidth += (3.0 - mat.linewidth) * 0.1;
+        } else if (rejectedNow) {
+          mat.color.copy(REJECT_COLOR_OBJ);
+          if (tSinceReject < REJECT_FLASH_HOLD) {
+            // Bright red flash — full opacity, thick line
+            mat.opacity = 1.0;
+            mat.linewidth = 6.0;
+          } else {
+            // Fade out smoothly
+            mat.opacity += (0 - mat.opacity) * 0.08;
+            mat.linewidth += (3.0 - mat.linewidth) * 0.1;
+          }
+        } else {
+          mat.color.lerp(ACCENT_COLOR_OBJ, 0.2);
+          // Twinkle: 0..1 over ~1.8s, phase-staggered per beam
+          const phase = idx * 1.7;
+          const twinkle = 0.5 + 0.5 * Math.sin(tSec * 3.5 + phase);
+          const flicker = 0.5 + 0.5 * Math.sin(tSec * 11 + phase * 0.7);
+          mat.opacity = 0.65 + 0.3 * twinkle + 0.05 * flicker;
+          mat.linewidth = 2.4 + 1.0 * twinkle + 0.2 * flicker;
+        }
         mat.visible = mat.opacity > 0.02;
       });
 
+      /* Modified beam meshes — flash their steel surface red on
+       * rejection so the actual girders pulse, not just the outline.
+       * The wash decays over REJECT_BEAM_TINT_DURATION and then
+       * eases back to the original steel tone (also used after a
+       * Reset to wipe any leftover red).                                */
+      modifiedBeamMaterials.forEach((mat, idx) => {
+        const baseColor = modifiedBeamBaseColors[idx];
+        if (rejectedNow && rejectStart !== null) {
+          if (tSinceReject < REJECT_BEAM_TINT_DURATION) {
+            const k = 1 - tSinceReject / REJECT_BEAM_TINT_DURATION;
+            // 0..0.7 mix of red over steel, falling off over time
+            mat.color.copy(baseColor).lerp(REJECT_COLOR_OBJ, k * 0.7);
+          } else {
+            mat.color.lerp(baseColor, 0.12);
+          }
+        } else {
+          // Pending or accepted: keep the beam its normal steel tone.
+          mat.color.lerp(baseColor, 0.18);
+        }
+      });
       updateOverlay();
       renderer.render(scene, camera);
     }
@@ -1487,91 +1575,125 @@ export default function Pro6() {
           <div
             style={{
               position: 'relative',
-              backgroundColor: TOKEN_BASE_100,
+              // Hard-coded white — the resolved Modus base-100 token in
+              // this theme is a faint grey, but the rainbow border
+              // reads better against a clean white card.
+              backgroundColor: '#ffffff',
               borderRadius: 14,
               overflow: 'hidden',
-              padding: '16px 18px 16px',
+              padding: '20px 20px 20px',
             }}
           >
-            {/* Header meta row — sparkle/accepted icon on the left,
-             *  count badge on the right. Lives in its own row so the
-             *  title beneath it can sit flush against the card's left
-             *  padding (aligning with the description paragraph). */}
+            {/* Title row — title flush against the card's left padding,
+             *  count badge (with sparkle/accepted icon inside) pushed
+             *  to the right. The icon now lives inside the badge so it
+             *  no longer indents the title. */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                marginBottom: 6,
+                gap: 8,
+                marginBottom: 14,
               }}
             >
-              <ModusWcIcon
-                name={accepted ? 'check_circle' : 'sparkle'}
-                size="sm"
-                decorative
-                style={{
-                  color: accepted ? TOKEN_SUCCESS : TOKEN_AI_ACCENT,
-                }}
-              />
               <span
                 style={{
-                  marginLeft: 'auto',
-                  fontSize: 'var(--modus-wc-font-size-xs, 10px)',
+                  fontSize: 'var(--modus-wc-font-size-lg, 16px)',
                   fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  color: TOKEN_AI_ACCENT,
-                  border: `1px solid ${TOKEN_AI_ACCENT}`,
-                  borderRadius: 999,
-                  padding: '2px 8px',
-                  lineHeight: '14px',
+                  color: TOKEN_TEXT,
+                  lineHeight: '22px',
+                  flex: 1,
+                  minWidth: 0,
                 }}
               >
-                2 beams
+                {accepted
+                  ? 'Changes accepted'
+                  : rejected
+                    ? 'Changes rejected'
+                    : 'Reinforced perimeter beams'}
               </span>
+              {/* Status badge — colour and icon both reflect the card's
+               *  current state (cyan/sparkle pending, green/check on
+               *  accept, red/cancel on reject). */}
+              {(() => {
+                const badgeColor = accepted
+                  ? TOKEN_SUCCESS
+                  : rejected
+                    ? TOKEN_DANGER
+                    : TOKEN_AI_ACCENT;
+                const badgeIcon = accepted
+                  ? 'check_circle'
+                  : rejected
+                    ? 'cancel'
+                    : 'sparkle';
+                return (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 'var(--modus-wc-font-size-xs, 10px)',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      color: badgeColor,
+                      border: `1px solid ${badgeColor}`,
+                      borderRadius: 999,
+                      padding: '2px 8px',
+                      lineHeight: '14px',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <ModusWcIcon
+                      name={badgeIcon}
+                      size="xs"
+                      decorative
+                      style={{ color: badgeColor }}
+                    />
+                    2 beams
+                  </span>
+                );
+              })()}
             </div>
 
-            {/* Title — flush left so it aligns with the description. */}
-            <div
-              style={{
-                fontSize: 'var(--modus-wc-font-size-md, 14px)',
-                fontWeight: 700,
-                color: TOKEN_TEXT,
-                lineHeight: '20px',
-                marginBottom: 8,
-              }}
-            >
-              {accepted ? 'Changes accepted' : 'Reinforced perimeter beams'}
-            </div>
-
-            {/* Description */}
+            {/* Description — directly below the title row. */}
             <p
               style={{
                 margin: 0,
-                marginBottom: 14,
+                marginBottom: 22,
                 fontSize: 'var(--modus-wc-font-size-sm, 12px)',
-                lineHeight: 1.55,
+                lineHeight: 1.6,
                 color: TOKEN_TEXT_MUTED,
               }}
             >
               {accepted
                 ? '2 perimeter beams at the top of the structure were upsized to W14×38 sections.'
-                : 'AI upsized 2 perimeter beams at the top of the structure (floors 4-5) to W14×38 sections to satisfy the lateral seismic check.'}
+                : rejected
+                  ? 'The proposed beam upsize was discarded. The model is unchanged.'
+                  : 'AI upsized 2 perimeter beams at the top of the structure (floors 4-5) to W14×38 sections to satisfy the lateral seismic check.'}
             </p>
 
-            {/* Actions — both buttons share the card's full width 50/50,
-             *  with Reject (grey) on the left and primary Accept Changes
-             *  on the right. */}
-            {!accepted ? (
+            {/* Actions — pending state shows the Reject / Accept pair;
+             *  resolved states (accepted or rejected) collapse to a
+             *  single Reset demo button so the demo can be replayed. */}
+            {!accepted && !rejected ? (
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <ModusWcButton
                     size="md"
-                    customClass="pro6-reject-grey"
+                    color="tertiary"
+                    variant="outlined"
                     style={{ width: '100%' }}
                     onButtonClick={() => {
-                      // Detach the card from any specific beam so the
-                      // next click on a beam (even the same one)
-                      // re-opens it at that beam's position.
+                      // Stamp the rejection time so the animate loop
+                      // can drive the timed red flash on the beams +
+                      // outlines, then close the card so the user
+                      // sees the proposed change vanish from the
+                      // model. The accepted state-block in pointer
+                      // handlers also covers `rejected`.
+                      rejectStartRef.current = performance.now();
+                      setRejected(true);
                       activeBeamIdxRef.current = -1;
                       setOpen(false);
                     }}
@@ -1584,9 +1706,20 @@ export default function Pro6() {
                     size="md"
                     color="primary"
                     style={{ width: '100%' }}
-                    onButtonClick={() => setAccepted(true)}
+                    onButtonClick={() => {
+                      // Mark as accepted so the neon lines lerp out,
+                      // and close the card so the user sees the
+                      // change settle into the model. The accepted
+                      // state still blocks further beam clicks.
+                      setAccepted(true);
+                      activeBeamIdxRef.current = -1;
+                      setOpen(false);
+                    }}
                   >
-                    <span className="flex items-center justify-center gap-1.5">
+                    <span
+                      className="flex items-center justify-center gap-1.5"
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
                       <ModusWcIcon name="check" size="sm" decorative />
                       Accept Changes
                     </span>
@@ -1598,7 +1731,13 @@ export default function Pro6() {
                 color="tertiary"
                 variant="borderless"
                 size="sm"
-                onButtonClick={() => setAccepted(false)}
+                onButtonClick={() => {
+                  // Reset both terminal states so the demo can be
+                  // replayed (highlights resume their cyan glitter).
+                  setAccepted(false);
+                  setRejected(false);
+                  rejectStartRef.current = null;
+                }}
               >
                 <span className="flex items-center" style={{ gap: 4 }}>
                   <ModusWcIcon name="refresh" size="xs" decorative />

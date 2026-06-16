@@ -62,7 +62,7 @@ const routes: RouteDef[] = [
   { path: '/expert4', label: 'Expert 4 — Explain Why', Component: Expert4, fullBleed: true },
   { path: '/expert5', label: 'Expert 5 — Be Honest About Limitations', Component: Expert5 },
   { path: '/expert6', label: 'Expert 6 — Highlight Further Investigation', Component: Expert6 },
-  { path: '/pro1', label: 'Pro 1 — Integrate with Professional Tools', Component: Pro1 },
+  { path: '/pro1', label: 'Pro 1 — Integrate with Professional Tools', Component: Pro1, fullBleed: true },
   { path: '/pro2', label: 'Pro 2 — Perform Bite-Sized Tasks', Component: Pro2 },
   { path: '/pro3', label: 'Pro 3 — Be Trainable, Context and Domain Aware', Component: Pro3, fullBleed: true },
   { path: '/pro4', label: 'Pro 4 — Support Intervention', Component: Pro4 },
@@ -187,7 +187,7 @@ const GUIDELINE_EXPLANATIONS: Record<string, GuidelineInfo> = {
   },
   pro2: {
     purpose: "To support professional oversight.",
-    body: "AI should take on small, well-scoped tasks the professional can quickly verify, rather than long, opaque chains of work that are hard to audit or correct.",
+    body: "AI should break down complex tasks into manageable chunks, allowing professionals to provide incremental review & input. This approach minimizes chances of error by creating a high level of professional oversight & accountability.",
   },
   pro3: {
     purpose: "To ensure relevance & usefulness.",

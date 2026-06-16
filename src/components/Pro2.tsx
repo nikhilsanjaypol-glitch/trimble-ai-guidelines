@@ -1,236 +1,295 @@
 import { useState } from 'react';
-import { ModusWcButton, ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
+import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
 
 /* ─────────────────────────────────────────────────────────────────
  * Pro 2 — PERFORM BITE-SIZED TASKS
  *
- * Checkpoint card: the AI has just finished a small chunk and has
- * paused itself. Nothing happens next until the professional
- * reviews. The pause is the entire point of the component.
+ * AI capabilities live on the 3D model itself — right-click an
+ * element and the AI is offered as a set of "magic actions" with
+ * bright, recognizable icons. Each action is a small, well-scoped
+ * task the professional can trigger and verify one at a time, with
+ * no typed prompts.
  * ───────────────────────────────────────────────────────────────── */
 
-const TRIMBLE_RAINBOW =
-  'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
+interface MagicAction {
+  id: string;
+  icon: string;
+  label: string;
+  description: string;
+  tint: string;
+  shortcut: string;
+}
 
-const SUMMARY_STATS = [
-  { label: 'Curves drafted', value: '4' },
-  { label: 'Stations covered', value: '12+50 → 38+20' },
-  { label: 'AASHTO checks', value: 'All pass' },
+const ACTIONS: MagicAction[] = [
+  {
+    id: 'cost',
+    icon: 'calculator',
+    label: 'Cost check',
+    description: 'Estimate impact against the budget.',
+    tint: '#1AB1A0',
+    shortcut: '⌘1',
+  },
+  {
+    id: 'conformance',
+    icon: 'list_checkmark',
+    label: 'Conformance check',
+    description: 'Validate against project standards.',
+    tint: '#0063A3',
+    shortcut: '⌘2',
+  },
+  {
+    id: 'organize',
+    icon: 'sparkle',
+    label: 'Auto-organize',
+    description: 'Group, name, and tidy by type.',
+    tint: '#7B2DFF',
+    shortcut: '⌘3',
+  },
+  {
+    id: 'issues',
+    icon: 'alert_outline',
+    label: 'Detect issues',
+    description: 'Find clashes and missing data.',
+    tint: '#E25C00',
+    shortcut: '⌘4',
+  },
 ];
 
 export default function Pro2() {
-  const [hovered, setHovered] = useState<'review' | 'continue' | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
     <div
-      className="rounded-2xl p-[2px] w-[380px] shrink-0"
+      className="relative"
       style={{
-        background: TRIMBLE_RAINBOW,
-        boxShadow: '0px 8px 20px -6px rgba(0,0,0,0.18)',
+        filter:
+          'drop-shadow(0px 14px 28px rgba(0,0,0,0.18)) drop-shadow(0px 2px 4px rgba(0,0,0,0.10))',
       }}
     >
-      <div className="bg-white rounded-[14px] flex flex-col">
-        {/* Header — pause indicator */}
-        <div className="flex items-center gap-3 px-5 pt-5 pb-3">
-          <div
-            className="flex items-center justify-center rounded-full shrink-0"
+      {/* Pointer notch suggesting right-click anchor */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: -6,
+          left: 18,
+          width: 12,
+          height: 12,
+          backgroundColor: '#ffffff',
+          transform: 'rotate(45deg)',
+          borderTopLeftRadius: 2,
+          borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          borderLeft: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          zIndex: 0,
+        }}
+      />
+
+      <div
+        className="relative bg-white rounded-xl flex flex-col"
+        style={{
+          width: 300,
+          border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+          paddingTop: 6,
+          paddingBottom: 6,
+        }}
+      >
+        {/* Selection chip — proves the menu is anchored on a 3D element */}
+        <div
+          className="flex items-center gap-2 mx-2 mt-1 mb-2 rounded-md px-2.5"
+          style={{
+            height: 28,
+            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
+          }}
+        >
+          <ModusWcIcon
+            name="dimensions"
+            size="xs"
+            decorative
             style={{
-              width: '36px',
-              height: '36px',
-              backgroundColor: 'rgba(0, 99, 163, 0.10)',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          />
+          <span
+            className="flex-1 min-w-0 truncate"
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--modus-wc-color-base-content, #171c1e)',
             }}
           >
-            <ModusWcIcon
-              name="pause"
-              size="md"
-              decorative
-              style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
-            />
-          </div>
-          <div className="flex flex-col flex-1 min-w-0">
-            <span
-              className="font-semibold leading-5"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-md, 16px)',
-                color: 'var(--modus-wc-color-base-content, #101828)',
-              }}
-            >
-              Paused for your review
-            </span>
-            <span
-              className="leading-4"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              }}
-            >
-              I won&apos;t continue until you take a look.
-            </span>
-          </div>
+            Wall 23 · Level 2
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.2px',
+              textTransform: 'uppercase',
+              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+            }}
+          >
+            Curtain wall
+          </span>
         </div>
 
-        {/* Step pill row */}
-        <div className="flex items-center gap-1.5 px-5 pb-3">
-          {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-full"
-              style={{
-                height: '4px',
-                backgroundColor:
-                  i < 2
-                    ? 'var(--modus-wc-color-status-success, #1e7e34)'
-                    : i === 2
-                      ? 'var(--modus-wc-color-primary, #0063a3)'
-                      : 'var(--modus-wc-color-base-200, #e0e1e9)',
-              }}
-            />
-          ))}
+        {/* Magic actions section header */}
+        <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
           <span
-            className="ml-2 shrink-0"
             style={{
-              fontSize: '10px',
+              fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.4px',
               textTransform: 'uppercase',
               color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             }}
           >
-            Step 2 of 4
+            Magic actions
           </span>
-        </div>
-
-        {/* What was just done */}
-        <div
-          className="mx-5 mb-3 rounded-lg flex flex-col gap-3 px-4 py-3"
-          style={{
-            backgroundColor: 'var(--modus-wc-color-base-100, #f8f9fa)',
-            border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <ModusWcIcon
-              name="check_circle"
-              size="sm"
-              decorative
-              style={{ color: 'var(--modus-wc-color-status-success, #1e7e34)' }}
-            />
-            <span
-              className="font-semibold flex-1"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-              }}
-            >
-              Drafted corridor alignment
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            {SUMMARY_STATS.map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between">
-                <span
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  }}
-                >
-                  {label}
-                </span>
-                <span
-                  className="font-medium"
-                  style={{
-                    fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-                    color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  }}
-                >
-                  {value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Coming next — sets up the bite-sized pattern */}
-        <div className="flex items-center gap-2 px-5 pb-4">
-          <ModusWcIcon
-            name="chevron_double_right"
-            size="xs"
-            decorative
-            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
-          />
           <span
+            className="flex-1"
+            aria-hidden="true"
             style={{
-              fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+              height: 1,
+              backgroundColor: 'var(--modus-wc-color-base-200, #e0e1e9)',
             }}
-          >
-            Next:{' '}
-            <span
-              style={{
-                fontWeight: 600,
-                color: 'var(--modus-wc-color-base-content, #171c1e)',
-              }}
-            >
-              draft vertical profile
-            </span>
-          </span>
+          />
         </div>
 
-        {/* Actions */}
+        {/* Magic-icon rows */}
+        <div className="flex flex-col px-1.5">
+          {ACTIONS.map((action) => {
+            const isHovered = hovered === action.id;
+            return (
+              <button
+                key={action.id}
+                type="button"
+                onMouseEnter={() => setHovered(action.id)}
+                onMouseLeave={() => setHovered(null)}
+                className="flex items-center gap-2.5 text-left rounded-md cursor-pointer"
+                style={{
+                  padding: '6px 8px',
+                  backgroundColor: isHovered
+                    ? 'var(--modus-wc-color-base-100, #f1f1f6)'
+                    : 'transparent',
+                  border: 'none',
+                  transition: 'background-color 120ms ease',
+                }}
+              >
+                {/* Magic-icon tile */}
+                <div
+                  className="flex items-center justify-center rounded-lg shrink-0"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: action.tint,
+                    boxShadow: isHovered ? `0 0 0 3px ${action.tint}22` : 'none',
+                    transition: 'box-shadow 120ms ease',
+                  }}
+                >
+                  <ModusWcIcon
+                    name={action.icon}
+                    size="sm"
+                    decorative
+                    style={{ color: '#ffffff' }}
+                  />
+                </div>
+
+                {/* Label + description */}
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      lineHeight: '18px',
+                      color: 'var(--modus-wc-color-base-content, #171c1e)',
+                    }}
+                  >
+                    {action.label}
+                  </span>
+                  <span
+                    className="truncate"
+                    style={{
+                      fontSize: 11,
+                      lineHeight: '16px',
+                      color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                    }}
+                  >
+                    {action.description}
+                  </span>
+                </div>
+
+                {/* Shortcut hint */}
+                <span
+                  className="shrink-0"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                    letterSpacing: '0.3px',
+                  }}
+                >
+                  {action.shortcut}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Standard menu items — anchor this as a native context menu */}
         <div
-          className="flex items-center gap-2 px-5 py-4"
+          className="mt-1 pt-1 mx-1.5"
           style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
         >
-          <div
-            className="flex-1"
-            onMouseEnter={() => setHovered('review')}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <ModusWcButton
-              size="md"
-              color="tertiary"
-              variant="outlined"
-              style={{ width: '100%' }}
+          {[
+            { icon: 'visibility_off', label: 'Hide element', shortcut: 'H' },
+            { icon: 'settings_outline', label: 'Properties…', shortcut: '↵' },
+          ].map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onMouseEnter={() => setHovered(item.label)}
+              onMouseLeave={() => setHovered(null)}
+              className="flex items-center gap-2.5 w-full text-left rounded-md cursor-pointer"
+              style={{
+                padding: '6px 8px',
+                backgroundColor:
+                  hovered === item.label
+                    ? 'var(--modus-wc-color-base-100, #f1f1f6)'
+                    : 'transparent',
+                border: 'none',
+                transition: 'background-color 120ms ease',
+              }}
             >
-              <span className="flex items-center justify-center gap-1.5">
-                <ModusWcIcon name="visibility_on" size="sm" decorative />
-                Review
+              <ModusWcIcon
+                name={item.icon}
+                size="sm"
+                decorative
+                style={{
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  width: 32,
+                }}
+              />
+              <span
+                className="flex-1"
+                style={{
+                  fontSize: 13,
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                }}
+              >
+                {item.label}
               </span>
-            </ModusWcButton>
-          </div>
-          <div
-            className="flex-1"
-            onMouseEnter={() => setHovered('continue')}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <ModusWcButton size="md" color="primary" style={{ width: '100%' }}>
-              <span className="flex items-center justify-center gap-1.5">
-                Continue
-                <ModusWcIcon name="arrow_right" size="sm" decorative />
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  letterSpacing: '0.3px',
+                }}
+              >
+                {item.shortcut}
               </span>
-            </ModusWcButton>
-          </div>
-        </div>
-
-        {/* Hover hint — reinforces oversight */}
-        <div
-          className="px-5 pb-3 transition-opacity duration-150"
-          style={{ opacity: hovered ? 1 : 0, minHeight: '16px' }}
-        >
-          <span
-            style={{
-              fontSize: '10px',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-              fontStyle: 'italic',
-            }}
-          >
-            {hovered === 'review'
-              ? 'Open the alignment in the model viewer.'
-              : hovered === 'continue'
-                ? 'Approves this step and starts the next bite.'
-                : ''}
-          </span>
+            </button>
+          ))}
         </div>
       </div>
     </div>
