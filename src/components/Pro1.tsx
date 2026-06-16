@@ -131,6 +131,15 @@ const ACTIVE_HANDLE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x60a5fa });
 const TRIMBLE_RAINBOW =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
 
+/* Fixed 3D world point the AI scanner connector is aiming at.  Picked
+ * to sit on the carved road slightly forward of the camera target so
+ * it lands in the lower-center of the opening shot.  As the user
+ * orbits the camera, the projected screen position changes — the
+ * line stretches and rotates to keep pointing here. */
+const CONNECTOR_TARGET_X = 5;
+const CONNECTOR_TARGET_Z = roadCenterZ(CONNECTOR_TARGET_X);
+const CONNECTOR_TARGET_Y = lineY(CONNECTOR_TARGET_X, CONNECTOR_TARGET_Z);
+
 /* Mini Trimble AI logo — used inside the extract button. */
 function TrimbleAiLogo({ size = 22 }: { size?: number }) {
   return (
@@ -182,6 +191,8 @@ interface SceneRefs {
 export default function Pro1() {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRefs = useRef<SceneRefs | null>(null);
+  const connectorLineRef = useRef<HTMLDivElement>(null);
+  const connectorDotRef = useRef<HTMLDivElement>(null);
 
   const [lines, setLines] = useState<CurbLine[]>(INITIAL_LINES);
   const [drag, setDrag] = useState<{ lineId: string; pointIdx: number } | null>(
@@ -527,12 +538,79 @@ export default function Pro1() {
     el.addEventListener('pointercancel', onPointerUp);
     el.addEventListener('pointerleave', onPointerLeave);
 
+    /* ── Connector update ─ projects the fixed world target to screen
+     *    space each frame so the line + dot stay glued to the road
+     *    while the user orbits.  The line is anchored at the button's
+     *    centre and renders BEHIND the button in z-order, so the
+     *    inside-button portion is hidden by the card itself and the
+     *    visible portion always exits the card cleanly toward the
+     *    dot — regardless of which direction the dot happens to be. */
+    const connectorTarget = new THREE.Vector3(
+      CONNECTOR_TARGET_X,
+      CONNECTOR_TARGET_Y,
+      CONNECTOR_TARGET_Z,
+    );
+    const projected = new THREE.Vector3();
+    const LINE_HEIGHT_PX = 1.5;
+    /* Pixel offset so the line stops just shy of the dot's centre,
+     * matching half the visible dot diameter. */
+    const DOT_RADIUS_PX = 4.5;
+    /* Minimum line length below which we just hide the line — avoids
+     * a zero-length 1.5×1.5 px stub when the dot lands on the button. */
+    const MIN_LINE_LENGTH = 8;
+
+    function updateConnector() {
+      const line = connectorLineRef.current;
+      const dot = connectorDotRef.current;
+      if (!line || !dot) return;
+
+      projected.copy(connectorTarget).project(camera);
+      const onScreen = projected.z > -1 && projected.z < 1;
+
+      if (!onScreen) {
+        line.style.opacity = '0';
+        dot.style.opacity = '0';
+        return;
+      }
+      /* Clear inline opacity so the CSS fade-in animation governs
+       * visibility (fill-mode "both" leaves it at 1 afterwards). */
+      dot.style.opacity = '';
+
+      const dotX = (projected.x * 0.5 + 0.5) * W;
+      const dotY = (-projected.y * 0.5 + 0.5) * H;
+
+      /* Line starts at the button centre. Inside-button portion is
+       * occluded by the button card (rendered above the line). */
+      const startX = W / 2;
+      const startY = H / 2;
+
+      const dx = dotX - startX;
+      const dy = dotY - startY;
+      const rawLen = Math.hypot(dx, dy);
+      const length = rawLen - DOT_RADIUS_PX;
+      const angle = Math.atan2(dy, dx);
+
+      if (length < MIN_LINE_LENGTH) {
+        line.style.opacity = '0';
+      } else {
+        line.style.opacity = '';
+        line.style.left = `${startX}px`;
+        line.style.top = `${startY - LINE_HEIGHT_PX / 2}px`;
+        line.style.width = `${length}px`;
+        line.style.transform = `rotate(${angle}rad)`;
+      }
+
+      dot.style.left = `${dotX}px`;
+      dot.style.top = `${dotY}px`;
+    }
+
     /* ── Render loop ─────────────────────────────────────────────── */
     let frame = 0;
     function animate() {
       frame = requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
+      updateConnector();
     }
     animate();
 
@@ -662,19 +740,19 @@ export default function Pro1() {
             100% { background-position: 50% 0%; }
           }
           @keyframes pro1ConnectorFade {
-            from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
-            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+            from { opacity: 0; }
+            to   { opacity: 1; }
           }
           @keyframes pro1DotPulse {
             0%, 100% {
-              transform: translateX(-50%) scale(1);
+              transform: scale(1);
               box-shadow:
                 0 0 4px rgba(43, 223, 208, 0.9),
                 0 0 10px rgba(43, 223, 208, 0.55),
                 0 0 18px rgba(43, 223, 208, 0.25);
             }
             50% {
-              transform: translateX(-50%) scale(1.45);
+              transform: scale(1.45);
               box-shadow:
                 0 0 8px rgba(43, 223, 208, 1),
                 0 0 18px rgba(43, 223, 208, 0.85),
@@ -682,6 +760,61 @@ export default function Pro1() {
             }
           }`}
       </style>
+
+      {/* AI scanner connector — line + dot are positioned in screen
+       * space each frame by the render loop. The dot is glued to a
+       * fixed 3D point on the road and the line stretches/rotates
+       * from the button centre to that point as the camera orbits.
+       *
+       * Rendered BEFORE the button so the inside-button portion of
+       * the line is occluded by the white card. */}
+      {!extracted && (
+        <>
+          <div
+            ref={connectorLineRef}
+            aria-hidden
+            className="pointer-events-none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              height: 1.5,
+              width: 0,
+              borderRadius: 1,
+              backgroundImage: TRIMBLE_RAINBOW,
+              backgroundSize: '200% 100%',
+              animation: extracting
+                ? 'pro1RainbowShimmer 0.9s ease-in-out infinite, pro1ConnectorFade 240ms ease-out both'
+                : 'pro1RainbowShimmer 3.6s ease-in-out infinite, pro1ConnectorFade 360ms ease-out 180ms both',
+              transformOrigin: '0 50%',
+            }}
+          />
+          <div
+            ref={connectorDotRef}
+            aria-hidden
+            className="pointer-events-none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              transform: 'translate(-50%, -50%)',
+              animation: 'pro1ConnectorFade 360ms ease-out 220ms both',
+            }}
+          >
+            <div
+              style={{
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                backgroundColor: '#2bdfd0',
+                animation: extracting
+                  ? 'pro1DotPulse 0.7s ease-in-out infinite'
+                  : 'pro1DotPulse 1.4s ease-in-out infinite',
+              }}
+            />
+          </div>
+        </>
+      )}
 
       {/* AI-powered extract button — only shown before extraction */}
       {!extracted && (
@@ -749,53 +882,6 @@ export default function Pro1() {
               </span>
             </button>
           </div>
-
-          {/* AI scanner connector — a single thin rainbow line that
-           * shares the card's border style, capped with a small dot
-           * showing where on the 3D model it's pointing. */}
-          <div
-            aria-hidden
-            className="pointer-events-none"
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 2px)',
-              left: '50%',
-              width: 1.5,
-              height: 110,
-              borderRadius: 1,
-              backgroundImage:
-                'linear-gradient(180deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)',
-              backgroundSize: '100% 200%',
-              animation: extracting
-                ? 'pro1ConnectorShimmer 0.9s ease-in-out infinite, pro1ConnectorFade 240ms ease-out both'
-                : 'pro1ConnectorShimmer 3.6s ease-in-out infinite, pro1ConnectorFade 360ms ease-out 180ms both',
-              transform: 'translateX(-50%)',
-            }}
-          />
-
-          {/* Dot at the end of the connector line. */}
-          <div
-            aria-hidden
-            className="pointer-events-none"
-            style={{
-              position: 'absolute',
-              /* line is anchored at calc(100% + 2px) and is 110px tall;
-               * subtract half the dot height to center the dot on the
-               * line's terminus. */
-              top: 'calc(100% + 2px + 110px - 4.5px)',
-              left: '50%',
-              width: 9,
-              height: 9,
-              borderRadius: '50%',
-              backgroundImage: TRIMBLE_RAINBOW,
-              backgroundSize: '200% 100%',
-              animation: extracting
-                ? 'pro1RainbowShimmer 0.9s ease-in-out infinite, pro1ConnectorFade 240ms ease-out both'
-                : 'pro1RainbowShimmer 3.6s ease-in-out infinite, pro1ConnectorFade 360ms ease-out 220ms both',
-              transform: 'translateX(-50%)',
-              boxShadow: '0 0 6px rgba(255, 0, 211, 0.5)',
-            }}
-          />
         </div>
       )}
 

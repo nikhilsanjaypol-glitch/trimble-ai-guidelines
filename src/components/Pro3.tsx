@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
@@ -13,7 +13,7 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
  * context around specific project, client, or industry requirements.
  *
  * Composition: a 3D viewer application shell.
- *  - Top toolbar of modeling tools, an AI-insight on/off switch, Save.
+ *  - Top toolbar of modeling tools and Save.
  *  - Left rail of icon tabs (model / layers / share).
  *  - "Model Management" panel listing layers; toggling a layer hides
  *    the matching geometry in the 3D scene.
@@ -21,14 +21,32 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
  *    realistic civil-engineering earthworks site - an excavator at
  *    work, a magenta wetland-buffer no-dig zone with trees and a
  *    pond, material stockpiles, and a GNSS survey rover.
- *  - "Source Documentation" tab: shows the project files the AI was
- *    trained on, the active source for the selected layer, the AI
- *    insight quote, and the object properties. This is the dedicated
- *    docked tab for source data / guidance documentation, anchoring
- *    every AI insight in a project file.
+ *  - "Source Documentation" tab: shows the project files for the
+ *    selected layer, the active source citation with the relevant
+ *    clause highlighted, the Project / Client / Industry context
+ *    pillars driving the layer, the compliance checklist, and the
+ *    object calculations.
  */
 
-const ZONE_MAGENTA = '#E5009E';
+/* Restricted-zone fill colour. Vivid red sits in a hue family that
+ * the rainbow AI marker (cyan / blue / purple / magenta / pink) does
+ * not cover, so the marker pops sharply against the polygon. Red
+ * also reads as the universal "no-dig / restricted" semantic. The
+ * source-citation accents (file rail, SOURCE badge, highlight mark)
+ * stay coordinated with the zone via this single constant. */
+const ZONE_ALERT = '#DC2626';
+
+/* Trimble brand rainbow used for the AI marker's orb fill, pulse rings,
+ * and AIInsightPopup border. Kept identical to Creative 8 so every AI
+ * artifact in the app shares the same diagonal gradient. */
+const TRIMBLE_RAINBOW =
+  'linear-gradient(135deg, #00D7C0 0%, #009AFE 30%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%)';
+
+/* World-space anchor for the pulsing AI marker (and the popup
+ * stem-point). Offset slightly off-pond-centre so the marker reads
+ * as a fresh focal point in the camera-right direction rather than
+ * sitting dead-on the water. */
+const MARKER_ANCHOR = new THREE.Vector3(10, 1.4, 6.5);
 
 type LayerId = 'excavator' | 'wetland' | 'stockpiles' | 'survey';
 
@@ -38,9 +56,6 @@ interface Layer {
   color: string;
   source?: string;
   insight?: string;
-  count: number;
-  length?: string;
-  area?: string;
 }
 
 const LAYERS: Layer[] = [
@@ -50,26 +65,20 @@ const LAYERS: Layer[] = [
     color: '#F2B100',
     source: 'Excavator_GNSS_Tolerance_Specs.pdf',
     insight:
-      'GNSS positioning tolerance for this excavator class is plus or minus 25 mm horizontal and plus or minus 35 mm vertical. Bond the dual-antenna receiver and verify the calibration before grading toward the wetland buffer.',
-    count: 1,
-    length: '11.300 m',
+      'GNSS positioning tolerance for the CAT 336 is +/- 25 mm horizontal, +/- 35 mm vertical. Verify the dual-antenna receiver is bonded before grading adjacent to protected zones.',
   },
   {
     id: 'wetland',
     name: 'Wetland Buffer (No-Dig)',
-    color: ZONE_MAGENTA,
+    color: ZONE_ALERT,
     source: 'Environmental_Mitigation_Policy.pdf',
     insight:
       'This wetland buffer is a designated no-dig zone per the environmental impact study. Excavation, drilling, drone flight, and material staging are prohibited inside the highlighted polygon.',
-    count: 1,
-    area: '142.000 m2',
   },
   {
     id: 'stockpiles',
     name: 'Material Stockpiles',
     color: '#A07840',
-    count: 3,
-    area: '38.500 m2',
   },
   {
     id: 'survey',
@@ -77,9 +86,7 @@ const LAYERS: Layer[] = [
     color: '#2D6FB8',
     source: 'Equipment_Pre-Start_Checklist.pdf',
     insight:
-      'Run the pre-start checklist before logging control points: verify tribrach level, antenna height (1.300 m), receiver fix quality, and base-rover radio link.',
-    count: 1,
-    length: '1.300 m',
+      'Verify tribrach level, antenna height (1.300 m), receiver fix quality (RTK Fixed), and base-rover radio link before logging any control point.',
   },
 ];
 
@@ -90,7 +97,7 @@ const FILES = [
   'Equipment_Pre-Start_Checklist.pdf',
 ];
 
-/* ----- Workflow data: pillars, citations, reasoning, compliance ----- */
+/* ----- Workflow data: pillars, citations, compliance ----- */
 
 type ContextScope = 'project' | 'client' | 'industry';
 
@@ -105,22 +112,8 @@ interface CitationDetail {
   highlight: string;
 }
 
-interface ReasoningStep {
-  scope: ContextScope;
-  title: string;
-  detail: string;
-}
-
-interface ComplianceItem {
-  rule: string;
-  value: string;
-  status: 'pass' | 'block' | 'warn';
-}
-
 interface LayerWorkflow {
   pillars: ContextChip[];
-  reasoning: ReasoningStep[];
-  compliance: ComplianceItem[];
 }
 
 const CONTEXT_COLORS: Record<
@@ -145,65 +138,12 @@ const LAYER_WORKFLOWS: Record<LayerId, LayerWorkflow> = {
       { scope: 'client', label: 'Acme Construction' },
       { scope: 'industry', label: 'EPA Section 404' },
     ],
-    reasoning: [
-      {
-        scope: 'project',
-        title: 'Identified Wetland-A polygon',
-        detail:
-          'Tagged in the Cedar Hills site plan with a 100% mitigation buffer on the eastern boundary.',
-      },
-      {
-        scope: 'client',
-        title: 'Loaded Acme environmental policy',
-        detail:
-          'Acme prohibits excavation, drone overflight, and material staging inside any wetland buffer.',
-      },
-      {
-        scope: 'industry',
-        title: 'Cross-checked EPA Section 404',
-        detail:
-          'Federal jurisdictional wetland - discharge of dredged or fill material is prohibited without a permit.',
-      },
-    ],
-    compliance: [
-      { rule: 'Excavation', value: 'Blocked', status: 'block' },
-      { rule: 'Drone overflight', value: 'Prohibited', status: 'block' },
-      { rule: 'Material staging', value: 'Prohibited', status: 'block' },
-      { rule: 'Boundary setback', value: '3 m min.', status: 'warn' },
-      { rule: 'Survey access', value: 'Permitted', status: 'pass' },
-    ],
   },
   excavator: {
     pillars: [
       { scope: 'project', label: 'Cedar Hills Phase 2' },
       { scope: 'client', label: 'Acme Fleet Standard' },
       { scope: 'industry', label: 'CAT 336 Spec' },
-    ],
-    reasoning: [
-      {
-        scope: 'project',
-        title: 'Bound to grading task',
-        detail:
-          'Assigned to the eastern earthworks task adjacent to the wetland buffer.',
-      },
-      {
-        scope: 'client',
-        title: 'Acme fleet calibration policy',
-        detail:
-          'Dual-antenna receiver must be bonded and the calibration log refreshed each shift.',
-      },
-      {
-        scope: 'industry',
-        title: 'CAT 336 manufacturer spec',
-        detail:
-          'GNSS positioning tolerance is plus or minus 25 mm horizontal and plus or minus 35 mm vertical.',
-      },
-    ],
-    compliance: [
-      { rule: 'Receiver bonded', value: 'Verified', status: 'pass' },
-      { rule: 'Horizontal tolerance', value: '+/- 25 mm', status: 'pass' },
-      { rule: 'Vertical tolerance', value: '+/- 35 mm', status: 'pass' },
-      { rule: 'Distance to no-dig', value: '4.2 m', status: 'warn' },
     ],
   },
   stockpiles: {
@@ -212,63 +152,12 @@ const LAYER_WORKFLOWS: Record<LayerId, LayerWorkflow> = {
       { scope: 'client', label: 'Acme Logistics' },
       { scope: 'industry', label: 'OSHA 1926.250' },
     ],
-    reasoning: [
-      {
-        scope: 'project',
-        title: 'Material balance check',
-        detail:
-          '38.5 m2 footprint allocated for topsoil, gravel, and sand stockpiles per cut/fill plan.',
-      },
-      {
-        scope: 'client',
-        title: 'Logistics setback rule',
-        detail:
-          'Stockpiles must remain 10 m clear of any wetland buffer or active travel way.',
-      },
-      {
-        scope: 'industry',
-        title: 'OSHA storage standard',
-        detail:
-          'Material storage limited to 20 ft. height with stable repose angle.',
-      },
-    ],
-    compliance: [
-      { rule: 'Footprint area', value: '38.5 m2', status: 'pass' },
-      { rule: 'Setback from no-dig', value: '8.4 m', status: 'warn' },
-      { rule: 'Pile height', value: '< 6 m', status: 'pass' },
-    ],
   },
   survey: {
     pillars: [
       { scope: 'project', label: 'Control Network' },
       { scope: 'client', label: 'Acme QA Procedure' },
       { scope: 'industry', label: 'ISO 17123' },
-    ],
-    reasoning: [
-      {
-        scope: 'project',
-        title: 'Control point CP-04',
-        detail:
-          'Setup occupies the project benchmark on the eastern lot line.',
-      },
-      {
-        scope: 'client',
-        title: 'Acme pre-start checklist',
-        detail:
-          'Tribrach level, antenna height (1.300 m), and RTK fix quality must be logged before observations.',
-      },
-      {
-        scope: 'industry',
-        title: 'ISO 17123 method',
-        detail:
-          'Documented field test procedure for GNSS receivers in survey use.',
-      },
-    ],
-    compliance: [
-      { rule: 'Tribrach level', value: 'Verified', status: 'pass' },
-      { rule: 'Antenna height', value: '1.300 m', status: 'pass' },
-      { rule: 'Fix quality', value: 'RTK Fixed', status: 'pass' },
-      { rule: 'Base-rover link', value: 'Stable', status: 'pass' },
     ],
   },
 };
@@ -333,13 +222,7 @@ type RailTab = 'model' | 'source' | 'share';
 /* Sub-components                                                  */
 /* ============================================================== */
 
-function TopToolbar({
-  aiInsightOn,
-  onToggleAiInsight,
-}: {
-  aiInsightOn: boolean;
-  onToggleAiInsight: () => void;
-}) {
+function TopToolbar() {
   return (
     <div
       style={{
@@ -359,67 +242,6 @@ function TopToolbar({
         <ToolbarButton key={t.label} icon={t.name} label={t.label} />
       ))}
       <div style={{ flex: 1 }} />
-      <button
-        type="button"
-        onClick={onToggleAiInsight}
-        aria-label="Toggle AI insights"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '0 12px',
-          height: 28,
-          backgroundColor: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            width: 36,
-            height: 20,
-            borderRadius: 1000,
-            backgroundColor: aiInsightOn ? '#0063A7' : '#cbcdd6',
-            position: 'relative',
-            transition: 'background-color 160ms ease',
-          }}
-        >
-          <span
-            style={{
-              position: 'absolute',
-              top: 2,
-              left: aiInsightOn ? 18 : 2,
-              width: 16,
-              height: 16,
-              borderRadius: 1000,
-              backgroundColor: '#ffffff',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-              transition: 'left 160ms ease',
-            }}
-          />
-        </span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#171c1e' }}>
-          {aiInsightOn ? 'ON' : 'OFF'}
-        </span>
-      </button>
-      <div style={{ width: 8 }} />
-      <button
-        type="button"
-        style={{
-          height: 30,
-          padding: '0 16px',
-          borderRadius: 6,
-          border: '1px solid #0063A7',
-          backgroundColor: '#ffffff',
-          color: '#0063A7',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        Save
-      </button>
     </div>
   );
 }
@@ -812,13 +634,11 @@ function LayerRow({
 
 function SourceDocPanel({
   layer,
-  aiInsightOn,
   activeFile,
   onClose,
   onSelectLayer,
 }: {
   layer: Layer;
-  aiInsightOn: boolean;
   activeFile?: string;
   onClose: () => void;
   onSelectLayer: (id: LayerId) => void;
@@ -827,17 +647,11 @@ function SourceDocPanel({
   const [expandedFile, setExpandedFile] = useState<string | null>(
     activeFile ?? null,
   );
-  const [applied, setApplied] = useState(false);
-  const [reasoningOpen, setReasoningOpen] = useState(false);
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
   const wf = LAYER_WORKFLOWS[layer.id];
 
   useEffect(() => {
     setExpandedFile(activeFile ?? null);
-    setApplied(false);
-    setReasoningOpen(false);
-    setFeedback(null);
     setLayerDropdownOpen(false);
   }, [layer.id, activeFile]);
 
@@ -1076,7 +890,7 @@ function SourceDocPanel({
                     borderTop: i === 0 ? 'none' : '1px solid #f1f1f6',
                     backgroundColor: active ? '#fef0f8' : '#ffffff',
                     borderLeft: active
-                      ? `3px solid ${ZONE_MAGENTA}`
+                      ? `3px solid ${ZONE_ALERT}`
                       : '3px solid transparent',
                   }}
                 >
@@ -1104,7 +918,7 @@ function SourceDocPanel({
                       size="xs"
                       decorative
                       style={{
-                        color: active ? ZONE_MAGENTA : '#6a6e79',
+                        color: active ? ZONE_ALERT : '#6a6e79',
                       }}
                     />
                     <span
@@ -1128,7 +942,7 @@ function SourceDocPanel({
                           fontWeight: 700,
                           letterSpacing: '0.06em',
                           textTransform: 'uppercase',
-                          color: ZONE_MAGENTA,
+                          color: ZONE_ALERT,
                         }}
                       >
                         Source
@@ -1150,157 +964,6 @@ function SourceDocPanel({
           </div>
         </div>
 
-        {/* AI insight + workflow */}
-        {aiInsightOn && layer.insight && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <FieldLabel>AI Insight</FieldLabel>
-            <div
-              style={{
-                position: 'relative',
-                padding: 1,
-                borderRadius: 10,
-                background:
-                  'linear-gradient(135deg, #00D7C0 0%, #009AFE 30%, #4A00FF 55%, #FF2092 78%, #FF00D3 100%)',
-              }}
-            >
-              <div
-                style={{
-                  borderRadius: 9,
-                  padding: '12px 14px',
-                  backgroundColor: '#ffffff',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 8,
-                  }}
-                >
-                  <ModusWcIcon
-                    name="sparkle"
-                    size="sm"
-                    decorative
-                    style={{ color: '#171c1e', marginTop: 1 }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      color: '#171c1e',
-                      fontStyle: 'italic',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {layer.insight}
-                  </span>
-                </div>
-
-                {applied && (
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '4px 8px',
-                      borderRadius: 1000,
-                      alignSelf: 'flex-start',
-                      backgroundColor: '#e3f4ec',
-                      color: '#0F8F5B',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    <ModusWcIcon
-                      name="check_circle"
-                      size="xs"
-                      decorative
-                      style={{ color: '#0F8F5B' }}
-                    />
-                    Rule applied to model
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <InsightAction
-                    icon={applied ? 'check_circle' : 'check'}
-                    label={applied ? 'Applied' : 'Apply rule'}
-                    pressed={applied}
-                    onClick={() => setApplied((v) => !v)}
-                  />
-                  <InsightAction
-                    icon="info"
-                    label={
-                      reasoningOpen ? 'Hide reasoning' : 'Show reasoning'
-                    }
-                    pressed={reasoningOpen}
-                    onClick={() => setReasoningOpen((v) => !v)}
-                  />
-                  {layer.source && (
-                    <InsightAction
-                      icon="file"
-                      label="Open source"
-                      onClick={() => setExpandedFile(layer.source ?? null)}
-                    />
-                  )}
-                </div>
-
-                {reasoningOpen && <ReasoningChain steps={wf.reasoning} />}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!aiInsightOn && (
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: 8,
-              backgroundColor: '#f6f8fa',
-              border: '1px dashed #cbcdd6',
-              fontSize: 12,
-              color: '#6a6e79',
-              lineHeight: 1.5,
-            }}
-          >
-            AI insights are turned off. Toggle them on in the toolbar to see
-            the AI&apos;s reasoning grounded in the project files.
-          </div>
-        )}
-
-        {/* Compliance check */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <FieldLabel>Compliance Check</FieldLabel>
-          <div
-            style={{
-              border: '1px solid #e0e1e9',
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}
-          >
-            {wf.compliance.map((c, i) => (
-              <ComplianceRow key={c.rule} item={c} first={i === 0} />
-            ))}
-          </div>
-        </div>
-
-        {/* Object properties */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <FieldLabel>Object Calculations</FieldLabel>
-          <PropRow label="Object Count" value={String(layer.count)} />
-          {layer.length && <PropRow label="Length" value={layer.length} />}
-          {layer.area && (
-            <PropRow label="Planar Area (xy)" value={layer.area} />
-          )}
-        </div>
-
-        {/* Feedback */}
-        <FeedbackRow feedback={feedback} onFeedback={setFeedback} />
       </div>
     </div>
   );
@@ -1378,7 +1041,7 @@ function CitationCard({
     <div
       style={{
         padding: '10px 14px 12px 14px',
-        backgroundColor: active ? 'rgba(229, 0, 158, 0.04)' : '#fafbfc',
+        backgroundColor: active ? 'rgba(220, 38, 38, 0.04)' : '#fafbfc',
         borderTop: '1px solid #f1f1f6',
         display: 'flex',
         flexDirection: 'column',
@@ -1410,7 +1073,7 @@ function CitationCard({
             <mark
               style={{
                 backgroundColor: active
-                  ? 'rgba(229, 0, 158, 0.20)'
+                  ? 'rgba(220, 38, 38, 0.20)'
                   : '#fff3a8',
                 padding: '0 2px',
                 borderRadius: 2,
@@ -1450,292 +1113,6 @@ function CitationCard({
   );
 }
 
-function InsightAction({
-  icon,
-  label,
-  pressed,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  pressed?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={pressed}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '5px 10px',
-        borderRadius: 1000,
-        backgroundColor: pressed ? '#171c1e' : '#f1f1f6',
-        color: pressed ? '#ffffff' : '#171c1e',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: 11,
-        fontWeight: 600,
-        fontFamily: 'inherit',
-        transition: 'background-color 120ms ease, color 120ms ease',
-      }}
-    >
-      <ModusWcIcon
-        name={icon}
-        size="xs"
-        decorative
-        style={{ color: pressed ? '#ffffff' : '#171c1e' }}
-      />
-      {label}
-    </button>
-  );
-}
-
-function ReasoningChain({ steps }: { steps: ReasoningStep[] }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        padding: '10px 12px',
-        borderRadius: 8,
-        backgroundColor: '#fafbfc',
-        border: '1px solid #f1f1f6',
-      }}
-    >
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color: '#6a6e79',
-        }}
-      >
-        Chain of context
-      </span>
-      {steps.map((s, i) => {
-        const c = CONTEXT_COLORS[s.scope];
-        return (
-          <div key={i} style={{ display: 'flex', gap: 10 }}>
-            <div
-              style={{
-                flex: '0 0 24px',
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: c.bg,
-                color: c.fg,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 11,
-                fontWeight: 700,
-              }}
-            >
-              {i + 1}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 3,
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#171c1e',
-                  }}
-                >
-                  {s.title}
-                </span>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color: c.fg,
-                    backgroundColor: c.bg,
-                    padding: '2px 6px',
-                    borderRadius: 1000,
-                  }}
-                >
-                  {CONTEXT_LABEL[s.scope]}
-                </span>
-              </div>
-              <span
-                style={{
-                  fontSize: 12,
-                  lineHeight: 1.45,
-                  color: '#171c1e',
-                }}
-              >
-                {s.detail}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ComplianceRow({
-  item,
-  first,
-}: {
-  item: ComplianceItem;
-  first: boolean;
-}) {
-  const cfg = (
-    {
-      pass: { icon: 'check_circle', color: '#0F8F5B' },
-      block: { icon: 'cancel_circle', color: '#D81E1E' },
-      warn: { icon: 'alert', color: '#B7791F' },
-    } as const
-  )[item.status];
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '8px 10px',
-        borderTop: first ? 'none' : '1px solid #f1f1f6',
-        backgroundColor: '#ffffff',
-      }}
-    >
-      <ModusWcIcon
-        name={cfg.icon}
-        size="xs"
-        decorative
-        style={{ color: cfg.color }}
-      />
-      <span
-        style={{
-          fontSize: 12,
-          color: '#171c1e',
-          flex: 1,
-          minWidth: 0,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {item.rule}
-      </span>
-      <span
-        style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}
-      >
-        {item.value}
-      </span>
-    </div>
-  );
-}
-
-function FeedbackRow({
-  feedback,
-  onFeedback,
-}: {
-  feedback: 'up' | 'down' | null;
-  onFeedback: (v: 'up' | 'down' | null) => void;
-}) {
-  const message =
-    feedback === 'up'
-      ? 'Thanks - logged this insight as helpful.'
-      : feedback === 'down'
-        ? 'Got it - flagged this insight for review.'
-        : 'Was this insight helpful?';
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        padding: '10px 12px',
-        borderRadius: 8,
-        backgroundColor: '#f6f8fa',
-        border: '1px dashed #cbcdd6',
-      }}
-    >
-      <span
-        style={{
-          fontSize: 12,
-          color: '#171c1e',
-          flex: 1,
-          minWidth: 0,
-          lineHeight: 1.35,
-        }}
-      >
-        {message}
-      </span>
-      <div style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
-        <button
-          type="button"
-          aria-label="Helpful"
-          aria-pressed={feedback === 'up'}
-          onClick={() => onFeedback(feedback === 'up' ? null : 'up')}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor:
-              feedback === 'up' ? '#e3f4ec' : 'transparent',
-            color: feedback === 'up' ? '#0F8F5B' : '#6a6e79',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ModusWcIcon name="thumbs_up" size="xs" decorative />
-        </button>
-        <button
-          type="button"
-          aria-label="Not helpful"
-          aria-pressed={feedback === 'down'}
-          onClick={() =>
-            onFeedback(feedback === 'down' ? null : 'down')
-          }
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor:
-              feedback === 'down' ? '#fbe5e5' : 'transparent',
-            color: feedback === 'down' ? '#D81E1E' : '#6a6e79',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ModusWcIcon name="thumbs_down" size="xs" decorative />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <span
@@ -1751,36 +1128,254 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PropRow({ label, value }: { label: string; value: string }) {
+/* Rectangular action button used inside the AIInsightPopup.
+ *
+ * Follows Modus button hierarchy:
+ *   variant="primary"    — filled Trimble primary blue (#0063A7),
+ *                          white label. The popup's single call-to-
+ *                          action. Once `pressed` (Applied) it flips
+ *                          to filled success green (#1E8A2A) so the
+ *                          confirmed state reads at a glance.
+ *   variant="secondary"  — outlined neutral (white bg, gray border,
+ *                          dark label) per the project rule "use
+ *                          outline button style for secondary and
+ *                          tertiary actions". */
+function InsightAction({
+  icon,
+  label,
+  pressed,
+  variant = 'secondary',
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  pressed?: boolean;
+  variant?: 'primary' | 'secondary';
+  onClick: () => void;
+}) {
+  const PRIMARY_BLUE = '#0063A7';
+  const PRIMARY_BLUE_HOVER = '#004F86';
+  const PRIMARY_BLUE_BG_HOVER = 'rgba(0, 99, 167, 0.08)';
+  const SUCCESS_GREEN = '#1E8A2A';
+  const SUCCESS_GREEN_HOVER = '#156620';
+
+  let bg: string;
+  let fg: string;
+  let borderColor: string;
+  let hoverBg: string;
+  let hoverBorderColor: string;
+  let hoverFg: string;
+  let focusRing: string;
+
+  if (variant === 'primary' && pressed) {
+    /* "Applied" state — filled green to confirm the rule is active. */
+    bg = SUCCESS_GREEN;
+    fg = '#ffffff';
+    borderColor = SUCCESS_GREEN;
+    hoverBg = SUCCESS_GREEN_HOVER;
+    hoverBorderColor = SUCCESS_GREEN_HOVER;
+    hoverFg = '#ffffff';
+    focusRing = '0 0 0 2px rgba(30, 138, 42, 0.30)';
+  } else if (variant === 'primary') {
+    /* Trimble primary — solid filled blue. */
+    bg = PRIMARY_BLUE;
+    fg = '#ffffff';
+    borderColor = PRIMARY_BLUE;
+    hoverBg = PRIMARY_BLUE_HOVER;
+    hoverBorderColor = PRIMARY_BLUE_HOVER;
+    hoverFg = '#ffffff';
+    focusRing = '0 0 0 2px rgba(0, 99, 167, 0.30)';
+  } else {
+    /* Trimble secondary — outlined blue, transparent fill. Pairs
+     * with the filled-blue primary so the two actions read as a
+     * proper primary / secondary set rather than primary + neutral. */
+    bg = '#ffffff';
+    fg = PRIMARY_BLUE;
+    borderColor = PRIMARY_BLUE;
+    hoverBg = PRIMARY_BLUE_BG_HOVER;
+    hoverBorderColor = PRIMARY_BLUE_HOVER;
+    hoverFg = PRIMARY_BLUE_HOVER;
+    focusRing = '0 0 0 2px rgba(0, 99, 167, 0.25)';
+  }
+
   return (
-    <div
+    <button
+      type="button"
+      aria-pressed={pressed ?? undefined}
+      onClick={onClick}
       style={{
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '6px 0',
-        borderBottom: '1px solid #f1f1f6',
+        justifyContent: 'center',
+        gap: 6,
+        height: 36,
+        padding: '0 14px',
+        borderRadius: 6,
+        border: `1px solid ${borderColor}`,
+        background: bg,
+        color: fg,
+        fontSize: 13,
+        fontWeight: 600,
+        lineHeight: 1,
+        fontFamily: 'inherit',
+        cursor: 'pointer',
+        transition:
+          'background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = hoverBg;
+        e.currentTarget.style.borderColor = hoverBorderColor;
+        e.currentTarget.style.color = hoverFg;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = bg;
+        e.currentTarget.style.borderColor = borderColor;
+        e.currentTarget.style.color = fg;
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.boxShadow = focusRing;
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      <span style={{ fontSize: 12, color: '#171c1e' }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: '#171c1e' }}>
-        {value}
-      </span>
-    </div>
+      <ModusWcIcon name={icon} size="xs" decorative />
+      <span>{label}</span>
+    </button>
   );
 }
+
+/* Floating "AI Insight" callout that sits over the 3D viewport and
+ * tracks the rainbow marker's projected position. The user opens it
+ * by clicking the wetland marker, then chooses to Apply rule, Show
+ * reasoning (opens the source-doc panel), or Open source.            */
+const AIInsightPopup = forwardRef<
+  HTMLDivElement,
+  {
+    insight: string;
+    applied: boolean;
+    onApply: () => void;
+    onShowReasoning: () => void;
+    onClose: () => void;
+  }
+>(function AIInsightPopup(
+  { insight, applied, onApply, onShowReasoning, onClose },
+  ref,
+) {
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="AI Insight"
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: 360,
+        padding: 3,
+        borderRadius: 12,
+        background: TRIMBLE_RAINBOW,
+        boxShadow:
+          '0 18px 36px -10px rgba(74, 0, 255, 0.28), 0 4px 12px rgba(0, 0, 0, 0.10)',
+        opacity: 0,
+        transition: 'opacity 160ms ease',
+        zIndex: 5,
+      }}
+    >
+      <div
+        style={{
+          borderRadius: 9,
+          padding: '14px 16px 14px 16px',
+          backgroundColor: '#ffffff',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#171c1e',
+            }}
+          >
+            AI Insight
+          </span>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 4,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: '#6a6e79',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ModusWcIcon name="close" size="xs" decorative />
+          </button>
+        </div>
+        <p
+          style={{
+            margin: 0,
+            marginBottom: 12,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: '#171c1e',
+            fontStyle: 'italic',
+          }}
+        >
+          {insight}
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <InsightAction
+            icon={applied ? 'check_circle' : 'check'}
+            label={applied ? 'Applied' : 'Apply rule'}
+            pressed={applied}
+            variant="primary"
+            onClick={onApply}
+          />
+          <InsightAction
+            icon="info"
+            label="Show reasoning"
+            onClick={onShowReasoning}
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default function Pro3() {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRefs = useRef<SceneRefs | null>(null);
   const visibilityRef = useRef<LayerVisibility>(ALL_VISIBLE);
+  const markerRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const popupOpenRef = useRef<boolean>(false);
 
   const [visibility, setVisibility] = useState<LayerVisibility>(ALL_VISIBLE);
   const [selected, setSelected] = useState<LayerId>('wetland');
-  const [aiInsightOn, setAiInsightOn] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRailTab, setActiveRailTab] = useState<RailTab>('source');
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [applied, setApplied] = useState(false);
+
+  useEffect(() => {
+    popupOpenRef.current = popupOpen;
+  }, [popupOpen]);
 
   useEffect(() => {
     visibilityRef.current = visibility;
@@ -1795,6 +1390,14 @@ export default function Pro3() {
   const selectedLayer = useMemo(
     () => LAYERS.find((l) => l.id === selected) ?? LAYERS[0],
     [selected],
+  );
+
+  /* The wetland is the layer the rainbow marker is physically
+   * anchored to in the 3-D scene, so the popup's content stays
+   * locked to wetland regardless of what the side-panel shows. */
+  const wetlandLayer = useMemo(
+    () => LAYERS.find((l) => l.id === 'wetland') ?? LAYERS[0],
+    [],
   );
 
   const filteredLayers = useMemo(() => {
@@ -1942,7 +1545,7 @@ export default function Pro3() {
     const zoneMesh = new THREE.Mesh(
       new THREE.ShapeGeometry(zoneShape),
       new THREE.MeshBasicMaterial({
-        color: ZONE_MAGENTA,
+        color: ZONE_ALERT,
         transparent: true,
         opacity: 0.42,
         side: THREE.DoubleSide,
@@ -1958,7 +1561,7 @@ export default function Pro3() {
       .map((p) => new THREE.Vector3(p.x, 0, -p.y));
     const zoneOutline = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints(outlinePts),
-      new THREE.LineBasicMaterial({ color: ZONE_MAGENTA }),
+      new THREE.LineBasicMaterial({ color: ZONE_ALERT }),
     );
     zoneOutline.position.y = ZONE_Y + 0.02;
     zoneGroup.add(zoneOutline);
@@ -1973,7 +1576,7 @@ export default function Pro3() {
     const haloMesh = new THREE.Mesh(
       new THREE.ShapeGeometry(haloShape),
       new THREE.MeshBasicMaterial({
-        color: ZONE_MAGENTA,
+        color: ZONE_ALERT,
         transparent: true,
         opacity: 0.14,
         side: THREE.DoubleSide,
@@ -3103,6 +2706,43 @@ export default function Pro3() {
       survey: surveyGroup,
     };
 
+    /* Project the world-space anchor for the AI marker into screen
+     * space every frame so the rainbow orb (and, when open, the
+     * floating popup) track the wetland as the camera orbits. */
+    const tmp = new THREE.Vector3();
+    function updateOverlay() {
+      const marker = markerRef.current;
+      const popup = popupRef.current;
+      if (!marker && !popup) return;
+      tmp.copy(MARKER_ANCHOR).project(camera);
+      const sx = (tmp.x * 0.5 + 0.5) * W;
+      const sy = (-tmp.y * 0.5 + 0.5) * H;
+      const onScreen =
+        tmp.z < 1 && tmp.x > -1 && tmp.x < 1 && tmp.y > -1 && tmp.y < 1;
+      const showMarker = onScreen && visibilityRef.current.wetland;
+
+      if (marker) {
+        marker.style.transform = `translate(-50%, -50%) translate3d(${sx}px, ${sy}px, 0)`;
+        marker.style.opacity = showMarker ? '1' : '0';
+        marker.style.pointerEvents = showMarker ? 'auto' : 'none';
+      }
+      if (popup) {
+        /* Anchor popup so its bottom-right tail sits 18px up-left of
+         * the marker; clamped to the viewport so it never escapes
+         * the canvas. */
+        const popupW = popup.offsetWidth || 360;
+        const popupH = popup.offsetHeight || 180;
+        let px = sx - popupW - 18;
+        let py = sy - popupH - 18;
+        px = Math.max(12, Math.min(px, W - popupW - 12));
+        py = Math.max(12, Math.min(py, H - popupH - 12));
+        popup.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+        const showPopup = showMarker && popupOpenRef.current;
+        popup.style.opacity = showPopup ? '1' : '0';
+        popup.style.pointerEvents = showPopup ? 'auto' : 'none';
+      }
+    }
+
     let frameId = 0;
     const start = performance.now();
     function animate() {
@@ -3113,6 +2753,7 @@ export default function Pro3() {
       (haloMesh.material as THREE.MeshBasicMaterial).opacity =
         0.14 + 0.08 * (0.5 + 0.5 * Math.sin(t * 1.6));
       controls.update();
+      updateOverlay();
       renderer.render(scene, camera);
     }
     animate();
@@ -3152,10 +2793,7 @@ export default function Pro3() {
         fontFamily: '"Open Sans", system-ui, sans-serif',
       }}
     >
-      <TopToolbar
-        aiInsightOn={aiInsightOn}
-        onToggleAiInsight={() => setAiInsightOn((v) => !v)}
-      />
+      <TopToolbar />
 
       <div
         style={{
@@ -3195,7 +2833,6 @@ export default function Pro3() {
         {panelOpen && activeRailTab === 'source' && (
           <SourceDocPanel
             layer={selectedLayer}
-            aiInsightOn={aiInsightOn}
             activeFile={selectedLayer.source}
             onClose={() => setPanelOpen(false)}
             onSelectLayer={setSelected}
@@ -3211,6 +2848,179 @@ export default function Pro3() {
           }}
         >
           <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
+
+          {/* Pulsing rainbow AI marker - mirror of Creative 8's marker.
+              68 px transparent button hit-area wraps a 36 px rainbow orb
+              with a white inner core. Two hollow rainbow gradient pulse
+              rings (mask-cut to 3 px thickness) expand outward; the orb
+              scales up 1.08x while the popup is open. Inside the white
+              core sits the Trimble AI brand mark (replaces Creative 8's
+              camera glyph).                                              */}
+          <button
+            ref={markerRef}
+            type="button"
+            aria-label="Open AI insight for the wetland buffer"
+            aria-pressed={popupOpen}
+            className="pro3-marker"
+            onClick={() => {
+              setSelected('wetland');
+              setPopupOpen((v) => !v);
+            }}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: 68,
+              height: 68,
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              cursor: 'pointer',
+              flexShrink: 0,
+              opacity: 0,
+              pointerEvents: 'none',
+              transition: 'opacity 160ms ease',
+              zIndex: 4,
+            }}
+          >
+            {/* Pulse rings - rainbow border only, transparent center.
+                Hidden when the popup is open so they don't compete
+                with the AIInsightPopup. */}
+            {!popupOpen && (
+              <>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: 36,
+                    height: 36,
+                    marginTop: -18,
+                    marginLeft: -18,
+                    borderRadius: '50%',
+                    pointerEvents: 'none',
+                    background: TRIMBLE_RAINBOW,
+                    WebkitMaskImage:
+                      'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+                    maskImage:
+                      'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+                    opacity: 0.85,
+                    animation: 'pro3-rainbow-pulse 1.8s ease-out infinite',
+                    zIndex: 1,
+                  }}
+                />
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    width: 36,
+                    height: 36,
+                    marginTop: -18,
+                    marginLeft: -18,
+                    borderRadius: '50%',
+                    pointerEvents: 'none',
+                    background: TRIMBLE_RAINBOW,
+                    WebkitMaskImage:
+                      'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+                    maskImage:
+                      'radial-gradient(circle, transparent calc(50% - 3px), black calc(50% - 3px))',
+                    opacity: 0.85,
+                    animation:
+                      'pro3-rainbow-pulse 1.8s ease-out 0.9s infinite',
+                    zIndex: 1,
+                  }}
+                />
+              </>
+            )}
+
+            {/* Marker orb - rainbow border around a white core. The
+                Trimble AI logo sits in the white center, drawn at
+                full colour so its magenta + blue mark reads clearly. */}
+            <span
+              aria-hidden="true"
+              className="pro3-orb"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: 36,
+                height: 36,
+                marginTop: -18,
+                marginLeft: -18,
+                borderRadius: '50%',
+                pointerEvents: 'none',
+                background: TRIMBLE_RAINBOW,
+                boxShadow:
+                  '0 4px 12px rgba(74, 0, 255, 0.28), 0 2px 4px rgba(0, 0, 0, 0.12)',
+                transform: popupOpen ? 'scale(1.08)' : 'scale(1)',
+                transition: 'transform 0.18s ease',
+                zIndex: 2,
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 1.5,
+                  backgroundColor: '#ffffff',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <img
+                  src="/assets/trimble-ai-logo.png"
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    objectFit: 'contain',
+                    userSelect: 'none',
+                    /* Nudge the glyph slightly right to visually
+                     * center it inside the white core (the logo's
+                     * artwork has more whitespace on its left edge,
+                     * so a flex-centered position reads as too far
+                     * left to the eye). */
+                    transform: 'translateX(2px)',
+                  }}
+                />
+              </span>
+            </span>
+
+            <style>{`
+              @keyframes pro3-rainbow-pulse {
+                0%   { transform: scale(1);   opacity: 0.55; }
+                100% { transform: scale(2.4); opacity: 0;    }
+              }
+              .pro3-marker:hover .pro3-orb {
+                transform: scale(1.08);
+              }
+            `}</style>
+          </button>
+
+          {/* Floating AI Insight popup (only shown when popupOpen +
+              wetland visible). Position is updated each frame in the
+              Three.js animation loop via popupRef.                    */}
+          {wetlandLayer.insight && (
+            <AIInsightPopup
+              ref={popupRef}
+              insight={wetlandLayer.insight}
+              applied={applied}
+              onApply={() => setApplied((v) => !v)}
+              onShowReasoning={() => {
+                setSelected('wetland');
+                setActiveRailTab('source');
+                setPanelOpen(true);
+              }}
+              onClose={() => setPopupOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>

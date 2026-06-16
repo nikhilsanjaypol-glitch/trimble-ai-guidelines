@@ -15,7 +15,7 @@ const possibleCauses = [
 ];
 
 const ESCALATION_MESSAGE =
-  'If these issues persist I suggest looping in your engineering team to verify the underlying coordinate systems.';
+  'If these persist, loop in your engineering team to verify the coordinate systems.';
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -52,14 +52,14 @@ function UploadDataModal({ onClose }: { onClose: () => void }) {
     return (
       <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
         <div className="bg-white rounded-2xl w-[440px] shadow-xl flex flex-col overflow-hidden">
-          <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
+          <div className="flex flex-col items-center gap-2 px-6 py-6 text-center">
             <div
-              className="flex items-center justify-center rounded-full size-14"
+              className="flex items-center justify-center rounded-full size-10"
               style={{ backgroundColor: 'var(--modus-wc-color-status-success-light, #e6f4ea)' }}
             >
               <ModusWcIcon
                 name="check_circle"
-                size="lg"
+                size="md"
                 decorative
                 style={{ color: 'var(--modus-wc-color-status-success, #1e7e34)' }}
               />
@@ -67,7 +67,7 @@ function UploadDataModal({ onClose }: { onClose: () => void }) {
             <span
               className="font-semibold"
               style={{
-                fontSize: 'var(--modus-wc-font-size-lg, 18px)',
+                fontSize: '15px',
                 color: 'var(--modus-wc-color-base-content, #101828)',
               }}
             >
@@ -75,7 +75,8 @@ function UploadDataModal({ onClose }: { onClose: () => void }) {
             </span>
             <span
               style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                fontSize: '13px',
+                lineHeight: '18px',
                 color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
               }}
             >
@@ -84,8 +85,8 @@ function UploadDataModal({ onClose }: { onClose: () => void }) {
             </span>
           </div>
           <div
-            className="flex justify-end px-6 pb-6"
-            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)', paddingTop: '1rem' }}
+            className="flex justify-end px-6 py-3"
+            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
           >
             <ModusWcButton size="md" color="primary" onButtonClick={onClose}>
               Done
@@ -270,14 +271,14 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
     return (
       <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
         <div className="bg-white rounded-2xl w-[440px] shadow-xl flex flex-col overflow-hidden">
-          <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
+          <div className="flex flex-col items-center gap-2 px-6 py-6 text-center">
             <div
-              className="flex items-center justify-center rounded-full size-14"
+              className="flex items-center justify-center rounded-full size-10"
               style={{ backgroundColor: 'var(--modus-wc-color-status-success-light, #e6f4ea)' }}
             >
               <ModusWcIcon
                 name="check_circle"
-                size="lg"
+                size="md"
                 decorative
                 style={{ color: 'var(--modus-wc-color-status-success, #1e7e34)' }}
               />
@@ -285,7 +286,7 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
             <span
               className="font-semibold"
               style={{
-                fontSize: 'var(--modus-wc-font-size-lg, 18px)',
+                fontSize: '15px',
                 color: 'var(--modus-wc-color-base-content, #101828)',
               }}
             >
@@ -293,7 +294,8 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
             </span>
             <span
               style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                fontSize: '13px',
+                lineHeight: '18px',
                 color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
               }}
             >
@@ -301,8 +303,8 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
             </span>
           </div>
           <div
-            className="flex justify-end px-6 pb-6"
-            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)', paddingTop: '1rem' }}
+            className="flex justify-end px-6 py-3"
+            style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
           >
             <ModusWcButton size="md" color="primary" onButtonClick={onClose}>
               Done
@@ -347,68 +349,33 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Form */}
-        <div className="flex flex-col gap-4 px-6 py-5">
-          <div className="flex flex-col gap-1">
-            <label
-              className="font-medium"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #364153)',
-              }}
-            >
-              Name
-            </label>
-            <ModusWcTextInput
-              value={name}
-              placeholder="Your name"
-              onInputChange={(e: CustomEvent) => setName(e.detail?.target?.value || '')}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              className="font-medium"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #364153)',
-              }}
-            >
-              Email
-            </label>
-            <ModusWcTextInput
-              value={email}
-              placeholder="you@company.com"
-              type="email"
-              onInputChange={(e: CustomEvent) => setEmail(e.detail?.target?.value || '')}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              className="font-medium"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #364153)',
-              }}
-            >
-              Issue description
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={4}
-              placeholder="Describe your issue here..."
-              className="rounded-lg px-3 py-2 resize-none outline-none transition-colors"
-              style={{
-                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
-                color: 'var(--modus-wc-color-base-content, #364153)',
-                border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-                backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
-              }}
-              onFocus={(e) => (e.target.style.borderColor = 'var(--modus-wc-color-primary, #0063a3)')}
-              onBlur={(e) => (e.target.style.borderColor = 'var(--modus-wc-color-base-200, #e0e1e9)')}
-            />
-          </div>
+        <div className="flex flex-col gap-3 px-6 py-4">
+          <ModusWcTextInput
+            value={name}
+            placeholder="Your name"
+            onInputChange={(e: CustomEvent) => setName(e.detail?.target?.value || '')}
+          />
+          <ModusWcTextInput
+            value={email}
+            placeholder="you@company.com"
+            type="email"
+            onInputChange={(e: CustomEvent) => setEmail(e.detail?.target?.value || '')}
+          />
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+            placeholder="Describe your issue..."
+            className="rounded-lg px-3 py-2 resize-none outline-none transition-colors"
+            style={{
+              fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+              color: 'var(--modus-wc-color-base-content, #364153)',
+              border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+              backgroundColor: 'var(--modus-wc-color-base-page, #fff)',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--modus-wc-color-primary, #0063a3)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--modus-wc-color-base-200, #e0e1e9)')}
+          />
         </div>
 
         {/* Footer */}
@@ -459,7 +426,7 @@ export default function Expert6() {
         }
       `}</style>
       <div
-        className="rounded-2xl p-[2px] w-[444px] shrink-0"
+        className="rounded-2xl p-[2px] w-[400px] shrink-0"
         style={{
           background:
             'linear-gradient(90deg, #00D7C0 0%, #009AFE 20%, #4A00FF 40%, #FF2092 60%, #FF00D3 80%, #00D7C0 100%)',
@@ -475,7 +442,7 @@ export default function Expert6() {
         >
           {/* Soft Amber header */}
           <div
-            className="flex gap-3 items-start px-6 py-5"
+            className="flex gap-3 items-start px-6 pt-5 pb-4"
             style={{ backgroundColor: '#fff9ef' }}
           >
             <div
@@ -489,23 +456,25 @@ export default function Expert6() {
                 style={{ color: '#b88217' }}
               />
             </div>
-            <div className="flex flex-col gap-1 flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0">
               <span
                 className="font-semibold"
                 style={{
-                  fontSize: '10px',
-                  letterSpacing: '0.14em',
+                  fontSize: '11px',
+                  letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   color: '#b88217',
+                  marginBottom: '4px',
                 }}
               >
-                AI Suggestion · Low Confidence
+                Low confidence
               </span>
               <span
                 className="font-semibold"
                 style={{
-                  fontSize: '20px',
-                  lineHeight: 1.2,
+                  fontSize: '22px',
+                  lineHeight: '28px',
+                  letterSpacing: '-0.01em',
                   color: 'var(--modus-wc-color-base-content, #101828)',
                 }}
               >
@@ -513,8 +482,10 @@ export default function Expert6() {
               </span>
               <span
                 style={{
-                  fontSize: '12px',
+                  fontSize: '13px',
+                  lineHeight: '20px',
                   color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+                  marginTop: '2px',
                 }}
               >
                 {CONTEXT.scope} · {CONTEXT.modelsReviewed} models reviewed
@@ -525,52 +496,83 @@ export default function Expert6() {
           {/* Body */}
           <div className="flex flex-col gap-3 px-6 pt-4 pb-4">
             {/* Possible causes */}
-            <div
-              className="flex flex-col gap-1 p-3 rounded-lg"
-              style={{
-                backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
-                border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
-              }}
-            >
+            <div className="flex flex-col gap-2">
               <span
                 className="font-semibold"
                 style={{
-                  fontSize: '10px',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
                 }}
               >
                 Possible causes
               </span>
-              {possibleCauses.map((cause) => (
-                <span
-                  key={cause}
-                  style={{
-                    fontSize: '14px',
-                    lineHeight: '22px',
-                    color: 'var(--modus-wc-color-base-content, #171c1e)',
-                  }}
-                >
-                  · {cause}
-                </span>
-              ))}
+              <ul
+                className="flex flex-col gap-1.5 m-0 pl-0"
+                style={{ listStyle: 'none' }}
+              >
+                {possibleCauses.map((cause) => (
+                  <li
+                    key={cause}
+                    className="flex items-start gap-2"
+                    style={{
+                      fontSize: '14px',
+                      lineHeight: '22px',
+                      color: 'var(--modus-wc-color-base-content, #171c1e)',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className="shrink-0"
+                      style={{
+                        width: '4px',
+                        height: '4px',
+                        borderRadius: '9999px',
+                        backgroundColor:
+                          'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                        marginTop: '10px',
+                      }}
+                    />
+                    <span>{cause}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Escalation suggestion — direct the user outside of AI */}
+            {/* Suggested next step — direct the user outside of AI */}
             <div
-              className="flex p-4 rounded-lg"
+              className="flex flex-col gap-2 p-3 rounded-lg"
               style={{
-                backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
-                border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
               }}
             >
+              <span
+                className="font-semibold flex items-center gap-1.5"
+                style={{
+                  fontSize: '13px',
+                  lineHeight: '18px',
+                  color: 'var(--modus-wc-color-primary, #0063a3)',
+                }}
+              >
+                <ModusWcIcon
+                  name="lightbulb_on"
+                  size="xs"
+                  decorative
+                  style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
+                />
+                Suggested next step
+              </span>
               <p
                 style={{
-                  fontSize: '14px',
-                  lineHeight: '22px',
+                  fontSize: '13px',
+                  lineHeight: '20px',
                   color: 'var(--modus-wc-color-base-content, #171c1e)',
                   margin: 0,
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2,
+                  overflow: 'hidden',
                 }}
               >
                 {ESCALATION_MESSAGE}
@@ -585,23 +587,31 @@ export default function Expert6() {
           >
             <ModusWcButton
               size="md"
-              color="primary"
-              onButtonClick={() => setSupportOpen(true)}
+              color="tertiary"
+              variant="outlined"
+              onButtonClick={() => setUploadOpen(true)}
+              style={{ flex: 1, width: '100%' }}
             >
-              <span className="flex items-center justify-center gap-1.5">
-                <ModusWcIcon name="help_outline" size="sm" decorative />
-                Contact Support
+              <span
+                className="flex items-center justify-center gap-1.5"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <ModusWcIcon name="upload" size="sm" decorative />
+                Upload Data
               </span>
             </ModusWcButton>
             <ModusWcButton
               size="md"
-              color="tertiary"
-              variant="outlined"
-              onButtonClick={() => setUploadOpen(true)}
+              color="primary"
+              onButtonClick={() => setSupportOpen(true)}
+              style={{ flex: 1, width: '100%' }}
             >
-              <span className="flex items-center justify-center gap-1.5">
-                <ModusWcIcon name="upload" size="sm" decorative />
-                Upload Data
+              <span
+                className="flex items-center justify-center gap-1.5"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <ModusWcIcon name="help_outline" size="sm" decorative />
+                Contact Support
               </span>
             </ModusWcButton>
           </div>

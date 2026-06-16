@@ -5,53 +5,51 @@ import { ModusWcIcon } from '@trimble-oss/moduswebcomponents-react';
  * Pro 2 — PERFORM BITE-SIZED TASKS
  *
  * A dense CAD floor plan fills the viewport. Right-click anywhere
- * on the model and a context menu of "magic actions" pops up, each
- * a small, well-scoped AI task scoped to the highlighted Wall 23 —
- * cost check, conformance check, auto-organize, detect issues.
- * No typed prompts; just point and click.
+ * on the model and a small palette of "AI tools" pops up — each one
+ * a narrow, well-scoped task scoped to the highlighted Wall 23.
+ * Click "Dimension" and the AI drops in the most important wall
+ * lengths; the other tools demonstrate similar bite-sized actions
+ * (spell check, compliance, labels). No typed prompts.
  * ───────────────────────────────────────────────────────────────── */
 
-interface MagicAction {
-  id: string;
+type ActionId = 'dimension' | 'spell' | 'compliance' | 'label';
+
+interface AiTool {
+  id: ActionId;
   icon: string;
   label: string;
   description: string;
   tint: string;
-  shortcut: string;
 }
 
-const ACTIONS: MagicAction[] = [
+const ACTIONS: AiTool[] = [
   {
-    id: 'cost',
-    icon: 'calculator',
-    label: 'Cost check',
-    description: 'Estimate impact against the budget.',
+    id: 'dimension',
+    icon: 'ruler',
+    label: 'Dimension',
+    description: 'Place key wall lengths on the drawing.',
     tint: '#1AB1A0',
-    shortcut: '⌘1',
   },
   {
-    id: 'conformance',
-    icon: 'list_checkmark',
-    label: 'Conformance check',
-    description: 'Validate against project standards.',
+    id: 'spell',
+    icon: 'text_marker',
+    label: 'Spell check',
+    description: 'Find typos in labels and tags.',
     tint: '#0063A3',
-    shortcut: '⌘2',
   },
   {
-    id: 'organize',
-    icon: 'sparkle',
-    label: 'Auto-organize',
-    description: 'Group, name, and tidy by type.',
+    id: 'compliance',
+    icon: 'shield',
+    label: 'Compliance detect',
+    description: 'Validate against project standards.',
     tint: '#7B2DFF',
-    shortcut: '⌘3',
   },
   {
-    id: 'issues',
-    icon: 'alert_outline',
-    label: 'Detect issues',
-    description: 'Find clashes and missing data.',
+    id: 'label',
+    icon: 'tag',
+    label: 'Label',
+    description: 'Auto-name rooms and tag elements.',
     tint: '#E25C00',
-    shortcut: '⌘4',
   },
 ];
 
@@ -62,7 +60,7 @@ const ACTIONS: MagicAction[] = [
  * markers, egress arrows, wall/door tags, and a title block. Wall
  * 23 (curtain wall on grid 18-A.4) is highlighted as the current
  * selection. */
-function FloorPlan() {
+function FloorPlan({ showDimensions = false }: { showDimensions?: boolean }) {
   return (
     <svg
       viewBox="0 0 1400 900"
@@ -110,51 +108,8 @@ function FloorPlan() {
       <rect width="1400" height="900" fill="url(#p2-grid-minor)" />
       <rect width="1400" height="900" fill="url(#p2-grid-major)" />
 
-      {/* ── Dimension strings (top + left + bottom) ──────────────── */}
-      <g
-        stroke="#5a6b7e"
-        strokeWidth="0.7"
-        fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-        fontSize="10"
-        fill="#5a6b7e"
-      >
-        {/* Top primary dim */}
-        <line x1="120" y1="60" x2="1280" y2="60" />
-        {[120, 380, 540, 700, 840, 920, 1100, 1280].map((x) => (
-          <line key={`tdim1-${x}`} x1={x} y1="56" x2={x} y2="64" />
-        ))}
-        <text x="250" y="52" textAnchor="middle">26&apos;-0&quot;</text>
-        <text x="460" y="52" textAnchor="middle">16&apos;-0&quot;</text>
-        <text x="620" y="52" textAnchor="middle">16&apos;-0&quot;</text>
-        <text x="770" y="52" textAnchor="middle">14&apos;-0&quot;</text>
-        <text x="880" y="52" textAnchor="middle">8&apos;-0&quot;</text>
-        <text x="1010" y="52" textAnchor="middle">18&apos;-0&quot;</text>
-        <text x="1190" y="52" textAnchor="middle">18&apos;-0&quot;</text>
-
-        {/* Top overall dim */}
-        <line x1="120" y1="32" x2="1280" y2="32" />
-        <line x1="120" y1="28" x2="120" y2="36" />
-        <line x1="1280" y1="28" x2="1280" y2="36" />
-        <text x="700" y="24" textAnchor="middle" fontSize="11" fontWeight="700">116&apos;-0&quot;  OVERALL</text>
-
-        {/* Left primary dim */}
-        <line x1="80" y1="120" x2="80" y2="780" />
-        {[120, 280, 360, 460, 540, 660, 780].map((y) => (
-          <line key={`ldim1-${y}`} x1="76" y1={y} x2="84" y2={y} />
-        ))}
-        <text x="60" y="204" textAnchor="middle" transform="rotate(-90 60 204)">16&apos;</text>
-        <text x="60" y="324" textAnchor="middle" transform="rotate(-90 60 324)">8&apos;</text>
-        <text x="60" y="414" textAnchor="middle" transform="rotate(-90 60 414)">10&apos;</text>
-        <text x="60" y="504" textAnchor="middle" transform="rotate(-90 60 504)">8&apos;</text>
-        <text x="60" y="604" textAnchor="middle" transform="rotate(-90 60 604)">12&apos;</text>
-        <text x="60" y="724" textAnchor="middle" transform="rotate(-90 60 724)">12&apos;</text>
-
-        {/* Left overall dim */}
-        <line x1="32" y1="120" x2="32" y2="780" />
-        <line x1="28" y1="120" x2="36" y2="120" />
-        <line x1="28" y1="780" x2="36" y2="780" />
-        <text x="22" y="450" textAnchor="middle" transform="rotate(-90 22 450)" fontSize="11" fontWeight="700">66&apos;-0&quot;  OVERALL</text>
-      </g>
+      {/* ╔════ DIMMED LAYER · 1 of 3 ════════════════════════════════╗ */}
+      <g opacity="0.5">
 
       {/* ── Column grid bubbles & gridlines ──────────────────────── */}
       <g fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontSize="11" fill="#1a2330">
@@ -189,6 +144,9 @@ function FloorPlan() {
             <text x="100" y={y + 4} textAnchor="middle" fontWeight="700" fontSize="10">{label}</text>
           </g>
         ))}
+      </g>
+
+      {/* ╚════ END DIMMED LAYER · 1 of 3 ═══════════════════════════╝ */}
       </g>
 
       {/* ── Building footprint (poche walls) ─────────────────────── */}
@@ -291,8 +249,11 @@ function FloorPlan() {
         </g>
       </g>
 
+      {/* ╔════ DIMMED LAYER · 2 of 3 ════════════════════════════════╗ */}
+      <g opacity="0.5">
+
       {/* ── Windows on exterior walls ────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#1a2330" strokeWidth="1.1" fill="#fff">
         {[150, 220, 290, 410, 480, 570, 730, 800, 960, 1030, 1140, 1210].map((x) => (
           <g key={`win-top-${x}`}>
             <rect x={x} y="126" width="36" height="8" fill="#fff" />
@@ -401,7 +362,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Conference room furniture ────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         <ellipse cx="250" cy="240" rx="100" ry="44" />
         <text x="250" y="244" textAnchor="middle" fontSize="9" fill="#5a6b7e" fontFamily="ui-monospace">CONF 12-PERSON</text>
         {[[170, 180], [250, 170], [330, 180], [170, 300], [250, 310], [330, 300], [130, 240], [370, 240]].map(([cx, cy], i) => (
@@ -416,7 +377,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Huddle / lounge (between conf & reception) ───────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         <rect x="160" y="400" width="180" height="40" rx="4" fill="#e7edf3" />
         <rect x="160" y="450" width="180" height="40" rx="4" fill="#e7edf3" />
         <rect x="160" y="500" width="180" height="20" rx="2" fill="#e7edf3" />
@@ -426,7 +387,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Open Office workstations (4×2 grid + dividers) ───────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         {[420, 510, 600].map((x) => (
           <g key={`ws-col-${x}`}>
             {/* Top row workstation pair */}
@@ -465,7 +426,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Manager office furniture ─────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         <rect x="730" y="170" width="100" height="40" />
         <rect x="760" y="225" width="40" height="20" fill="#e7edf3" />
         <rect x="720" y="280" width="120" height="50" rx="4" fill="#e7edf3" />
@@ -478,7 +439,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Stair core (treads + arrows) ─────────────────────────── */}
-      <g>
+      <g opacity="0.55">
         <rect x="840" y="134" width="80" height="226" fill="url(#p2-shaft-hatch)" stroke="#1a2330" strokeWidth="1.5" />
         {/* Stair treads */}
         <g stroke="#1a2330" strokeWidth="0.9" fill="none">
@@ -500,7 +461,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Break room: counters, fridge, dishwasher, island ─────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#e7edf3">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#e7edf3" opacity="0.55">
         {/* Counter run along top */}
         <rect x="934" y="140" width="332" height="32" />
         <text x="1100" y="160" textAnchor="middle" fontSize="9" fill="#5a6b7e" fontFamily="ui-monospace">COUNTER · UPPER CABS ABOVE</text>
@@ -543,7 +504,7 @@ function FloorPlan() {
       </g>
 
       {/* ── IT / Server room ─────────────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         {/* Server racks */}
         {[930, 950, 970, 990].map((x) => (
           <g key={`rack-${x}`}>
@@ -562,7 +523,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Print / Copy room ────────────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         <rect x="1120" y="380" width="60" height="40" fill="#e7edf3" />
         <text x="1150" y="404" textAnchor="middle" fontSize="9" fill="#5a6b7e" fontFamily="ui-monospace">PLOTTER</text>
         <rect x="1200" y="380" width="40" height="40" fill="#e7edf3" />
@@ -571,7 +532,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Storage shelving ─────────────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#e7edf3">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#e7edf3" opacity="0.55">
         <rect x="710" y="556" width="120" height="18" />
         <rect x="710" y="582" width="120" height="18" />
         <rect x="710" y="608" width="120" height="18" />
@@ -582,7 +543,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Elevator (with car) ──────────────────────────────────── */}
-      <g>
+      <g opacity="0.55">
         <rect x="850" y="556" width="60" height="92" fill="url(#p2-shaft-hatch)" stroke="#1a2330" strokeWidth="1.5" />
         <rect x="858" y="566" width="44" height="72" fill="#fff" stroke="#1a2330" strokeWidth="0.7" />
         <line x1="850" y1="610" x2="910" y2="610" stroke="#1a2330" strokeWidth="0.4" strokeDasharray="2 2" />
@@ -591,7 +552,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Mechanical closet ────────────────────────────────────── */}
-      <g>
+      <g opacity="0.55">
         <rect x="850" y="670" width="60" height="92" fill="#f5f6fa" stroke="#1a2330" strokeWidth="0.8" />
         <rect x="858" y="680" width="44" height="34" fill="#fff" stroke="#1a2330" strokeWidth="0.6" />
         <text x="880" y="702" textAnchor="middle" fontSize="7" fontFamily="ui-monospace" fill="#5a6b7e">AHU-2</text>
@@ -601,7 +562,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Janitor closet ───────────────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="0.9" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="0.9" fill="#fff" opacity="0.55">
         <rect x="922" y="546" width="92" height="110" fill="#f5f6fa" />
         {/* Mop sink */}
         <rect x="930" y="554" width="22" height="22" fill="#fff" stroke="#1a2330" />
@@ -613,7 +574,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Women's restroom ─────────────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         {/* Stalls */}
         {[1028, 1062, 1096, 1130, 1162].map((cx, i) => i < 3 && (
           <g key={`wc-w-${cx}`}>
@@ -634,7 +595,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Men's restroom ───────────────────────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         {/* Stalls */}
         {[1198, 1232].map((cx) => (
           <g key={`wc-m-${cx}`}>
@@ -653,7 +614,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Reception furniture (bottom-left) ────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         <path d="M 160 570 Q 250 552 340 570 L 340 600 L 160 600 Z" fill="#e7edf3" />
         <text x="250" y="588" textAnchor="middle" fontSize="9" fill="#5a6b7e" fontFamily="ui-monospace">RECEPTION DESK</text>
         {/* Reception chair */}
@@ -671,7 +632,7 @@ function FloorPlan() {
       </g>
 
       {/* ── Open workspace (collab tables) ───────────────────────── */}
-      <g stroke="#1a2330" strokeWidth="1" fill="#fff">
+      <g stroke="#9aa7b6" strokeWidth="1" fill="#fff" opacity="0.55">
         <rect x="440" y="600" width="220" height="60" />
         <text x="550" y="636" textAnchor="middle" fontSize="9" fill="#5a6b7e" fontFamily="ui-monospace">COLLAB · 12P</text>
         {[470, 530, 590].map((cx) => (
@@ -781,40 +742,6 @@ function FloorPlan() {
         ))}
       </g>
 
-      {/* ── Electrical receptacles + panel + data drops ──────────── */}
-      <g stroke="#8d99a8" strokeWidth="0.8" fill="#fff" opacity="0.85">
-        {[
-          [150, 200], [150, 360], [150, 520], [450, 530], [690, 530],
-          [400, 130], [600, 130], [800, 220], [950, 220], [1250, 200],
-          [150, 750], [450, 750], [690, 750], [1050, 750], [340, 470],
-          [620, 470], [780, 470], [960, 470], [1240, 470], [820, 700],
-        ].map(([cx, cy], i) => (
-          <g key={`elec-${i}`}>
-            <circle cx={cx} cy={cy} r="5" />
-            <line x1={cx - 2.5} y1={cy} x2={cx + 2.5} y2={cy} strokeWidth="0.8" />
-            <line x1={cx} y1={cy - 2.5} x2={cx} y2={cy + 2.5} strokeWidth="0.8" />
-          </g>
-        ))}
-      </g>
-      {/* Electrical panel */}
-      <g>
-        <rect x="932" y="550" width="14" height="40" fill="#8d99a8" stroke="#5a6b7e" strokeWidth="0.7" opacity="0.85" />
-        <text x="942" y="600" fontSize="7" fill="#5a6b7e" fontFamily="ui-monospace" fontWeight="700">EP-2A</text>
-      </g>
-      {/* Data drops (triangles) */}
-      <g stroke="#5a6b7e" strokeWidth="0.8" fill="#8d99a8" opacity="0.85">
-        {[
-          [420, 220], [510, 220], [600, 220], [420, 380], [510, 380],
-          [600, 380], [780, 200], [970, 410], [990, 410], [820, 240],
-          [240, 220], [240, 350], [460, 600], [560, 700],
-        ].map(([cx, cy], i) => (
-          <polygon
-            key={`data-${i}`}
-            points={`${cx - 5} ${cy + 4} ${cx + 5} ${cy + 4} ${cx} ${cy - 5}`}
-          />
-        ))}
-      </g>
-
       {/* ── Plumbing supply (cold/hot) ───────────────────────────── */}
       <g stroke="#8d99a8" strokeWidth="0.9" fill="none" opacity="0.75">
         <path d="M 1042 660 L 1042 540 L 1260 540" strokeDasharray="4 2" />
@@ -874,32 +801,7 @@ function FloorPlan() {
         ))}
       </g>
 
-      {/* ── Keynotes ─────────────────────────────────────────────── */}
-      <g fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontSize="9" fill="#1a2330">
-        {[
-          { num: '1', x: 260, y: 160, lx: 240, ly: 180 },
-          { num: '2', x: 720, y: 460, lx: 700, ly: 480 },
-          { num: '3', x: 990, y: 350, lx: 970, ly: 380 },
-          { num: '4', x: 1132, y: 540, lx: 1140, ly: 590 },
-          { num: '5', x: 880, y: 540, lx: 880, ly: 580 },
-        ].map(({ num, x, y, lx, ly }) => (
-          <g key={`kn-${num}`}>
-            <line x1={x} y1={y} x2={lx} y2={ly} stroke="#5a6b7e" strokeWidth="0.5" markerEnd="url(#p2-leader-arrow)" />
-            <circle cx={x} cy={y} r="10" fill="#fff" stroke="#1a2330" strokeWidth="0.9" />
-            <text x={x} y={y + 3} textAnchor="middle" fontWeight="700">{num}</text>
-          </g>
-        ))}
-      </g>
-
-      {/* ── Keynote legend ───────────────────────────────────────── */}
-      <g transform="translate(540 800)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontSize="9" fill="#1a2330">
-        <rect x="0" y="-44" width="320" height="80" fill="#fff" stroke="#1a2330" strokeWidth="0.8" />
-        <text x="6" y="-30" fontWeight="700" fontSize="10">KEYNOTES</text>
-        <text x="6" y="-16">1 · Glazed conf wall, frit pattern P3</text>
-        <text x="6" y="-2">2 · Floor mat insert at corridor</text>
-        <text x="6" y="12">3 · Acoustic ceiling tile - type ACT-2</text>
-        <text x="6" y="26">4 · ADA stall, grab bar per 11B-604</text>
-        <text x="170" y="-16">5 · Sound rated wall STC-50</text>
+      {/* ╚════ END DIMMED LAYER · 2 of 3 ═══════════════════════════╝ */}
       </g>
 
       {/* ── Section markers ──────────────────────────────────────── */}
@@ -925,6 +827,9 @@ function FloorPlan() {
           <polygon points="794,838 808,832 808,844" fill="#1a2330" />
         </g>
       </g>
+
+      {/* ╔════ DIMMED LAYER · 3 of 3 ════════════════════════════════╗ */}
+      <g opacity="0.5">
 
       {/* ── Room labels ──────────────────────────────────────────── */}
       <g fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#1a2330" textAnchor="middle">
@@ -977,28 +882,9 @@ function FloorPlan() {
         <text x="90" y="-10" textAnchor="middle" fontWeight="700">SCALE 1/8&quot; = 1&apos;-0&quot;</text>
       </g>
 
-      {/* ── Title block (bottom-right) ───────────────────────────── */}
-      <g transform="translate(960 800)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#1a2330">
-        <rect x="0" y="-30" width="320" height="80" fill="#fff" stroke="#1a2330" strokeWidth="1.2" />
-        <line x1="0" y1="-10" x2="320" y2="-10" stroke="#1a2330" strokeWidth="0.6" />
-        <line x1="0" y1="14" x2="320" y2="14" stroke="#1a2330" strokeWidth="0.6" />
-        <line x1="160" y1="-10" x2="160" y2="50" stroke="#1a2330" strokeWidth="0.6" />
-
-        <text x="6" y="-18" fontSize="9" fill="#5a6b7e">PROJECT</text>
-        <text x="6" y="6" fontSize="12" fontWeight="700">OAKWOOD OFFICES · L2 FIT-OUT</text>
-
-        <text x="166" y="-18" fontSize="9" fill="#5a6b7e">DWG · LEVEL · DATE</text>
-        <text x="166" y="6" fontSize="12" fontWeight="700">A-201 · L2 · 06.16.26</text>
-
-        <text x="6" y="34" fontSize="9" fill="#5a6b7e">SHEET</text>
-        <text x="50" y="34" fontSize="11" fontWeight="700">14 of 42</text>
-        <text x="166" y="34" fontSize="9" fill="#5a6b7e">REV</text>
-        <text x="220" y="34" fontSize="11" fontWeight="700">C — 06.16</text>
-      </g>
-
       {/* ── Legend (top-right strip) ─────────────────────────────── */}
       <g transform="translate(1320 90)" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontSize="9" fill="#1a2330">
-        <rect x="0" y="0" width="60" height="180" fill="#fff" stroke="#1a2330" strokeWidth="0.7" />
+        <rect x="0" y="0" width="60" height="150" fill="#fff" stroke="#1a2330" strokeWidth="0.7" />
         <text x="30" y="14" textAnchor="middle" fontWeight="700" fontSize="9">LEGEND</text>
         {/* Diffuser */}
         <rect x="8" y="22" width="10" height="10" fill="url(#p2-duct-hatch)" stroke="#8d99a8" strokeWidth="0.6" />
@@ -1012,33 +898,214 @@ function FloorPlan() {
         <circle cx="13" cy="58" r="4" fill="#fff" stroke="#5a6b7e" strokeWidth="0.5" />
         <circle cx="13" cy="58" r="1" fill="#5a6b7e" />
         <text x="22" y="61" fontSize="8">SPR</text>
-        {/* Outlet */}
-        <circle cx="13" cy="72" r="4" fill="#fff" stroke="#8d99a8" strokeWidth="0.6" />
-        <line x1="11" y1="72" x2="15" y2="72" stroke="#8d99a8" />
-        <line x1="13" y1="70" x2="13" y2="74" stroke="#8d99a8" />
-        <text x="22" y="75" fontSize="8">120V</text>
-        {/* Data */}
-        <polygon points="9 90 17 90 13 82" fill="#8d99a8" />
-        <text x="22" y="89" fontSize="8">DATA</text>
         {/* Light */}
-        <rect x="8" y="100" width="10" height="6" fill="none" stroke="#b0bbc8" strokeWidth="0.5" />
-        <line x1="8" y1="100" x2="18" y2="106" stroke="#b0bbc8" strokeWidth="0.5" />
-        <line x1="8" y1="106" x2="18" y2="100" stroke="#b0bbc8" strokeWidth="0.5" />
-        <text x="22" y="106" fontSize="8">LITE</text>
+        <rect x="8" y="72" width="10" height="6" fill="none" stroke="#b0bbc8" strokeWidth="0.5" />
+        <line x1="8" y1="72" x2="18" y2="78" stroke="#b0bbc8" strokeWidth="0.5" />
+        <line x1="8" y1="78" x2="18" y2="72" stroke="#b0bbc8" strokeWidth="0.5" />
+        <text x="22" y="78" fontSize="8">LITE</text>
         {/* Egress */}
-        <line x1="8" y1="118" x2="18" y2="118" stroke="#8d99a8" strokeWidth="1" markerEnd="url(#p2-egress-arrow)" />
-        <text x="22" y="121" fontSize="8">EGR</text>
+        <line x1="8" y1="92" x2="18" y2="92" stroke="#8d99a8" strokeWidth="1" markerEnd="url(#p2-egress-arrow)" />
+        <text x="22" y="95" fontSize="8">EGR</text>
         {/* FE */}
-        <rect x="9" y="128" width="8" height="10" fill="#8d99a8" />
-        <text x="22" y="135" fontSize="8">EXT</text>
+        <rect x="9" y="104" width="8" height="10" fill="#8d99a8" />
+        <text x="22" y="111" fontSize="8">EXT</text>
         {/* Door tag */}
-        <polygon points="13 146 17 148 17 152 13 154 9 152 9 148" fill="#fff" stroke="#1a2330" strokeWidth="0.5" />
-        <text x="22" y="152" fontSize="8">DR#</text>
+        <polygon points="13 122 17 124 17 128 13 130 9 128 9 124" fill="#fff" stroke="#1a2330" strokeWidth="0.5" />
+        <text x="22" y="128" fontSize="8">DR#</text>
         {/* Wall type */}
-        <circle cx="13" cy="164" r="5" fill="#fff" stroke="#1a2330" strokeWidth="0.6" />
-        <text x="13" y="167" textAnchor="middle" fontSize="6" fontWeight="700">W</text>
-        <text x="22" y="167" fontSize="8">WALL</text>
+        <circle cx="13" cy="140" r="5" fill="#fff" stroke="#1a2330" strokeWidth="0.6" />
+        <text x="13" y="143" textAnchor="middle" fontSize="6" fontWeight="700">W</text>
+        <text x="22" y="143" fontSize="8">WALL</text>
       </g>
+
+      {/* ╚════ END DIMMED LAYER · 3 of 3 ═══════════════════════════╝ */}
+      </g>
+
+      {/* ── AI-placed dimensions (revealed by the "Dimension" tool) ─ */}
+      {showDimensions && (
+        <g
+          fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+          fontSize="11"
+          fontWeight={700}
+          style={{ animation: 'pro2-dim-in 280ms ease-out both' }}
+        >
+          {/* Arrow marker — magenta for Wall 23, blue for the rest */}
+          <defs>
+            <marker
+              id="p2-dim-arrow-magenta"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF00D3" />
+            </marker>
+            <marker
+              id="p2-dim-arrow-blue"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0063A3" />
+            </marker>
+          </defs>
+
+          {/* ── Wall 23 vertical dimension (magenta, prominent) ─── */}
+          <g stroke="#FF00D3" fill="#FF00D3">
+            {/* Witness lines from wall extents to dim line */}
+            <line x1="700" y1="134" x2="640" y2="134" strokeWidth="0.8" />
+            <line x1="700" y1="360" x2="640" y2="360" strokeWidth="0.8" />
+            {/* Dim line with arrows */}
+            <line
+              x1="652"
+              y1="138"
+              x2="652"
+              y2="356"
+              strokeWidth="1"
+              markerStart="url(#p2-dim-arrow-magenta)"
+              markerEnd="url(#p2-dim-arrow-magenta)"
+            />
+            {/* Dim text background pill */}
+            <rect
+              x="624"
+              y="237"
+              width="56"
+              height="20"
+              rx="3"
+              fill="#ffffff"
+              stroke="#FF00D3"
+              strokeWidth="0.8"
+            />
+            <text x="652" y="251" textAnchor="middle" stroke="none">
+              22&apos;-6&quot;
+            </text>
+          </g>
+
+          {/* ── Overall building width (top, blue) ─────────────── */}
+          <g stroke="#0063A3" fill="#0063A3">
+            <line x1="120" y1="120" x2="120" y2="92" strokeWidth="0.8" />
+            <line x1="1280" y1="120" x2="1280" y2="92" strokeWidth="0.8" />
+            <line
+              x1="124"
+              y1="100"
+              x2="1276"
+              y2="100"
+              strokeWidth="1"
+              markerStart="url(#p2-dim-arrow-blue)"
+              markerEnd="url(#p2-dim-arrow-blue)"
+            />
+            <rect
+              x="660"
+              y="90"
+              width="80"
+              height="20"
+              rx="3"
+              fill="#ffffff"
+              stroke="#0063A3"
+              strokeWidth="0.8"
+            />
+            <text x="700" y="104" textAnchor="middle" stroke="none">
+              116&apos;-0&quot;
+            </text>
+          </g>
+
+          {/* ── Overall building depth (left, blue) ────────────── */}
+          <g stroke="#0063A3" fill="#0063A3">
+            <line x1="120" y1="120" x2="92" y2="120" strokeWidth="0.8" />
+            <line x1="120" y1="780" x2="92" y2="780" strokeWidth="0.8" />
+            <line
+              x1="100"
+              y1="124"
+              x2="100"
+              y2="776"
+              strokeWidth="1"
+              markerStart="url(#p2-dim-arrow-blue)"
+              markerEnd="url(#p2-dim-arrow-blue)"
+            />
+            <rect
+              x="72"
+              y="440"
+              width="56"
+              height="20"
+              rx="3"
+              fill="#ffffff"
+              stroke="#0063A3"
+              strokeWidth="0.8"
+              transform="rotate(-90 100 450)"
+            />
+            <text
+              x="100"
+              y="454"
+              textAnchor="middle"
+              stroke="none"
+              transform="rotate(-90 100 450)"
+            >
+              66&apos;-0&quot;
+            </text>
+          </g>
+
+          {/* ── Conference room interior width (blue) ──────────── */}
+          <g stroke="#0063A3" fill="#0063A3">
+            <line x1="140" y1="195" x2="140" y2="172" strokeWidth="0.8" />
+            <line x1="360" y1="195" x2="360" y2="172" strokeWidth="0.8" />
+            <line
+              x1="144"
+              y1="180"
+              x2="356"
+              y2="180"
+              strokeWidth="1"
+              markerStart="url(#p2-dim-arrow-blue)"
+              markerEnd="url(#p2-dim-arrow-blue)"
+            />
+            <rect
+              x="226"
+              y="170"
+              width="48"
+              height="18"
+              rx="3"
+              fill="#ffffff"
+              stroke="#0063A3"
+              strokeWidth="0.8"
+            />
+            <text x="250" y="183" textAnchor="middle" stroke="none" fontSize="10">
+              22&apos;-0&quot;
+            </text>
+          </g>
+
+          {/* ── Corridor width (blue) ───────────────────────────── */}
+          <g stroke="#0063A3" fill="#0063A3">
+            <line x1="540" y1="475" x2="520" y2="475" strokeWidth="0.8" />
+            <line x1="540" y1="540" x2="520" y2="540" strokeWidth="0.8" />
+            <line
+              x1="528"
+              y1="479"
+              x2="528"
+              y2="536"
+              strokeWidth="1"
+              markerStart="url(#p2-dim-arrow-blue)"
+              markerEnd="url(#p2-dim-arrow-blue)"
+            />
+            <rect
+              x="500"
+              y="498"
+              width="44"
+              height="18"
+              rx="3"
+              fill="#ffffff"
+              stroke="#0063A3"
+              strokeWidth="0.8"
+            />
+            <text x="522" y="511" textAnchor="middle" stroke="none" fontSize="10">
+              6&apos;-6&quot;
+            </text>
+          </g>
+        </g>
+      )}
     </svg>
   );
 }
@@ -1048,10 +1115,12 @@ function ContextMenu({
   x,
   y,
   onPointerDown,
+  onSelect,
 }: {
   x: number;
   y: number;
   onPointerDown: (e: React.PointerEvent) => void;
+  onSelect: (id: ActionId) => void;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -1090,52 +1159,13 @@ function ContextMenu({
       <div
         className="relative bg-white rounded-xl flex flex-col"
         style={{
-          width: 300,
+          width: 280,
           border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
           paddingTop: 6,
           paddingBottom: 6,
         }}
       >
-        {/* Selection chip */}
-        <div
-          className="flex items-center gap-2 mx-2 mt-1 mb-2 rounded-md px-2.5"
-          style={{
-            height: 28,
-            backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
-          }}
-        >
-          <ModusWcIcon
-            name="dimensions"
-            size="xs"
-            decorative
-            style={{
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          />
-          <span
-            className="flex-1 min-w-0 truncate"
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--modus-wc-color-base-content, #171c1e)',
-            }}
-          >
-            Wall 23 · Level 2
-          </span>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: '0.2px',
-              textTransform: 'uppercase',
-              color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            }}
-          >
-            Curtain wall
-          </span>
-        </div>
-
-        {/* Magic actions section header */}
+        {/* AI tools section header */}
         <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
           <span
             style={{
@@ -1146,7 +1176,7 @@ function ContextMenu({
               color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
             }}
           >
-            Magic actions
+            AI tools
           </span>
           <span
             className="flex-1"
@@ -1158,7 +1188,7 @@ function ContextMenu({
           />
         </div>
 
-        {/* Magic-icon rows */}
+        {/* AI-tool rows */}
         <div className="flex flex-col px-1.5">
           {ACTIONS.map((action) => {
             const isHovered = hovered === action.id;
@@ -1168,6 +1198,7 @@ function ContextMenu({
                 type="button"
                 onMouseEnter={() => setHovered(action.id)}
                 onMouseLeave={() => setHovered(null)}
+                onClick={() => onSelect(action.id)}
                 className="flex items-center gap-2.5 text-left rounded-md cursor-pointer"
                 style={{
                   padding: '6px 8px',
@@ -1220,105 +1251,11 @@ function ContextMenu({
                     {action.description}
                   </span>
                 </div>
-
-                <span
-                  className="shrink-0"
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                    letterSpacing: '0.3px',
-                  }}
-                >
-                  {action.shortcut}
-                </span>
               </button>
             );
           })}
         </div>
-
-        {/* Standard menu items */}
-        <div
-          className="mt-1 pt-1 mx-1.5"
-          style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e0e1e9)' }}
-        >
-          {[
-            { icon: 'visibility_off', label: 'Hide element', shortcut: 'H' },
-            { icon: 'settings_outline', label: 'Properties…', shortcut: '↵' },
-          ].map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onMouseEnter={() => setHovered(item.label)}
-              onMouseLeave={() => setHovered(null)}
-              className="flex items-center gap-2.5 w-full text-left rounded-md cursor-pointer"
-              style={{
-                padding: '6px 8px',
-                backgroundColor:
-                  hovered === item.label
-                    ? 'var(--modus-wc-color-base-100, #f1f1f6)'
-                    : 'transparent',
-                border: 'none',
-                transition: 'background-color 120ms ease',
-              }}
-            >
-              <ModusWcIcon
-                name={item.icon}
-                size="sm"
-                decorative
-                style={{
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  width: 32,
-                }}
-              />
-              <span
-                className="flex-1"
-                style={{
-                  fontSize: 13,
-                  color: 'var(--modus-wc-color-base-content, #171c1e)',
-                }}
-              >
-                {item.label}
-              </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                  letterSpacing: '0.3px',
-                }}
-              >
-                {item.shortcut}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
-    </div>
-  );
-}
-
-/* ── Right-click hint pill (shown until first right-click) ─────── */
-function HintPill() {
-  return (
-    <div
-      className="absolute pointer-events-none flex items-center gap-2 rounded-full px-3 py-1.5"
-      style={{
-        top: 24,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        backgroundColor: 'rgba(26, 35, 48, 0.92)',
-        color: '#ffffff',
-        fontSize: 12,
-        fontWeight: 600,
-        letterSpacing: '0.2px',
-        boxShadow: '0 6px 16px -6px rgba(0,0,0,0.30)',
-        zIndex: 15,
-        animation: 'pro2-hint 600ms ease-out',
-      }}
-    >
-      <ModusWcIcon name="mouse" size="xs" decorative style={{ color: '#ffffff' }} />
-      Right-click anywhere on the model to summon AI actions
     </div>
   );
 }
@@ -1327,9 +1264,21 @@ function HintPill() {
 export default function Pro2() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; visible: boolean }>(
-    { x: 660, y: 200, visible: true },
+    { x: 660, y: 200, visible: false },
   );
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [showDimensions, setShowDimensions] = useState(false);
+  const cursorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [cursor, setCursor] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [status, setStatus] = useState<
+    | {
+        phase: 'processing' | 'done';
+        tint: string;
+        icon: string;
+        label: string;
+        stat: string;
+      }
+    | null
+  >(null);
 
   /* Constrain (x, y) so the menu stays fully inside the wrapper. */
   function clampToWrapper(x: number, y: number) {
@@ -1349,12 +1298,61 @@ export default function Pro2() {
     if (!rect) return;
     const { x, y } = clampToWrapper(e.clientX - rect.left, e.clientY - rect.top);
     setMenu({ x, y, visible: true });
-    setHasInteracted(true);
   }
 
   function handleClick() {
     setMenu((prev) => ({ ...prev, visible: false }));
-    setHasInteracted(true);
+    if (status?.phase === 'done') setStatus(null);
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    cursorRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+    if (status) setCursor(cursorRef.current);
+  }
+
+  function handleSelect(id: ActionId) {
+    const action = ACTIONS.find((a) => a.id === id);
+    if (!action) return;
+
+    setMenu((prev) => ({ ...prev, visible: false }));
+
+    const stat: Record<ActionId, string> = {
+      dimension: '+5 placed',
+      spell: '0 typos',
+      compliance: '0 issues',
+      label: '+12 added',
+    };
+
+    /* Seed the indicator's starting position from the most recent cursor
+     * sample so it appears exactly where the pointer is, before the next
+     * mousemove ticks in. */
+    setCursor(cursorRef.current);
+    setStatus({
+      phase: 'processing',
+      tint: action.tint,
+      icon: action.icon,
+      label: action.label,
+      stat: stat[id],
+    });
+
+    window.clearTimeout((handleSelect as any)._processT);
+    window.clearTimeout((handleSelect as any)._doneT);
+
+    (handleSelect as any)._processT = window.setTimeout(() => {
+      if (id === 'dimension') setShowDimensions(true);
+      setStatus((prev) =>
+        prev ? { ...prev, phase: 'done' } : prev,
+      );
+      (handleSelect as any)._doneT = window.setTimeout(
+        () => setStatus(null),
+        2400,
+      );
+    }, 900);
   }
 
   /* On mount, re-clamp the initial position once we know the wrapper
@@ -1374,10 +1372,11 @@ export default function Pro2() {
       ref={wrapperRef}
       onContextMenu={handleContextMenu}
       onClick={handleClick}
+      onMouseMove={handleMouseMove}
       className="fixed inset-0 overflow-hidden select-none"
       style={{
         backgroundColor: '#f3f6fa',
-        cursor: 'context-menu',
+        cursor: status?.phase === 'processing' ? 'progress' : 'context-menu',
       }}
     >
       <style>{`
@@ -1385,14 +1384,22 @@ export default function Pro2() {
           from { opacity: 0; transform: translateY(-4px) scale(0.96); }
           to   { opacity: 1; transform: translateY(0)    scale(1); }
         }
-        @keyframes pro2-hint {
-          from { opacity: 0; transform: translate(-50%, -8px); }
-          to   { opacity: 1; transform: translate(-50%, 0); }
+        @keyframes pro2-dim-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes pro2-spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes pro2-check-pop {
+          0%   { opacity: 0; transform: scale(0.5); }
+          60%  { opacity: 1; transform: scale(1.15); }
+          100% { opacity: 1; transform: scale(1); }
         }
       `}</style>
 
       {/* CAD canvas — gently dims when the menu is open so the
-       *  colorful magic-actions card reads as the figure. */}
+       *  colorful AI-tools card reads as the figure. */}
       <div
         className="absolute inset-0"
         style={{
@@ -1400,11 +1407,8 @@ export default function Pro2() {
           transition: 'opacity 200ms ease',
         }}
       >
-        <FloorPlan />
+        <FloorPlan showDimensions={showDimensions} />
       </div>
-
-      {/* Initial hint — disappears after first interaction */}
-      {!hasInteracted && <HintPill />}
 
       {/* Floating context menu */}
       {menu.visible && (
@@ -1412,7 +1416,96 @@ export default function Pro2() {
           x={menu.x}
           y={menu.y}
           onPointerDown={(e) => e.stopPropagation()}
+          onSelect={handleSelect}
         />
+      )}
+
+      {/* Cursor-attached status indicator — first spinner, then result. */}
+      {status && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: cursor.y + 14,
+            left: cursor.x + 14,
+            zIndex: 25,
+            filter:
+              'drop-shadow(0px 8px 18px rgba(0,0,0,0.22)) drop-shadow(0px 2px 4px rgba(0,0,0,0.12))',
+            animation: 'pro2-pop 140ms ease-out',
+            transition: 'top 80ms linear, left 80ms linear',
+          }}
+        >
+          <div
+            className="relative bg-white rounded-full flex items-center gap-2"
+            style={{
+              border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
+              padding: '6px 12px 6px 6px',
+              height: 32,
+            }}
+          >
+            {/* Leading icon — spinner while processing, tool icon when done */}
+            {status.phase === 'processing' ? (
+              <div
+                className="rounded-full"
+                style={{
+                  width: 20,
+                  height: 20,
+                  border: `2px solid ${status.tint}33`,
+                  borderTopColor: status.tint,
+                  animation: 'pro2-spin 700ms linear infinite',
+                }}
+              />
+            ) : (
+              <div
+                className="flex items-center justify-center rounded-full shrink-0"
+                style={{
+                  width: 20,
+                  height: 20,
+                  backgroundColor: '#1AB1A0',
+                  animation: 'pro2-check-pop 260ms ease-out',
+                }}
+              >
+                <ModusWcIcon
+                  name="check"
+                  size="xs"
+                  decorative
+                  style={{ color: '#ffffff', fontSize: 12 }}
+                />
+              </div>
+            )}
+
+            {/* Status text */}
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {status.phase === 'processing'
+                ? `${status.label}…`
+                : status.label}
+            </span>
+
+            {/* Stat chip — only after the action completes */}
+            {status.phase === 'done' && (
+              <span
+                className="rounded-full"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.2px',
+                  padding: '2px 7px',
+                  backgroundColor: `${status.tint}1A`,
+                  color: status.tint,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {status.stat}
+              </span>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
