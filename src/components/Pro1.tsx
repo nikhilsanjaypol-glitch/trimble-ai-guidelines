@@ -77,12 +77,17 @@ function lineY(x: number, z: number): number {
   return elevation(x, z) + 0.17;
 }
 
-/* Build initial curb geometry by sampling along the carved road. */
+/* Build initial curb geometry by sampling along the carved road.
+ *
+ * Curbs follow the near bank of the road (the side closer to the
+ * camera) so they read as the "lip" of the channel from the opening
+ * view, and we keep the sample count low so each line looks like a
+ * single deliberate sweep rather than a many-jointed polyline. */
 function makeCurbLine(
   id: string,
   label: string,
   offset: number,
-  sampleCount = 9,
+  sampleCount = 6,
 ): CurbLine {
   const points: Vertex[] = [];
   const X_START = -22;
@@ -96,10 +101,14 @@ function makeCurbLine(
   return { id, label, points };
 }
 
+/* Four curb lines, evenly spaced across the full carved channel.
+ * Offsets step 2.8 m apart so each line clearly stakes out its own
+ * lane and the outermost lines ride each bank of the road. */
 const INITIAL_LINES: CurbLine[] = [
-  makeCurbLine('outer', 'Outer', ROAD_HALF_WIDTH - 0.4),
-  makeCurbLine('middle', 'Middle', ROAD_HALF_WIDTH - 1.1),
-  makeCurbLine('inner', 'Inner', ROAD_HALF_WIDTH - 1.8),
+  makeCurbLine('outer', 'Outer', -4.2),
+  makeCurbLine('mid_out', 'Mid out', -1.4),
+  makeCurbLine('mid_in', 'Mid in', 1.4),
+  makeCurbLine('inner', 'Inner', 4.2),
 ];
 
 function totalLength(points: Vertex[]): number {
@@ -230,14 +239,14 @@ export default function Pro1() {
     scene.fog = new THREE.FogExp2(0xc9d5e2, 0.010);
 
     const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 500);
-    /* Isometric-style starting view: equal X / Y / Z distance gives
-     * the classic 45° / 35.264° iso angle. */
-    camera.position.set(26, 26, 26);
+    /* Opening shot: low, along the carved road from the east end
+     * looking back west toward the mound. */
+    camera.position.set(50, 12, -8);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
-    controls.target.set(0, 0, 0);
+    controls.target.set(10, 0, -1);
     controls.minDistance = 10;
     controls.maxDistance = 95;
     controls.maxPolarAngle = Math.PI / 2.1;
@@ -632,19 +641,45 @@ export default function Pro1() {
       {/* WebGL canvas mount */}
       <div ref={mountRef} className="absolute inset-0" />
 
-      {/* Pulse keyframes for the AI extract button */}
+      {/* Keyframes for the AI extract button */}
       <style>
-        {`@keyframes pro1-pulse {
-            0%, 100% { box-shadow: 0 12px 36px -8px rgba(74, 0, 255, 0.35), 0 4px 14px -2px rgba(0, 0, 0, 0.22); }
-            50% { box-shadow: 0 12px 44px -6px rgba(74, 0, 255, 0.55), 0 4px 14px -2px rgba(0, 0, 0, 0.22); }
-          }
-          @keyframes pro1-spin {
+        {`@keyframes pro1-spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
           @keyframes pro1-fadein {
             from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
             to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          }
+          @keyframes pro1RainbowShimmer {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          @keyframes pro1ConnectorShimmer {
+            0%   { background-position: 50% 0%; }
+            50%  { background-position: 50% 100%; }
+            100% { background-position: 50% 0%; }
+          }
+          @keyframes pro1ConnectorFade {
+            from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+          }
+          @keyframes pro1DotPulse {
+            0%, 100% {
+              transform: translateX(-50%) scale(1);
+              box-shadow:
+                0 0 4px rgba(43, 223, 208, 0.9),
+                0 0 10px rgba(43, 223, 208, 0.55),
+                0 0 18px rgba(43, 223, 208, 0.25);
+            }
+            50% {
+              transform: translateX(-50%) scale(1.45);
+              box-shadow:
+                0 0 8px rgba(43, 223, 208, 1),
+                0 0 18px rgba(43, 223, 208, 0.85),
+                0 0 30px rgba(43, 223, 208, 0.45);
+            }
           }`}
       </style>
 
@@ -661,10 +696,11 @@ export default function Pro1() {
         >
           <div
             style={{
-              padding: '2.5px',
-              borderRadius: 14,
-              background: TRIMBLE_RAINBOW,
-              animation: extracting ? undefined : 'pro1-pulse 2.4s ease-in-out infinite',
+              padding: '1.5px',
+              borderRadius: 13,
+              backgroundImage: TRIMBLE_RAINBOW,
+              backgroundSize: '200% 100%',
+              animation: 'pro1RainbowShimmer 3.6s ease-in-out infinite',
             }}
           >
             <button
@@ -713,6 +749,53 @@ export default function Pro1() {
               </span>
             </button>
           </div>
+
+          {/* AI scanner connector — a single thin rainbow line that
+           * shares the card's border style, capped with a small dot
+           * showing where on the 3D model it's pointing. */}
+          <div
+            aria-hidden
+            className="pointer-events-none"
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 2px)',
+              left: '50%',
+              width: 1.5,
+              height: 110,
+              borderRadius: 1,
+              backgroundImage:
+                'linear-gradient(180deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)',
+              backgroundSize: '100% 200%',
+              animation: extracting
+                ? 'pro1ConnectorShimmer 0.9s ease-in-out infinite, pro1ConnectorFade 240ms ease-out both'
+                : 'pro1ConnectorShimmer 3.6s ease-in-out infinite, pro1ConnectorFade 360ms ease-out 180ms both',
+              transform: 'translateX(-50%)',
+            }}
+          />
+
+          {/* Dot at the end of the connector line. */}
+          <div
+            aria-hidden
+            className="pointer-events-none"
+            style={{
+              position: 'absolute',
+              /* line is anchored at calc(100% + 2px) and is 110px tall;
+               * subtract half the dot height to center the dot on the
+               * line's terminus. */
+              top: 'calc(100% + 2px + 110px - 4.5px)',
+              left: '50%',
+              width: 9,
+              height: 9,
+              borderRadius: '50%',
+              backgroundImage: TRIMBLE_RAINBOW,
+              backgroundSize: '200% 100%',
+              animation: extracting
+                ? 'pro1RainbowShimmer 0.9s ease-in-out infinite, pro1ConnectorFade 240ms ease-out both'
+                : 'pro1RainbowShimmer 3.6s ease-in-out infinite, pro1ConnectorFade 360ms ease-out 220ms both',
+              transform: 'translateX(-50%)',
+              boxShadow: '0 0 6px rgba(255, 0, 211, 0.5)',
+            }}
+          />
         </div>
       )}
 
@@ -807,54 +890,6 @@ export default function Pro1() {
         </div>
       )}
 
-      {/* Reset affordance — only after extraction */}
-      {extracted && (
-        <button
-          type="button"
-          onClick={() => setLines(INITIAL_LINES)}
-          className="absolute"
-          style={{
-            bottom: 20,
-            right: 20,
-            height: 32,
-            padding: '0 14px',
-            borderRadius: 8,
-            backgroundColor: 'rgba(14,22,35,0.72)',
-            color: '#ffffff',
-            border: '1px solid rgba(255,255,255,0.08)',
-            cursor: 'pointer',
-            fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-            fontWeight: 600,
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-          }}
-        >
-          Reset
-        </button>
-      )}
-
-      {/* Help hint — bottom-left, context-aware */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          bottom: 20,
-          left: 20,
-          padding: '6px 12px',
-          borderRadius: 8,
-          backgroundColor: 'rgba(14,22,35,0.55)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          color: 'rgba(255,255,255,0.82)',
-          fontSize: 'var(--modus-wc-font-size-xs, 12px)',
-          fontWeight: 500,
-          letterSpacing: '0.04em',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-        }}
-      >
-        {extracted
-          ? 'Drag the blue handles to refine · drag the scene to orbit · scroll to zoom'
-          : 'Drag the scene to orbit · scroll to zoom'}
-      </div>
     </div>
   );
 }

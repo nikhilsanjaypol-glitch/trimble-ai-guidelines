@@ -63,7 +63,7 @@ const routes: RouteDef[] = [
   { path: '/expert5', label: 'Expert 5 — Be Honest About Limitations', Component: Expert5 },
   { path: '/expert6', label: 'Expert 6 — Highlight Further Investigation', Component: Expert6 },
   { path: '/pro1', label: 'Pro 1 — Integrate with Professional Tools', Component: Pro1, fullBleed: true },
-  { path: '/pro2', label: 'Pro 2 — Perform Bite-Sized Tasks', Component: Pro2 },
+  { path: '/pro2', label: 'Pro 2 — Perform Bite-Sized Tasks', Component: Pro2, fullBleed: true },
   { path: '/pro3', label: 'Pro 3 — Be Trainable, Context and Domain Aware', Component: Pro3, fullBleed: true },
   { path: '/pro4', label: 'Pro 4 — Support Intervention', Component: Pro4 },
   { path: '/pro5', label: 'Pro 5 — Provide Context and Citations', Component: Pro5 },

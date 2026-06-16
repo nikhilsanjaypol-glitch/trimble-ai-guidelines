@@ -14,11 +14,8 @@ const possibleCauses = [
   'Import / Conversion Errors',
 ];
 
-const suggestedChecks = [
-  { icon: 'globe', label: 'Compare Systems' },
-  { icon: 'layers', label: 'Check Surface' },
-  { icon: 'document_outline', label: 'Check Import' },
-];
+const ESCALATION_MESSAGE =
+  'If these issues persist I suggest looping in your engineering team to verify the underlying coordinate systems.';
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -443,10 +440,11 @@ function ContactSupportModal({ onClose }: { onClose: () => void }) {
 
 /* ── Expert 6 — Highlight Further Investigation ────────────────── */
 /**
- * Hero / Branded header layout (ported from Expert 5 — Design 4).
- *
- * Guides users to possible resolutions when the AI is not confident
- * of an outcome by clearly indicating approaches to investigate further.
+ * Soft Amber design — warm warning header that signals low confidence
+ * without a heavy color block. Body explains the possible causes and
+ * suggests escalating to a human teammate. Contact Support is the
+ * primary action because the guideline is about routing the user
+ * outside AI; Upload Data is the secondary alternate path.
  */
 export default function Expert6() {
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -475,63 +473,58 @@ export default function Expert6() {
             backgroundColor: 'var(--modus-wc-color-base-page, #ffffff)',
           }}
         >
-          {/* Hero header */}
+          {/* Soft Amber header */}
           <div
-            className="flex flex-col gap-1 px-6 py-5"
-            style={{
-              background: 'linear-gradient(135deg, #0A1733 0%, #122B5F 60%, #1E3A8A 100%)',
-              color: '#ffffff',
-            }}
+            className="flex gap-3 items-start px-6 py-5"
+            style={{ backgroundColor: '#fff9ef' }}
           >
-            <span
-              style={{
-                fontSize: '10px',
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                opacity: 0.75,
-              }}
-            >
-              AI Suggestion · Further Investigation
-            </span>
-            <span className="font-semibold" style={{ fontSize: '22px', lineHeight: 1.15 }}>
-              Explore possible causes
-            </span>
-            <span style={{ fontSize: '13px', opacity: 0.85 }}>
-              {CONTEXT.scope} · {CONTEXT.modelsReviewed} models reviewed
-            </span>
             <div
-              className="self-start flex items-center gap-1 px-2 py-1 rounded-md mt-2"
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.14)', backdropFilter: 'blur(2px)' }}
+              className="flex items-center justify-center rounded-[10px] shrink-0 size-10"
+              style={{ backgroundColor: '#fff', border: '1px solid #f3c870' }}
             >
-              <ModusWcIcon name="alert_outline" size="xs" decorative style={{ color: '#fff' }} />
-              <span className="font-semibold" style={{ fontSize: '11px' }}>
-                Low Confidence
+              <ModusWcIcon
+                name="alert_outline"
+                size="md"
+                decorative
+                style={{ color: '#b88217' }}
+              />
+            </div>
+            <div className="flex flex-col gap-1 flex-1 min-w-0">
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: '10px',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: '#b88217',
+                }}
+              >
+                AI Suggestion · Low Confidence
+              </span>
+              <span
+                className="font-semibold"
+                style={{
+                  fontSize: '20px',
+                  lineHeight: 1.2,
+                  color: 'var(--modus-wc-color-base-content, #101828)',
+                }}
+              >
+                Explore possible causes
+              </span>
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
+                }}
+              >
+                {CONTEXT.scope} · {CONTEXT.modelsReviewed} models reviewed
               </span>
             </div>
           </div>
 
-          {/* Intro */}
-          <div className="flex flex-col gap-1 px-6 py-4">
-            <span
-              className="font-semibold"
-              style={{ fontSize: '14px', color: 'var(--modus-wc-color-base-content, #101828)' }}
-            >
-              I&apos;m not fully confident about the primary cause
-            </span>
-            <span
-              style={{
-                fontSize: '12px',
-                lineHeight: 1.5,
-                color: 'var(--modus-wc-color-base-content-low-contrast, #4a5565)',
-              }}
-            >
-              Investigate any of the candidates below to narrow the issue and
-              confirm a fix.
-            </span>
-          </div>
-
-          {/* 2-col body */}
-          <div className="grid grid-cols-2 gap-3 px-6 pb-4">
+          {/* Body */}
+          <div className="flex flex-col gap-3 px-6 pt-4 pb-4">
+            {/* Possible causes */}
             <div
               className="flex flex-col gap-1 p-3 rounded-lg"
               style={{
@@ -554,7 +547,8 @@ export default function Expert6() {
                 <span
                   key={cause}
                   style={{
-                    fontSize: '12px',
+                    fontSize: '14px',
+                    lineHeight: '22px',
                     color: 'var(--modus-wc-color-base-content, #171c1e)',
                   }}
                 >
@@ -563,64 +557,35 @@ export default function Expert6() {
               ))}
             </div>
 
+            {/* Escalation suggestion — direct the user outside of AI */}
             <div
-              className="flex flex-col gap-1 p-3 rounded-lg"
+              className="flex p-4 rounded-lg"
               style={{
                 backgroundColor: 'var(--modus-wc-color-base-100, #f7f8fa)',
                 border: '1px solid var(--modus-wc-color-base-200, #e0e1e9)',
               }}
             >
-              <span
-                className="font-semibold"
+              <p
                 style={{
-                  fontSize: '10px',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                  fontSize: '14px',
+                  lineHeight: '22px',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                  margin: 0,
                 }}
               >
-                Try these checks
-              </span>
-              {suggestedChecks.map(({ icon, label }) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <ModusWcIcon
-                    name={icon}
-                    size="xs"
-                    decorative
-                    style={{ color: 'var(--modus-wc-color-primary, #0063a3)' }}
-                  />
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      color: 'var(--modus-wc-color-base-content, #171c1e)',
-                    }}
-                  >
-                    {label}
-                  </span>
-                </div>
-              ))}
+                {ESCALATION_MESSAGE}
+              </p>
             </div>
           </div>
 
-          {/* Action buttons */}
+          {/* Action buttons — Contact Support primary, Upload Data secondary */}
           <div
-            className="flex gap-3 items-center px-6 pt-5 pb-3"
+            className="flex gap-3 items-center px-6 py-4"
             style={{ borderTop: '1px solid var(--modus-wc-color-base-200, #e5e7eb)' }}
           >
             <ModusWcButton
               size="md"
               color="primary"
-              onButtonClick={() => setUploadOpen(true)}
-            >
-              <span className="flex items-center justify-center gap-1.5">
-                <ModusWcIcon name="upload" size="sm" decorative />
-                Upload Data
-              </span>
-            </ModusWcButton>
-            <ModusWcButton
-              size="md"
-              color="tertiary"
-              variant="outlined"
               onButtonClick={() => setSupportOpen(true)}
             >
               <span className="flex items-center justify-center gap-1.5">
@@ -628,37 +593,17 @@ export default function Expert6() {
                 Contact Support
               </span>
             </ModusWcButton>
-          </div>
-
-          {/* Footer disclaimer */}
-          <div className="flex flex-wrap gap-3 items-center px-6 pb-3">
-            <div className="flex gap-2 items-center">
-              <ModusWcIcon
-                name="alert_outline"
-                size="xs"
-                decorative
-                style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6A6E79)' }}
-              />
-              <span
-                className="leading-4"
-                style={{
-                  fontSize: '10px',
-                  color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-                }}
-              >
-                AI responses depend on available project data
-              </span>
-            </div>
-            <span
-              className="leading-4 cursor-pointer hover:underline whitespace-nowrap"
-              style={{
-                fontSize: '10px',
-                color: 'var(--modus-wc-color-status-info, #004f83)',
-                fontWeight: 600,
-              }}
+            <ModusWcButton
+              size="md"
+              color="tertiary"
+              variant="outlined"
+              onButtonClick={() => setUploadOpen(true)}
             >
-              Learn more..
-            </span>
+              <span className="flex items-center justify-center gap-1.5">
+                <ModusWcIcon name="upload" size="sm" decorative />
+                Upload Data
+              </span>
+            </ModusWcButton>
           </div>
         </div>
       </div>
