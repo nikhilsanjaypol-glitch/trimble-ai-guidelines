@@ -40,21 +40,21 @@ const FINDINGS: Finding[] = [
     id: 'resource',
     title: 'Resource Allocation',
     detail:
-      'Crews are 20% under target headcount this sprint, with the largest gap on form-work crews. Crew Alpha is 4 below target and Crew Bravo is 2 below. No replacements are scheduled for the remainder of the sprint, so the shortfall is expected to widen before it recovers.',
+      '20% under target headcount. Crew Alpha is 4 below, Crew Bravo is 2 below. No replacements scheduled this sprint.',
     source: { title: 'Crew schedule · falcon-sprint-12.csv' },
   },
   {
     id: 'change',
     title: 'Pending Change Orders',
     detail:
-      '7 change orders are pending owner approval, with an average cycle time of 6 days. 3 of them block sequencing on the south facade and have already paused two trades. Any approval after July 2 pushes critical-path work into the float buffer.',
+      '7 pending owner approval. 3 block south facade sequencing. Deadline before float buffer is hit: July 2.',
     source: { title: 'Change order log · ProjectVue' },
   },
   {
     id: 'pricing',
     title: 'Supply Chain Pricing',
     detail:
-      'Concrete is quoted 30% above the bid baseline across all four regional suppliers, driven by an aggregate shortage in the wider region. Locking pricing now would add ~$420K to direct costs versus the bid; waiting risks a further 8–12% increase over the next month.',
+      '30% above bid baseline across 4 regional suppliers. Lock-in cost: ~$420K. Waiting risks +8–12% next month.',
     source: { title: 'Supplier quotes · Q2 2026' },
   },
 ];
@@ -149,14 +149,16 @@ function FindingRow({
       </button>
       {expanded && (
         <div
-          className="flex flex-col"
+          className="flex items-start"
           style={{
-            gap: '8px',
+            gap: '12px',
             padding: '0 14px 12px 14px',
           }}
         >
           <p
             style={{
+              flex: 1,
+              minWidth: 0,
               fontSize: '13px',
               color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
               lineHeight: '20px',
@@ -171,7 +173,7 @@ function FindingRow({
             onClick={onOpenSource}
             aria-label={`Open ${finding.source.title}`}
             title={`Open ${finding.source.title}`}
-            className="flex items-center justify-center self-end transition-colors"
+            className="flex items-center justify-center shrink-0 transition-colors"
             style={{
               width: '28px',
               height: '28px',

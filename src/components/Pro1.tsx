@@ -119,6 +119,46 @@ const LINE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x2bdfd0 });
 const HANDLE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x2563eb });
 const ACTIVE_HANDLE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x60a5fa });
 
+const TRIMBLE_RAINBOW =
+  'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
+
+/* Mini Trimble AI logo — used inside the extract button. */
+function TrimbleAiLogo({ size = 22 }: { size?: number }) {
+  return (
+    <span
+      className="flex items-center justify-center shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        viewBox="0 0 30.002 32.6797"
+        width="100%"
+        height="100%"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient
+            id="pro1-ai-logo"
+            x1="3.7558"
+            y1="10.5251"
+            x2="20.4332"
+            y2="30.2565"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#FF2BFC" />
+            <stop offset="0.628993" stopColor="#0563A7" />
+            <stop offset="1" stopColor="#075CA4" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M1.69824 24.9697C3.48353 26.9109 5.82653 28.2524 8.4043 28.8096L1.69824 32.6797V24.9697ZM10.6523 5.60742C16.5357 5.60742 21.3057 10.3803 21.3057 16.2676C21.3055 22.1547 16.5356 26.9268 10.6523 26.9268C4.76928 26.9265 0.00017177 22.1545 0 16.2676C0 10.3805 4.76918 5.60766 10.6523 5.60742ZM10.6523 7.69238C5.9201 7.69263 2.08398 11.5321 2.08398 16.2676C2.08416 21.0029 5.92021 24.8416 10.6523 24.8418C15.3847 24.8418 19.2215 21.003 19.2217 16.2676C19.2217 11.532 15.3848 7.69238 10.6523 7.69238ZM30.002 16.3398L23.2803 20.2217C24.0854 17.7019 24.0922 14.9945 23.2998 12.4707L30.002 16.3398ZM8.35547 3.83691C5.79861 4.40439 3.47535 5.73916 1.69824 7.66309V0L8.35547 3.83691Z"
+          fill="url(#pro1-ai-logo)"
+        />
+      </svg>
+    </span>
+  );
+}
+
 interface SceneRefs {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
@@ -143,6 +183,17 @@ export default function Pro1() {
     pointIdx: number;
   } | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
+  const [extracted, setExtracted] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+
+  function handleExtract() {
+    if (extracting || extracted) return;
+    setExtracting(true);
+    window.setTimeout(() => {
+      setExtracting(false);
+      setExtracted(true);
+    }, 900);
+  }
 
   /* Refs mirror state so three.js event closures see current values. */
   const dragRef = useRef(drag);
@@ -179,7 +230,9 @@ export default function Pro1() {
     scene.fog = new THREE.FogExp2(0xc9d5e2, 0.010);
 
     const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 500);
-    camera.position.set(8, 22, 34);
+    /* Isometric-style starting view: equal X / Y / Z distance gives
+     * the classic 45° / 35.264° iso angle. */
+    camera.position.set(26, 26, 26);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -524,6 +577,10 @@ export default function Pro1() {
       (child as THREE.Mesh).geometry.dispose();
     });
 
+    /* Geometry is only created after the AI has "extracted" the
+     * curb lines from the point cloud. */
+    if (!extracted) return;
+
     lines.forEach((line) => {
       const path = line.points.map(
         (p) => new THREE.Vector3(p.x, lineY(p.x, p.z), p.z),
@@ -549,7 +606,7 @@ export default function Pro1() {
         refs.handleGroup.add(mesh);
       });
     });
-  }, [lines, drag, hoverHandle]);
+  }, [lines, drag, hoverHandle, extracted]);
 
   /* ── Live values ──────────────────────────────────────────────── */
   const lengths = lines.map((line) => ({
@@ -575,7 +632,92 @@ export default function Pro1() {
       {/* WebGL canvas mount */}
       <div ref={mountRef} className="absolute inset-0" />
 
+      {/* Pulse keyframes for the AI extract button */}
+      <style>
+        {`@keyframes pro1-pulse {
+            0%, 100% { box-shadow: 0 12px 36px -8px rgba(74, 0, 255, 0.35), 0 4px 14px -2px rgba(0, 0, 0, 0.22); }
+            50% { box-shadow: 0 12px 44px -6px rgba(74, 0, 255, 0.55), 0 4px 14px -2px rgba(0, 0, 0, 0.22); }
+          }
+          @keyframes pro1-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes pro1-fadein {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          }`}
+      </style>
+
+      {/* AI-powered extract button — only shown before extraction */}
+      {!extracted && (
+        <div
+          className="absolute"
+          style={{
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            animation: 'pro1-fadein 240ms ease-out',
+          }}
+        >
+          <div
+            style={{
+              padding: '2.5px',
+              borderRadius: 14,
+              background: TRIMBLE_RAINBOW,
+              animation: extracting ? undefined : 'pro1-pulse 2.4s ease-in-out infinite',
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleExtract}
+              disabled={extracting}
+              style={{
+                background: '#ffffff',
+                border: 'none',
+                borderRadius: 11,
+                padding: '13px 22px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                cursor: extracting ? 'progress' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {extracting ? (
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    display: 'inline-block',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(74,0,255,0.18)',
+                    borderTopColor: '#4A00FF',
+                    animation: 'pro1-spin 0.9s linear infinite',
+                  }}
+                />
+              ) : (
+                <TrimbleAiLogo size={24} />
+              )}
+              <span
+                style={{
+                  fontWeight: 600,
+                  fontSize: 'var(--modus-wc-font-size-md, 16px)',
+                  color: 'var(--modus-wc-color-base-content, #171c1e)',
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '-0.005em',
+                }}
+              >
+                {extracting
+                  ? 'Extracting curb lines…'
+                  : 'Extract curb lines from 3D point cloud'}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Live readout — top-right frosted chip */}
+      {extracted && (
       <div
         className="absolute flex flex-col gap-1.5 px-4 py-3 rounded-xl"
         style={{
@@ -641,9 +783,10 @@ export default function Pro1() {
           );
         })}
       </div>
+      )}
 
       {/* Drag tooltip — follows the active node in screen space */}
-      {drag && tooltip && (
+      {extracted && drag && tooltip && (
         <div
           className="absolute pointer-events-none font-semibold"
           style={{
@@ -664,31 +807,33 @@ export default function Pro1() {
         </div>
       )}
 
-      {/* Reset affordance */}
-      <button
-        type="button"
-        onClick={() => setLines(INITIAL_LINES)}
-        className="absolute"
-        style={{
-          bottom: 20,
-          right: 20,
-          height: 32,
-          padding: '0 14px',
-          borderRadius: 8,
-          backgroundColor: 'rgba(14,22,35,0.72)',
-          color: '#ffffff',
-          border: '1px solid rgba(255,255,255,0.08)',
-          cursor: 'pointer',
-          fontSize: 'var(--modus-wc-font-size-sm, 13px)',
-          fontWeight: 600,
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-        }}
-      >
-        Reset
-      </button>
+      {/* Reset affordance — only after extraction */}
+      {extracted && (
+        <button
+          type="button"
+          onClick={() => setLines(INITIAL_LINES)}
+          className="absolute"
+          style={{
+            bottom: 20,
+            right: 20,
+            height: 32,
+            padding: '0 14px',
+            borderRadius: 8,
+            backgroundColor: 'rgba(14,22,35,0.72)',
+            color: '#ffffff',
+            border: '1px solid rgba(255,255,255,0.08)',
+            cursor: 'pointer',
+            fontSize: 'var(--modus-wc-font-size-sm, 13px)',
+            fontWeight: 600,
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+          }}
+        >
+          Reset
+        </button>
+      )}
 
-      {/* Help hint — bottom-left */}
+      {/* Help hint — bottom-left, context-aware */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -706,7 +851,9 @@ export default function Pro1() {
           WebkitBackdropFilter: 'blur(8px)',
         }}
       >
-        Drag the blue handles to refine · drag the scene to orbit · scroll to zoom
+        {extracted
+          ? 'Drag the blue handles to refine · drag the scene to orbit · scroll to zoom'
+          : 'Drag the scene to orbit · scroll to zoom'}
       </div>
     </div>
   );

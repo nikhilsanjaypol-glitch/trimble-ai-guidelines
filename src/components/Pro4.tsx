@@ -16,14 +16,103 @@ import {
 const TRIMBLE_RAINBOW =
   'linear-gradient(90deg, #00D7C0 0%, #009AFE 33%, #4A00FF 55%, #FF2092 78%, #FF00D3 96%)';
 
-type Mode = 'idle' | 'modifying';
+type Mode = 'idle' | 'modifying' | 'reworking';
 type AuthorityState = 'ai' | 'modified' | 'original' | 'accepted';
+type ModificationKind = 'reorder' | 'avoidTolls' | 'fuelStop';
 
 interface Version {
   state: AuthorityState;
+  modification?: ModificationKind;
 }
 
 const INITIAL_VERSION: Version = { state: 'ai' };
+
+interface ModifySuggestion {
+  id: ModificationKind;
+  label: string;
+  prompt: string;
+}
+
+const MODIFY_SUGGESTIONS: ModifySuggestion[] = [
+  {
+    id: 'reorder',
+    label: 'Reorder stops',
+    prompt: 'Reorder stops to minimize backtracking',
+  },
+  {
+    id: 'avoidTolls',
+    label: 'Avoid tolls',
+    prompt: 'Avoid the tolled corridor on the east side',
+  },
+  {
+    id: 'fuelStop',
+    label: 'Add a fuel stop',
+    prompt: 'Insert a fuel stop between stops 3 and 4',
+  },
+];
+
+interface RouteVariant {
+  pathD: string;
+  stops: Array<{ x: number; y: number; n: string }>;
+  topBar: string;
+  fuelStop?: { x: number; y: number };
+  tollBadge?: { x: number; y: number };
+}
+
+const ROUTE_VARIANTS: Record<'default' | ModificationKind, RouteVariant> = {
+  default: {
+    pathD: 'M 60 60 L 160 60 L 160 130 L 250 130 L 250 200 L 60 200',
+    stops: [
+      { x: 60, y: 60, n: '1' },
+      { x: 160, y: 60, n: '2' },
+      { x: 160, y: 130, n: '3' },
+      { x: 250, y: 130, n: '4' },
+      { x: 250, y: 200, n: '5' },
+      { x: 60, y: 200, n: '6' },
+    ],
+    topBar: 'ROUTE-12 · 6 STOPS · 28 MIN',
+  },
+  reorder: {
+    pathD: 'M 60 200 L 60 60 L 160 60 L 160 130 L 250 130 L 250 200',
+    stops: [
+      { x: 60, y: 200, n: '1' },
+      { x: 60, y: 60, n: '2' },
+      { x: 160, y: 60, n: '3' },
+      { x: 160, y: 130, n: '4' },
+      { x: 250, y: 130, n: '5' },
+      { x: 250, y: 200, n: '6' },
+    ],
+    topBar: 'ROUTE-12 · 6 STOPS · 24 MIN',
+  },
+  avoidTolls: {
+    pathD:
+      'M 60 60 L 160 60 L 160 130 L 250 130 L 160 200 L 60 200 L 60 200 L 60 200',
+    stops: [
+      { x: 60, y: 60, n: '1' },
+      { x: 160, y: 60, n: '2' },
+      { x: 160, y: 130, n: '3' },
+      { x: 250, y: 130, n: '4' },
+      { x: 60, y: 200, n: '6' },
+      { x: 160, y: 200, n: '5' },
+    ],
+    topBar: 'ROUTE-12 · 6 STOPS · 31 MIN',
+    tollBadge: { x: 250, y: 165 },
+  },
+  fuelStop: {
+    pathD:
+      'M 60 60 L 160 60 L 160 130 L 205 100 L 250 130 L 250 200 L 60 200',
+    stops: [
+      { x: 60, y: 60, n: '1' },
+      { x: 160, y: 60, n: '2' },
+      { x: 160, y: 130, n: '3' },
+      { x: 250, y: 130, n: '4' },
+      { x: 250, y: 200, n: '5' },
+      { x: 60, y: 200, n: '6' },
+    ],
+    topBar: 'ROUTE-12 · 7 STOPS · 32 MIN',
+    fuelStop: { x: 205, y: 100 },
+  },
+};
 
 function previewBorder(state: AuthorityState): string {
   switch (state) {
@@ -40,15 +129,12 @@ function previewBorder(state: AuthorityState): string {
 }
 
 /* ── Trimble Maps · Fleet route optimization ────────────────────── */
-function FleetPreview() {
-  const stops = [
-    { x: 60, y: 60, n: '1' },
-    { x: 160, y: 60, n: '2' },
-    { x: 160, y: 130, n: '3' },
-    { x: 250, y: 130, n: '4' },
-    { x: 250, y: 200, n: '5' },
-    { x: 60, y: 200, n: '6' },
-  ];
+function FleetPreview({
+  modification,
+}: {
+  modification?: ModificationKind;
+}) {
+  const data = ROUTE_VARIANTS[modification ?? 'default'];
   return (
     <svg
       viewBox="0 0 320 240"
@@ -74,23 +160,64 @@ function FleetPreview() {
         <path d="M 160 30 L 160 220" />
         <path d="M 250 30 L 250 220" />
       </g>
+      {modification === 'avoidTolls' && (
+        <g stroke="#d65a4e" strokeWidth="9" fill="none" strokeLinecap="round" opacity="0.55">
+          <path d="M 250 138 L 250 192" />
+        </g>
+      )}
       <path
-        d="M 60 60 L 160 60 L 160 130 L 250 130 L 250 200 L 60 200"
+        d={data.pathD}
         stroke="#0063a3"
         strokeWidth="3.5"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {stops.map((s, i) => (
+      {data.tollBadge && (
+        <g
+          transform={`translate(${data.tollBadge.x} ${data.tollBadge.y})`}
+        >
+          <rect x="-22" y="-9" width="44" height="18" rx="4" fill="#d65a4e" />
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="9"
+            fontWeight="700"
+            fill="#ffffff"
+            letterSpacing="0.4"
+          >
+            $ TOLL
+          </text>
+        </g>
+      )}
+      {data.fuelStop && (
+        <g transform={`translate(${data.fuelStop.x} ${data.fuelStop.y})`}>
+          <circle r="12" fill="rgba(243,156,18,0.20)" />
+          <circle r="10" fill="#ffffff" stroke="#f39c12" strokeWidth="2" />
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="10"
+            fontWeight="700"
+            fill="#f39c12"
+          >
+            ⛽
+          </text>
+        </g>
+      )}
+      {data.stops.map((s, i) => (
         <g key={i}>
           <circle cx={s.x} cy={s.y} r="11" fill="rgba(0,99,163,0.18)" />
           <circle cx={s.x} cy={s.y} r="9" fill="#ffffff" stroke="#0063a3" strokeWidth="2" />
           <text x={s.x} y={s.y + 3.5} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0063a3">{s.n}</text>
         </g>
       ))}
-      <rect x="14" y="14" width="172" height="22" rx="4" fill="rgba(255,255,255,0.92)" />
-      <text x="22" y="29" fontSize="10" fontWeight="700" fill="#0063a3" letterSpacing="0.5">ROUTE-12 · 6 STOPS · 28 MIN</text>
+      <rect x="14" y="14" width="186" height="22" rx="4" fill="rgba(255,255,255,0.92)" />
+      <text x="22" y="29" fontSize="10" fontWeight="700" fill="#0063a3" letterSpacing="0.5">{data.topBar}</text>
       <g transform="translate(294, 30)">
         <circle r="14" fill="#ffffff" stroke="#999" strokeWidth="0.7" />
         <text
@@ -325,10 +452,17 @@ function Pro4Card() {
   const [pointer, setPointer] = useState(0);
   const [mode, setMode] = useState<Mode>('idle');
   const [draftSummary, setDraftSummary] = useState('');
+  const [previewModification, setPreviewModification] =
+    useState<ModificationKind | null>(null);
 
   const current = history[pointer];
   const canUndo = pointer > 0;
   const canRedo = pointer < history.length - 1;
+
+  const isPreviewing = mode === 'modifying' && previewModification !== null;
+  const activeModification: ModificationKind | undefined = isPreviewing
+    ? previewModification ?? undefined
+    : current.modification;
 
   function pushVersion(version: Version) {
     const next = [...history.slice(0, pointer + 1), version];
@@ -338,18 +472,35 @@ function Pro4Card() {
 
   function startModify() {
     setDraftSummary('');
+    setPreviewModification(null);
     setMode('modifying');
+  }
+  function cancelModify() {
+    setPreviewModification(null);
+    setMode('idle');
+  }
+  function pickSuggestion(s: ModifySuggestion) {
+    setDraftSummary(s.prompt);
+    setPreviewModification(s.id);
   }
   function commitModify() {
     if (draftSummary.trim() === '') return;
-    pushVersion({ state: 'modified' });
-    setMode('idle');
+    const chosen = previewModification;
+    setMode('reworking');
+    window.setTimeout(() => {
+      pushVersion({
+        state: 'modified',
+        modification: chosen ?? undefined,
+      });
+      setPreviewModification(null);
+      setMode('idle');
+    }, 1400);
   }
   function revert() {
     pushVersion({ state: 'original' });
   }
   function accept() {
-    pushVersion({ state: 'accepted' });
+    pushVersion({ state: 'accepted', modification: current.modification });
   }
   function undo() {
     if (canUndo) setPointer((p) => p - 1);
@@ -416,8 +567,10 @@ function Pro4Card() {
           className="relative overflow-hidden"
           style={{
             borderRadius: '12px',
-            padding: current.state === 'original' ? '1px' : '2px',
-            ...(current.state === 'ai'
+            padding: current.state === 'original' && !isPreviewing ? '1px' : '2px',
+            ...(isPreviewing
+              ? { background: 'var(--modus-wc-color-primary, #0063a3)' }
+              : current.state === 'ai'
               ? {
                   backgroundImage: TRIMBLE_RAINBOW,
                   backgroundSize: '200% 100%',
@@ -435,8 +588,33 @@ function Pro4Card() {
               backgroundColor: 'var(--modus-wc-color-base-100, #f1f1f6)',
             }}
           >
-            <FleetPreview />
-            {current.state === 'accepted' && (
+            <FleetPreview modification={activeModification} />
+            {isPreviewing && (
+              <div
+                className="absolute"
+                style={{
+                  top: 10,
+                  right: 10,
+                  height: 24,
+                  padding: '0 10px',
+                  borderRadius: 1000,
+                  backgroundColor: 'rgba(0, 99, 163, 0.92)',
+                  color: '#ffffff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                }}
+              >
+                <ModusWcIcon name="visibility_on" size="xs" decorative />
+                Preview
+              </div>
+            )}
+            {!isPreviewing && current.state === 'accepted' && (
               <div
                 className="absolute"
                 style={{
@@ -461,7 +639,7 @@ function Pro4Card() {
                 Accepted
               </div>
             )}
-            {current.state === 'modified' && (
+            {!isPreviewing && current.state === 'modified' && (
               <div
                 className="absolute"
                 style={{
@@ -490,33 +668,103 @@ function Pro4Card() {
         </div>
       </div>
 
-      {/* Inline modify form */}
+      {/* Inline modify prompt */}
       {mode === 'modifying' && (
         <div
-          className="flex flex-col gap-2"
+          className="flex flex-col"
           style={{
             margin: '14px 16px 16px',
-            padding: '12px',
-            borderRadius: '10px',
+            padding: '14px',
+            borderRadius: '12px',
             backgroundColor: 'rgba(0, 99, 163, 0.05)',
             border: '1px solid rgba(0, 99, 163, 0.25)',
+            gap: '12px',
           }}
         >
+          <div className="flex items-center gap-2">
+            <span
+              className="flex items-center justify-center rounded-full"
+              style={{
+                width: '24px',
+                height: '24px',
+                backgroundColor: 'var(--modus-wc-color-primary, #0063a3)',
+              }}
+            >
+              <ModusWcIcon
+                name="ai_generative"
+                size="xs"
+                decorative
+                style={{ color: '#ffffff' }}
+              />
+            </span>
+            <span
+              className="font-bold"
+              style={{
+                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+              }}
+            >
+              Tell the AI what to change
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {MODIFY_SUGGESTIONS.map((s) => {
+              const active = previewModification === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pickSuggestion(s)}
+                  className="transition-colors"
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 1000,
+                    border: active
+                      ? '1px solid var(--modus-wc-color-primary, #0063a3)'
+                      : '1px solid rgba(0, 99, 163, 0.30)',
+                    backgroundColor: active
+                      ? 'var(--modus-wc-color-primary, #0063a3)'
+                      : '#ffffff',
+                    fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
+                    fontWeight: 600,
+                    color: active
+                      ? '#ffffff'
+                      : 'var(--modus-wc-color-primary, #0063a3)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (active) return;
+                    e.currentTarget.style.backgroundColor =
+                      'rgba(0, 99, 163, 0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (active) return;
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                  }}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+
           <ModusWcTextInput
-            label="What did you change?"
             value={draftSummary}
             size="sm"
-            placeholder="e.g. Service stop 4 before 11 AM"
+            placeholder="e.g. Reorder stops to finish near the depot"
             onInputChange={(e: CustomEvent) =>
               setDraftSummary(e.detail?.target?.value ?? '')
             }
           />
+
           <div className="flex items-center justify-end gap-2">
             <ModusWcButton
               size="sm"
               color="tertiary"
               variant="outlined"
-              onButtonClick={() => setMode('idle')}
+              onButtonClick={cancelModify}
             >
               Cancel
             </ModusWcButton>
@@ -526,8 +774,59 @@ function Pro4Card() {
               disabled={draftSummary.trim() === '' || undefined}
               onButtonClick={commitModify}
             >
-              Save my plan
+              <span className="flex items-center gap-1">
+                <ModusWcIcon name="ai_generative" size="xs" decorative />
+                Apply with AI
+              </span>
             </ModusWcButton>
+          </div>
+        </div>
+      )}
+
+      {/* Reworking state */}
+      {mode === 'reworking' && (
+        <div
+          className="flex items-center gap-3"
+          style={{
+            margin: '14px 16px 16px',
+            padding: '14px 16px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(0, 99, 163, 0.05)',
+            border: '1px solid rgba(0, 99, 163, 0.25)',
+          }}
+        >
+          <span
+            className="flex items-center justify-center"
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              border: '2px solid rgba(0, 99, 163, 0.18)',
+              borderTopColor: 'var(--modus-wc-color-primary, #0063a3)',
+              animation: 'pro4Spin 0.9s linear infinite',
+              flexShrink: 0,
+            }}
+          />
+          <div className="flex flex-col" style={{ gap: '2px' }}>
+            <span
+              className="font-bold"
+              style={{
+                fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+                color: 'var(--modus-wc-color-base-content, #171c1e)',
+              }}
+            >
+              Re-running the plan…
+            </span>
+            <span
+              style={{
+                fontSize: 'var(--modus-wc-font-size-xxs, 11px)',
+                color:
+                  'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
+                lineHeight: '15px',
+              }}
+            >
+              Applying: &ldquo;{draftSummary}&rdquo;
+            </span>
           </div>
         </div>
       )}
@@ -546,6 +845,10 @@ export default function Pro4() {
           0%   { background-position: 0% 50%; }
           50%  { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
+        }
+        @keyframes pro4Spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
       `}</style>
       <Pro4Card />
