@@ -827,16 +827,15 @@ function RecommendationCard({
           />
         </span>
         <span
-          className="font-semibold uppercase flex-1"
+          className="font-semibold flex-1"
           style={{
-            fontSize: 'var(--modus-wc-font-size-xxs, 10px)',
-            letterSpacing: '0.10em',
+            fontSize: 'var(--modus-wc-font-size-base, 16px)',
+            lineHeight: '20px',
+            letterSpacing: '-0.005em',
             color: confirmed ? '#1d8b4d' : '#b3243a',
           }}
         >
-          {confirmed
-            ? 'Replacement applied'
-            : "I'd recommend swapping this anchor"}
+          {confirmed ? 'Replacement applied' : 'Design Review'}
         </span>
         <button
           type="button"

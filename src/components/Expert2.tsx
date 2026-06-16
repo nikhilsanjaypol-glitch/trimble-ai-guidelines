@@ -143,7 +143,7 @@ function FindingRow({
             name={expanded ? 'expand_more' : 'chevron_right'}
             size="sm"
             decorative
-            style={{ color: 'var(--modus-wc-color-base-content, #171c1e)' }}
+            style={{ color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)' }}
           />
         </span>
       </button>
@@ -164,6 +164,7 @@ function FindingRow({
               lineHeight: '20px',
               margin: 0,
               fontWeight: 400,
+              opacity: 0.85,
             }}
           >
             {finding.detail}
@@ -175,8 +176,8 @@ function FindingRow({
             title={`Open ${finding.source.title}`}
             className="flex items-center justify-center shrink-0 transition-colors"
             style={{
-              width: '28px',
-              height: '28px',
+              width: '24px',
+              height: '24px',
               borderRadius: '6px',
               border: 'none',
               background: 'transparent',
@@ -192,7 +193,7 @@ function FindingRow({
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            <ModusWcIcon name="launch" size="sm" decorative />
+            <ModusWcIcon name="launch" size="xs" decorative />
           </button>
         </div>
       )}
@@ -220,7 +221,7 @@ function TriggerCard({
       style={{
         width: '100%',
         background: 'var(--modus-wc-color-status-danger-light, #f8d7da)',
-        border: '1.5px solid var(--modus-wc-color-status-danger, #c8102e)',
+        border: '1px solid var(--modus-wc-color-status-danger, #c8102e)',
         borderRadius: '16px',
         cursor: 'pointer',
         textAlign: 'left',
@@ -238,14 +239,14 @@ function TriggerCard({
       {/* Left content block */}
       <div
         className="flex-1 flex flex-col justify-center min-w-0"
-        style={{ padding: '20px 24px', gap: '8px' }}
+        style={{ padding: '18px 22px', gap: '4px' }}
       >
         <span
           style={{
-            fontSize: 'var(--modus-wc-font-size-lg, 18px)',
+            fontSize: 'var(--modus-wc-font-size-md, 16px)',
             fontWeight: 600,
             color: 'var(--modus-wc-color-base-content, #171c1e)',
-            lineHeight: '24px',
+            lineHeight: '22px',
           }}
         >
           Completion confidence
@@ -253,16 +254,16 @@ function TriggerCard({
         <span
           className="inline-flex items-center"
           style={{
-            gap: '4px',
-            fontSize: 'var(--modus-wc-font-size-sm, 14px)',
+            gap: '2px',
+            fontSize: '13px',
             color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
-            lineHeight: '20px',
+            lineHeight: '18px',
           }}
         >
           {factorCount} risk factors
           <ModusWcIcon
             name={expanded ? 'expand_less' : 'expand_more'}
-            size="sm"
+            size="xs"
             decorative
             style={{
               color: 'var(--modus-wc-color-base-content-low-contrast, #6a6e79)',
@@ -271,24 +272,27 @@ function TriggerCard({
         </span>
       </div>
 
-      {/* Right "LOW" ribbon */}
+      {/* Right "LOW" pill */}
       <div
         className="flex items-center justify-center shrink-0"
-        style={{ padding: '0 22px' }}
+        style={{ padding: '0 20px' }}
         aria-hidden
       >
         <span
+          className="inline-flex items-center justify-center"
           style={{
-            writingMode: 'vertical-rl',
-            transform: 'rotate(180deg)',
-            fontSize: '20px',
-            fontWeight: 800,
-            letterSpacing: '3px',
-            color: 'var(--modus-wc-color-status-danger, #c8102e)',
+            padding: '6px 14px',
+            borderRadius: '999px',
+            background: 'var(--modus-wc-color-status-danger, #c8102e)',
+            color: '#fff',
+            fontSize: 'var(--modus-wc-font-size-xs, 12px)',
+            fontWeight: 700,
+            letterSpacing: '1.5px',
             lineHeight: 1,
+            textTransform: 'uppercase',
           }}
         >
-          LOW
+          Low
         </span>
       </div>
     </button>

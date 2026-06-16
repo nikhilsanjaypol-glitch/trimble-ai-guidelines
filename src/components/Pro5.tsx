@@ -583,7 +583,13 @@ export default function Pro5() {
         >
           <Section number={1} label="Site conditions">
             Subgrade preparation continued on grid lines C2–C4 through
-            the morning shift.{' '}
+            the morning shift. Following the overnight precipitation,
+            the crew reverted to spot-grade hand-tooling instead of
+            the planned roller pass to avoid further moisture intrusion
+            into the lift. Standing water was vacuumed off grids C2
+            and C3 between 08:15 and 09:40, after which the surface
+            was scuffed and re-rolled at reduced passes to limit
+            disturbance of the prepared mat.{' '}
             <Hl
               color="pink"
               active={selected === 1}
@@ -593,13 +599,62 @@ export default function Pro5() {
               }}
             >
               Compaction test on grid lines C2–C4 returned 89% Proctor
-              density — below ACI 318 minimum. Pour permit withheld
-              pending re-test.
-            </Hl>
+              density — below the ACI 318 minimum of 95%. Pour permit
+              was withheld pending re-test, now scheduled for May 19
+              at 07:30.
+            </Hl>{' '}
+            The independent geotech (GTS Engineering) was on site to
+            witness the re-test setup and confirmed sample locations
+            against the approved test plan. Block D form-stripping
+            completed on schedule with no defects flagged at
+            strip-back; tie holes were filled, surface honeycombs
+            (none observed) logged as clean, and curing compound was
+            re-applied on the south wall face per the cold-joint plan.
           </Section>
 
-          <Section number={2} label="Weather">
-            Heavy precipitation overnight and into early afternoon.{' '}
+          <Section number={2} label="Schedule status">
+            Overall progress on Block C remains 1.5 days behind the
+            baseline schedule following last week’s rebar tie-off
+            slippage. The pour-permit hold described in §1 will
+            compound this if it is not cleared by end-of-day May 19.
+            The CPM model has been updated to reflect the contingent
+            re-test and the rebar shipment slip (see §7), with a
+            revised forecast slip of four working days against
+            contract milestone M-14 (slab-on-grade complete).
+            Float on the curtain-wall mock-up path has eroded to two
+            days; mitigation options under review include a Saturday
+            shift on May 24 and accelerating the Block D back-fill.
+            Coordination meeting with trade partners is set for May
+            20 at 08:00 to re-baseline the two-week look-ahead, and a
+            formal Schedule Update Notice will be issued by EOD May 19.
+          </Section>
+
+          <Section number={3} label="Manpower">
+            Crew of 24 on site at peak through the 09:00–13:00
+            window: 8 concrete, 6 carpentry, 4 ironworkers, 2
+            operators, 2 laborers, and 2 foremen. Concrete placement
+            crew (8) was released at 13:30 once the pour permit was
+            withheld; two laborers reassigned to formwork prep on
+            Block D and four to clean-up of the wet-weather access
+            lanes along the north perimeter. Operator coverage
+            maintained on all three cranes through the afternoon, and
+            the relief operator (M. Allen) covered the 12:00 lunch
+            window on CK-12. No overtime authorized today. Safety
+            orientation completed for two new ironworkers (J. Ortiz,
+            T. Nguyen) prior to first-tools, including site-specific
+            wet-weather access training.
+          </Section>
+
+          <Section number={4} label="Weather">
+            Heavy precipitation overnight and into early afternoon,
+            with intermittent thunder cells passing east of the site
+            between 11:20 and 12:45. Wind sustained at 12–18 mph from
+            the WSW with gusts to 26 mph, which triggered a one-hour
+            suspension of crane operations between 11:30 and 12:30
+            per the SOP-12 wind protocol. Temperatures held between
+            8°C overnight low and 14°C afternoon high — within the
+            cold-weather concreting range but above the placement
+            threshold.{' '}
             <Hl
               color="green"
               active={selected === 2}
@@ -611,10 +666,53 @@ export default function Pro5() {
               47 mm of rainfall recorded over the past 36 hours.
               Subgrade saturation exceeds the 25 mm method-statement
               threshold for safe concrete placement.
-            </Hl>
+            </Hl>{' '}
+            Forecast for May 19 shows clearing conditions and a
+            twelve-hour dry window opening at 06:00, which should
+            support the morning re-test and an afternoon pour if the
+            density target is met. The May 20 forecast holds at 10%
+            PoP, which should support pump-truck mobilization at
+            first light.
           </Section>
 
-          <Section number={3} label="Materials">
+          <Section number={5} label="Equipment">
+            Crane CK-12 cleared the morning inspection with no
+            deficiencies; daily log signed by the lift director and
+            filed at 07:45. Concrete pump P-04 is on standby pending
+            pour permit; hose was flushed and capped per protocol and
+            the operator demobilized at 14:00 with two hours of show-up
+            authorized. Compactor unit serviced and scheduled for a
+            re-test run on May 19 at 07:30 ahead of the Proctor re-test.
+            Skid steer SS-03 returned from the dealer with the new
+            hydraulic line installed and is back in rotation; the
+            replacement was covered under warranty. Generator G-02 fuel
+            level checked at 78% — refuel scheduled for May 20 morning
+            ahead of the pour. Two welding machines flagged for monthly
+            ground-fault testing on May 21.
+          </Section>
+
+          <Section number={6} label="Subcontractors">
+            Acme Steel Supply and Western Mechanical both on site
+            through the shift. Northland EC (electrical) demobilized
+            at 14:00 once the pour was suspended; they are expected
+            back on May 21 once cast-in embeds are placed. Concrete
+            supplier (Pacific Mix) was notified of the pour-permit
+            hold at 13:35; the standing batch order for May 19 was
+            re-confirmed for 06:30 once the re-test is cleared, with
+            two backup trucks scheduled to absorb any slip. Pacific
+            Glazing performed a site walk for the upcoming
+            curtain-wall mock-up location and identified no conflicts;
+            their submittal package is expected on May 20. Stretch
+            Demolition closed out their punch list and demobilized
+            their site box this morning. Trade meeting minutes
+            circulated to all subs by 16:30 along with the updated
+            two-week look-ahead.
+          </Section>
+
+          <Section number={7} label="Materials">
+            Inventory reconciled against next week’s pull-list and one
+            critical-path gap was identified during the morning
+            warehouse walk.{' '}
             <Hl
               color="blue"
               active={selected === 3}
@@ -627,32 +725,122 @@ export default function Pro5() {
               is rescheduled from May 20 to May 24 due to port-side
               congestion at Oakland.
             </Hl>{' '}
-            Inventory of 16 mm bar sufficient for tomorrow’s stirrup
-            fabrication.
+            Inventory of 16 mm bar is sufficient for tomorrow’s
+            stirrup fabrication; 32 mm column ties are on hand through
+            May 22 with a buffer of approximately three tons. Anchor
+            bolt template kits 4 of 6 received and staged in the south
+            laydown; remaining kits (5 and 6) tracking for May 22 per
+            the supplier. Curing blankets re-ordered under PO
+            #2026-04412 with ETA confirmed for May 21. Form release
+            agent inventory is at 2 drums — the re-order trigger was
+            reached and a requisition was submitted to procurement at
+            15:00. Concrete admixture stock checked against the May 19
+            batch design with no shortfalls identified.
           </Section>
 
-          <Section number={4} label="Manpower">
-            Crew of 8 on site through 16:00. Concrete crew released
-            early pending pour permit. Two laborers reassigned to
-            formwork prep on Block D.
+          <Section number={8} label="Submittals & RFIs">
+            Three RFIs remain open at end-of-day: RFI-118 (corner
+            reinforcing detail at column line G/4), RFI-121 (slab edge
+            detail at column line A/1), and RFI-124 (mechanical core
+            penetrations, levels 2 through 4). RFI-118 was the priority
+            item this week — designer response was received at 11:40
+            and forwarded to the steel detailer with a target turnaround
+            of 24 hours for the revised shop drawings. Two submittals
+            are pending designer review: SUB-067 (post-tensioning shop
+            drawings, revision 2, submitted May 14) and SUB-072 (epoxy
+            anchor system data, submitted May 16). No closeout
+            submittals processed today. Submittal log was reconciled
+            against the procurement schedule and three long-lead items
+            were flagged for owner review.
           </Section>
 
-          <Section number={5} label="Equipment">
-            Crane CK-12 cleared morning inspection. Concrete pump
-            P-04 on standby pending pour permit. Compactor unit
-            scheduled for re-test run on May 19 at 07:30.
+          <Section number={9} label="Inspections & permits">
+            City inspector (M. Donovan, badge #4421) visited at 10:00
+            for the scheduled rebar inspection on Block C beams 14–17
+            and passed the inspection with no comments; the green tag
+            is posted on the south gang-box. Special inspections
+            agency (Quality First Testing) was on site through 13:30
+            for the morning Proctor tests and continued through the
+            afternoon for the subgrade documentation pending the
+            re-test. Pour permit P-2026-0184 was placed on hold
+            pending the §1 re-test; the city was notified per
+            protocol. Storm-water permit weekly inspection was
+            completed; one BMP repair was noted at the north
+            stockpile and corrected within the four-hour window (see
+            §12). Crane annual certification renewal package for
+            CK-12 was submitted to the certifying body on May 17.
           </Section>
 
-          <Section number={6} label="Safety">
-            No incidents reported. PPE compliance verified at the
-            09:00 toolbox talk. Wet-weather walkway boards staged at
-            access points B and D.
+          <Section number={10} label="Safety">
+            No incidents or near-misses reported during the shift.
+            PPE compliance was verified at the 09:00 toolbox talk;
+            wet-weather walkway boards were staged at access points B
+            and D following the morning storm. Daily JHA was reviewed
+            with all foremen and signed off in the field. Eye-wash
+            station at the steel laydown was re-stocked. Stretch-and-
+            flex was completed at 07:00 with 22 of 24 crew
+            participating. A site walk by the safety lead at 13:00
+            identified one trip hazard at the north gate (a loose
+            plate), which was remediated by 13:30 and logged in the
+            corrective-actions tracker. Weekly safety metrics remain
+            green across all leading indicators.
           </Section>
 
-          <Section number={7} label="Notes">
-            Coordinate with civil for storm-drain inlet relocation on
-            grid line C5 before the next pour cycle. QC review of
-            forms 14–17 scheduled for May 19 at 08:00.
+          <Section number={11} label="Quality control">
+            Form-strip inspection of Block D walls passed with no
+            defects flagged. QC review of forms 14–17 (Block C beams)
+            is scheduled for May 19 at 08:00 ahead of the re-test.
+            Field cylinders from the May 16 pour reached 28-day break
+            results today at 4,820 psi against a 4,500 psi spec — a
+            7% margin, consistent with the rolling 90-day trend.
+            Slump records and air-content logs for the past week were
+            reconciled against the QC checklist; one minor variance
+            (slump 5.5″ against a 5.0″ target) was flagged on the May
+            14 batch and noted for trend tracking. No NCRs were
+            issued this shift. Concrete supplier QA reports for the
+            week were reviewed and filed in the project record.
+          </Section>
+
+          <Section number={12} label="Environmental controls">
+            All silt-fence runs were inspected post-storm and found
+            intact except for a 4 m section at the north stockpile,
+            which was re-staked and reinforced with additional fabric
+            by 12:30. The SWPPP weekly checklist was completed and
+            filed in the project record. Concrete washout pit is at
+            60% capacity — a pump-out is scheduled for May 19
+            morning. Two diesel spill kits were re-stocked at the
+            equipment yard and the south fuel cache. Air quality and
+            dust monitoring readings remain within acceptable
+            thresholds; no exceedance was recorded. The next
+            stormwater compliance audit is scheduled for May 28.
+          </Section>
+
+          <Section number={13} label="Notes & follow-ups">
+            Coordinate with civil for the storm-drain inlet relocation
+            on grid line C5 before the next pour cycle. Owner
+            walk-down is scheduled for May 22 at 10:00 — confirm Block
+            C is presentable and that the laydown south of column
+            line F is cleared. Open the May 20 progress meeting with
+            the rebar-delay re-baseline (see §2, §7) and the revised
+            schedule update notice. Issue a revised crane plan for
+            the May 21 lift of the pre-cast stair runs. Schedule the
+            post-pour acceptance walk for the Block D walls and
+            confirm the punch-list lead from the GC side. Follow up
+            with procurement on the form-release re-order and confirm
+            the May 21 curing-blanket delivery.
+          </Section>
+
+          <Section number={14} label="Photo log">
+            42 photos logged today, geo-tagged and uploaded to the
+            project document control system. Key references: IMG-0142
+            through IMG-0148 (subgrade pre/post compaction at C2–C4),
+            IMG-0151 (Proctor test in progress with the QFT
+            inspector), IMG-0163 through IMG-0168 (Block D form
+            strip-back), IMG-0177 (north silt-fence repair), and
+            IMG-0184 (laydown reorganization at the south yard).
+            Drone overflight planned for May 19 morning, conditions
+            permitting, to capture the cleaned subgrade ahead of the
+            re-test and update the digital site model.
           </Section>
         </div>
 
